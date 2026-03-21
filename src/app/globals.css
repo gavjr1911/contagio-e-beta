@@ -1,0 +1,267 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+@import "tailwindcss";
+
+/* ============================================
+   CSS Variables - Igreja Beta Theme
+   Dark mode by default
+   ============================================ */
+
+:root {
+  /* Beta Brand Colors */
+  --beta-black: #1B1B1B;
+  --beta-navy: #3B5562;
+  --beta-cream: #F5E7D7;
+  --beta-terracotta: #BF531A;
+  --beta-gray-blue: #C5CACD;
+
+  /* Semantic Colors - Dark Mode (Default) */
+  --background: #1B1B1B;
+  --foreground: #F5E7D7;
+
+  --card: #3B5562;
+  --card-foreground: #F5E7D7;
+
+  --primary: #BF531A;
+  --primary-foreground: #F5E7D7;
+
+  --secondary: #3B5562;
+  --secondary-foreground: #F5E7D7;
+
+  --muted: #3B5562;
+  --muted-foreground: #C5CACD;
+
+  --accent: #BF531A;
+  --accent-foreground: #F5E7D7;
+
+  --destructive: #E53935;
+  --destructive-foreground: #F5E7D7;
+
+  --success: #22C55E;
+  --success-foreground: #F5E7D7;
+
+  --warning: #BF531A;
+  --warning-foreground: #F5E7D7;
+
+  --popover: #3B5562;
+  --popover-foreground: #F5E7D7;
+
+  --border: rgba(197, 202, 205, 0.2);
+  --input: rgba(59, 85, 98, 0.5);
+  --ring: #BF531A;
+
+  /* Border Radius */
+  --radius-card: 16px;
+  --radius-button: 8px;
+  --radius: 8px;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'DM Sans', system-ui, sans-serif;
+}
+
+/* ============================================
+   Tailwind v4 Theme Configuration
+   ============================================ */
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Beta Brand Colors */
+  --color-beta-black: #1B1B1B;
+  --color-beta-navy: #3B5562;
+  --color-beta-cream: #F5E7D7;
+  --color-beta-terracotta: #BF531A;
+  --color-beta-gray-blue: #C5CACD;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'DM Sans', system-ui, sans-serif;
+
+  /* Border Radius */
+  --radius-card: 16px;
+  --radius-button: 8px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   Custom Utility Classes
+   ============================================ */
+
+/* Text Colors */
+.text-beta-black { color: var(--beta-black); }
+.text-beta-navy { color: var(--beta-navy); }
+.text-beta-cream { color: var(--beta-cream); }
+.text-beta-terracotta { color: var(--beta-terracotta); }
+.text-beta-gray-blue { color: var(--beta-gray-blue); }
+
+/* Background Colors */
+.bg-beta-black { background-color: var(--beta-black); }
+.bg-beta-navy { background-color: var(--beta-navy); }
+.bg-beta-cream { background-color: var(--beta-cream); }
+.bg-beta-terracotta { background-color: var(--beta-terracotta); }
+.bg-beta-gray-blue { background-color: var(--beta-gray-blue); }
+
+/* Border Colors */
+.border-beta-black { border-color: var(--beta-black); }
+.border-beta-navy { border-color: var(--beta-navy); }
+.border-beta-cream { border-color: var(--beta-cream); }
+.border-beta-terracotta { border-color: var(--beta-terracotta); }
+.border-beta-gray-blue { border-color: var(--beta-gray-blue); }
+
+/* Font Families */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Card Style */
+.card-beta {
+  background-color: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+/* Input Styles */
+.input-beta {
+  background-color: var(--input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1rem;
+  color: var(--foreground);
+}
+
+.input-beta:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--ring);
+  border-color: var(--ring);
+}
+
+.input-beta::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Focus Ring */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+/* Gradient Overlays */
+.gradient-beta {
+  background: linear-gradient(135deg, var(--beta-terracotta) 0%, var(--beta-navy) 100%);
+}
+
+.gradient-beta-subtle {
+  background: linear-gradient(180deg, transparent 0%, rgba(27, 27, 27, 0.8) 100%);
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--beta-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--beta-navy);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--beta-gray-blue);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--beta-terracotta);
+  color: var(--beta-cream);
+}

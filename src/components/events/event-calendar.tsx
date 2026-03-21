@@ -1,0 +1,165 @@
+"use client";
+
+import * as React from "react";
+import { DayPicker } from "react-day-picker";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ptBR } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Event, EventType } from "@/hooks/use-events";
+import Link from "next/link";
+
+interface EventCalendarProps {
+  events: Event[];
+  onMonthChange?: (month: Date) => void;
+  onDateSelect?: (date: Date) => void;
+  className?: string;
+}
+
+function getTypeColor(type: EventType): string {
+  switch (type) {
+    case "culto":
+      return "bg-beta-terracotta";
+    case "ensaio":
+      return "bg-blue-500";
+    case "reuniao":
+      return "bg-amber-500";
+    case "evento_especial":
+      return "bg-purple-500";
+    case "conferencia":
+      return "bg-emerald-500";
+    default:
+      return "bg-muted";
+  }
+}
+
+export function EventCalendar({
+  events,
+  onMonthChange,
+  onDateSelect,
+  className,
+}: EventCalendarProps) {
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+
+  // Group events by date
+  const eventsByDate = React.useMemo(() => {
+    const map = new Map<string, Event[]>();
+    events.forEach((event) => {
+      const dateKey = event.date;
+      if (!map.has(dateKey)) {
+        map.set(dateKey, []);
+      }
+      map.get(dateKey)!.push(event);
+    });
+    return map;
+  }, [events]);
+
+  const handleMonthChange = (month: Date) => {
+    setCurrentMonth(month);
+    onMonthChange?.(month);
+  };
+
+  // Get dates with events for modifiers
+  const datesWithEvents = React.useMemo(() => {
+    return events.map(e => new Date(e.date + "T00:00:00"));
+  }, [events]);
+
+  return (
+    <div className={cn("p-4 bg-card rounded-[16px] border border-border", className)}>
+      <DayPicker
+        mode="single"
+        locale={ptBR}
+        month={currentMonth}
+        onMonthChange={handleMonthChange}
+        onSelect={(date) => date && onDateSelect?.(date)}
+        showOutsideDays
+        className="w-full"
+        modifiers={{
+          hasEvent: datesWithEvents,
+        }}
+        modifiersClassNames={{
+          hasEvent: "font-bold text-beta-terracotta",
+        }}
+        classNames={{
+          months: "flex flex-col",
+          month: "space-y-4",
+          month_caption: "flex justify-between items-center px-2 py-2",
+          caption_label: "text-lg font-semibold capitalize",
+          nav: "flex items-center gap-2",
+          button_previous: cn(
+            "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100 inline-flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors"
+          ),
+          button_next: cn(
+            "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100 inline-flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors"
+          ),
+          month_grid: "w-full border-collapse",
+          weekdays: "flex w-full",
+          weekday:
+            "text-muted-foreground flex-1 font-medium text-center text-sm py-2",
+          week: "flex w-full mt-1",
+          day: cn(
+            "flex-1 text-center p-0.5",
+            "focus-within:relative focus-within:z-20"
+          ),
+          day_button: cn(
+            "h-12 w-full p-1 font-normal aria-selected:opacity-100",
+            "rounded-lg hover:bg-muted transition-colors cursor-pointer",
+            "flex flex-col items-center justify-start pt-1"
+          ),
+          selected:
+            "bg-beta-terracotta text-white hover:bg-beta-terracotta/90",
+          today: "bg-muted/50 font-semibold",
+          outside: "text-muted-foreground/50",
+          disabled: "text-muted-foreground/30",
+          hidden: "invisible",
+        }}
+        components={{
+          Chevron: ({ orientation }) => {
+            const Icon = orientation === "left" ? ChevronLeft : ChevronRight
+            return <Icon className="h-4 w-4" />
+          },
+        }}
+      />
+
+      {/* Events list for selected date or today */}
+      <div className="mt-6 pt-4 border-t border-border">
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+          Proximos Eventos
+        </h3>
+        <div className="space-y-2">
+          {events.slice(0, 5).map((event) => (
+            <Link
+              key={event.id}
+              href={`/eventos/${event.id}`}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group"
+            >
+              <div
+                className={cn(
+                  "w-1 h-8 rounded-full",
+                  getTypeColor(event.type)
+                )}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate group-hover:text-beta-terracotta transition-colors">
+                  {event.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(event.date + "T00:00:00").toLocaleDateString("pt-BR", {
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  - {event.startTime.substring(0, 5)}
+                </p>
+              </div>
+            </Link>
+          ))}
+          {events.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum evento programado
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

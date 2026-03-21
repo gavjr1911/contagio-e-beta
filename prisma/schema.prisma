@@ -1,0 +1,429 @@
+// Prisma Schema - Sistema Contagio e Beta
+// Sistema de gestao de ministerios e escalas para igreja
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  COORDINATOR
+  LEADER
+  COMMUNICATION
+  VOLUNTEER
+}
+
+enum MinistryType {
+  RECEPTION
+  PASTORAL
+  TECHNICAL
+  WORSHIP
+  COMMUNICATION
+  CONTAGIE
+}
+
+enum EventType {
+  SUNDAY_MORNING
+  SUNDAY_EVENING
+  SPECIAL
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+}
+
+enum EventItemType {
+  WORSHIP
+  PREACHING
+  ANNOUNCEMENTS
+  COMMUNION
+  OTHER
+}
+
+enum ScheduleStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PDF
+  PRESENTATION
+}
+
+enum MediaCategory {
+  ANNOUNCEMENTS
+  PREACHING
+  OTHER
+}
+
+// ============================================
+// AUTH.JS MODELS (Prisma Adapter Pattern)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // Hash da senha para login com credenciais
+  role          UserRole  @default(VOLUNTEER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relacionamentos Auth.js
+  accounts Account[]
+  sessions Session[]
+
+  // Relacionamentos do Sistema
+  ministryMemberships MinistryMember[]
+  leaderOfMinistries  Ministry[]       @relation("MinistryLeader")
+  schedules           Schedule[]
+  bandMemberships     BandMember[]
+  uploadedMedia       Media[]
+  notifications       Notification[]
+  blockedDates        BlockedDate[]
+  eventItems          EventItem[]      @relation("EventItemResponsible")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// MINISTRY (MINISTERIO)
+// ============================================
+
+model Ministry {
+  id          String       @id @default(cuid())
+  name        String
+  description String?      @db.Text
+  type        MinistryType
+  leaderId    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relacionamentos
+  leader    User?            @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  members   MinistryMember[]
+  schedules Schedule[]
+
+  @@index([leaderId])
+  @@index([type])
+  @@map("ministries")
+}
+
+model MinistryMember {
+  id         String   @id @default(cuid())
+  userId     String
+  ministryId String
+  position   String? // Ex: "Mesa de Som", "Guitarra", "Recepcionista"
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  // Relacionamentos
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ministryId])
+  @@index([userId])
+  @@index([ministryId])
+  @@index([active])
+  @@map("ministry_members")
+}
+
+// ============================================
+// EVENT (EVENTO/CULTO)
+// ============================================
+
+model EventTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  items       Json // Array de itens padrao do template
+  createdAt   DateTime @default(now())
+
+  // Relacionamentos
+  events Event[]
+
+  @@map("event_templates")
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  name       String
+  type       EventType
+  date       DateTime    @db.Date
+  startTime  DateTime    @db.Time()
+  endTime    DateTime?   @db.Time()
+  status     EventStatus @default(DRAFT)
+  templateId String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relacionamentos
+  template  EventTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  items     EventItem[]
+  schedules Schedule[]
+  setlists  Setlist[]
+  media     Media[]
+
+  @@index([date])
+  @@index([type])
+  @@index([status])
+  @@index([templateId])
+  @@map("events")
+}
+
+model EventItem {
+  id              String        @id @default(cuid())
+  eventId         String
+  order           Int
+  type            EventItemType
+  title           String
+  description     String?       @db.Text
+  durationMinutes Int?
+  responsibleId   String?
+
+  // Relacionamentos
+  event       Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  responsible User? @relation("EventItemResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([order])
+  @@index([responsibleId])
+  @@map("event_items")
+}
+
+// ============================================
+// SCHEDULE (ESCALA)
+// ============================================
+
+model Schedule {
+  id             String         @id @default(cuid())
+  eventId        String
+  ministryId     String
+  userId         String
+  position       String? // Funcao especifica na escala
+  status         ScheduleStatus @default(PENDING)
+  confirmedAt    DateTime?
+  declinedReason String?        @db.Text
+  createdAt      DateTime       @default(now())
+
+  // Relacionamentos
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, ministryId, userId])
+  @@index([eventId])
+  @@index([ministryId])
+  @@index([userId])
+  @@index([status])
+  @@map("schedules")
+}
+
+// ============================================
+// BAND (BANDA)
+// ============================================
+
+model Band {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relacionamentos
+  members BandMember[]
+
+  @@index([active])
+  @@map("bands")
+}
+
+model BandMember {
+  id         String   @id @default(cuid())
+  bandId     String
+  userId     String
+  instrument String // Ex: "Guitarra", "Baixo", "Bateria", "Vocal"
+  createdAt  DateTime @default(now())
+
+  // Relacionamentos
+  band Band @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bandId, userId])
+  @@index([bandId])
+  @@index([userId])
+  @@map("band_members")
+}
+
+// ============================================
+// SONG (MUSICA)
+// ============================================
+
+model Song {
+  id             String    @id @default(cuid())
+  name           String
+  artist         String?
+  defaultKey     String? // Tom padrao (Ex: "C", "G", "Am")
+  lyrics         String?   @db.Text
+  chordLink      String? // Link para cifra externa
+  tags           String[] // Array de tags (Ex: ["adoracao", "rapido", "natal"])
+  propresenterId String? // ID no ProPresenter
+  lastPlayedAt   DateTime?
+  playCount      Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  // Relacionamentos
+  setlists Setlist[]
+
+  @@index([name])
+  @@index([artist])
+  @@index([tags])
+  @@index([lastPlayedAt])
+  @@map("songs")
+}
+
+model Setlist {
+  id        String   @id @default(cuid())
+  eventId   String
+  order     Int
+  songId    String
+  key       String? // Tom especifico para este evento (pode diferir do padrao)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  // Relacionamentos
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, order])
+  @@index([eventId])
+  @@index([songId])
+  @@map("setlists")
+}
+
+// ============================================
+// MEDIA (MIDIA/ARQUIVOS)
+// ============================================
+
+model Media {
+  id           String        @id @default(cuid())
+  eventId      String?
+  type         MediaType
+  url          String
+  filename     String?
+  category     MediaCategory @default(OTHER)
+  uploadedById String?
+  createdAt    DateTime      @default(now())
+
+  // Relacionamentos
+  event      Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploadedBy User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([type])
+  @@index([category])
+  @@index([uploadedById])
+  @@map("media")
+}
+
+// ============================================
+// NOTIFICATION (NOTIFICACOES)
+// ============================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // Tipo flexivel (Ex: "SCHEDULE_REMINDER", "NEW_EVENT", etc)
+  title     String
+  message   String    @db.Text
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================
+// BLOCKED DATE (DATAS BLOQUEADAS)
+// ============================================
+
+model BlockedDate {
+  id        String   @id @default(cuid())
+  userId    String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  reason    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("blocked_dates")
+}

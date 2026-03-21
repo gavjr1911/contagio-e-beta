@@ -1,0 +1,23 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="180" height="180" rx="30" fill="#1B1B1B"/>
+
+  <!-- Beta Cross Symbol -->
+  <g transform="translate(30, 28)">
+    <!-- Vertical bar of cross -->
+    <rect x="50" y="14" width="20" height="90" rx="4" fill="#BF531A"/>
+
+    <!-- Horizontal bar of cross -->
+    <rect x="28" y="36" width="64" height="20" rx="4" fill="#BF531A"/>
+
+    <!-- Beta letter stylized below -->
+    <text x="60" y="122"
+          font-family="DM Sans, Arial, sans-serif"
+          font-size="22"
+          font-weight="700"
+          fill="#F5E7D7"
+          text-anchor="middle">
+      BETA
+    </text>
+  </g>
+</svg>
