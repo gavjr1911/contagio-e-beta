@@ -111,13 +111,8 @@ function EventCard({ event }: { event: DashboardEvent }) {
         color: "text-yellow-400",
         bg: "bg-yellow-400/10",
       },
-      DRAFT: {
-        icon: AlertCircle,
-        color: "text-gray-400",
-        bg: "bg-gray-400/10",
-      },
     };
-    return configs[status] || configs.SCHEDULED;
+    return configs[status] || configs.PUBLISHED;
   };
 
   const config = getStatusConfig(event.status);

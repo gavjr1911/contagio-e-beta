@@ -27,6 +27,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { VacancySlot } from "@/components/events/vacancy-slot";
 import { ScheduleMemberDialog } from "@/components/events/schedule-member-dialog";
+import { OrderItemCard } from "@/components/events/order-item-card";
+import {
+  calculateStartTimes,
+  calculateTotalDuration,
+  formatDuration,
+  type EventItem as EventItemType,
+} from "@/hooks/use-event-items";
 import {
   useEvent,
   useDeleteEvent,
@@ -58,7 +65,6 @@ function getStatusVariant(
       return "default";
     case "COMPLETED":
       return "secondary";
-    case "DRAFT":
     default:
       return "outline";
   }
@@ -235,26 +241,6 @@ export default function EventoDetailPage() {
     }
   };
 
-  const handlePublish = async () => {
-    if (!event) return;
-    try {
-      await updateEvent.mutateAsync({
-        id: event.id,
-        status: "PUBLISHED",
-      });
-      toast({
-        title: "Sucesso",
-        description: "Evento publicado com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao publicar evento",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleComplete = async () => {
     if (!event) return;
     try {
@@ -413,17 +399,6 @@ export default function EventoDetailPage() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {event.status === "DRAFT" && (
-              <Button
-                variant="outline"
-                onClick={handlePublish}
-                disabled={updateEvent.isPending}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Publicar
-              </Button>
-            )}
-
             {event.status === "PUBLISHED" && (
               <Button
                 variant="outline"
@@ -504,52 +479,119 @@ export default function EventoDetailPage() {
       {/* Tab Content */}
       <div className="mt-6">
         {activeTab === "ordem" && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Ordem do Culto</CardTitle>
-              <Link href={`/eventos/${eventId}/ordem`}>
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-1" />
-                  {event.items && event.items.length > 0 ? "Editar" : "Criar"} Ordem
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {event.items && event.items.length > 0 ? (
-                <div className="space-y-3">
-                  {event.items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-4 p-3 rounded-lg border border-border"
-                    >
-                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-medium">
-                        {index + 1}
+          <div className="space-y-4">
+            {event.items && event.items.length > 0 ? (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{item.title}</p>
-                        {item.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {item.description}
-                          </p>
-                        )}
+                      <div>
+                        <p className="text-sm text-muted-foreground">Atividades</p>
+                        <p className="text-2xl font-bold">{event.items.length}</p>
                       </div>
-                      {item.durationMinutes && (
-                        <Badge variant="outline">{item.durationMinutes} min</Badge>
-                      )}
                     </div>
-                  ))}
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duracao Total</p>
+                        <p className="text-2xl font-bold text-emerald-500">
+                          {formatDuration(calculateTotalDuration(event.items as EventItemType[]))}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Inicio</p>
+                        <p className="text-2xl font-bold text-blue-500">{startTimeFormatted}</p>
+                      </div>
+                    </div>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Termino Previsto</p>
+                        <p className="text-2xl font-bold text-amber-500">
+                          {(() => {
+                            const totalMinutes = calculateTotalDuration(event.items as EventItemType[]);
+                            const [h, m] = startTimeFormatted.split(":").map(Number);
+                            const endMinutes = h * 60 + m + totalMinutes;
+                            const endH = Math.floor(endMinutes / 60) % 24;
+                            const endM = endMinutes % 60;
+                            return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="mb-4">Nenhuma ordem do culto definida</p>
+
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-lg">Atividades</h2>
                   <Link href={`/eventos/${eventId}/ordem`}>
-                    <Button variant="outline">Criar Ordem do Culto</Button>
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-1" />
+                      Editar Ordem
+                    </Button>
                   </Link>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {/* Items */}
+                <div className="space-y-3">
+                  {(() => {
+                    const startTimes = calculateStartTimes(
+                      event.items as EventItemType[],
+                      startTimeFormatted
+                    );
+                    return event.items.map((item, index) => (
+                      <OrderItemCard
+                        key={item.id}
+                        item={item as EventItemType}
+                        startTime={startTimes.get(item.id) || startTimeFormatted}
+                        index={index}
+                      />
+                    ));
+                  })()}
+                </div>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium text-foreground mb-2">
+                      Nenhuma ordem do culto definida
+                    </p>
+                    <p className="mb-4">
+                      Crie a ordem do culto para organizar as atividades do evento.
+                    </p>
+                    <Link href={`/eventos/${eventId}/ordem`}>
+                      <Button>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Criar Ordem do Culto
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
 
         {activeTab === "escalas" && (

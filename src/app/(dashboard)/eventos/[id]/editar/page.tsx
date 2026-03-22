@@ -39,8 +39,7 @@ const eventTypes: EventType[] = [
 ];
 
 const eventStatuses: { value: EventStatus; label: string }[] = [
-  { value: "DRAFT", label: "Rascunho" },
-  { value: "PUBLISHED", label: "Publicado" },
+  { value: "PUBLISHED", label: "Ativo" },
   { value: "COMPLETED", label: "Concluido" },
 ];
 
@@ -74,7 +73,7 @@ export default function EditarEventoPage() {
     date: "",
     startTime: "",
     endTime: "",
-    status: "DRAFT" as EventStatus,
+    status: "PUBLISHED" as EventStatus,
   });
 
   const [vacancies, setVacancies] = React.useState<VacancyConfig[]>([]);

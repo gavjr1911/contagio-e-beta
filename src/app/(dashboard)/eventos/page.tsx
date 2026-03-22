@@ -38,7 +38,6 @@ const eventTypes: EventType[] = [
 ];
 
 const eventStatuses: EventStatus[] = [
-  "DRAFT",
   "PUBLISHED",
   "COMPLETED",
 ];

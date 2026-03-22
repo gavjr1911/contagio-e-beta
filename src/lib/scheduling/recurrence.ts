@@ -203,7 +203,7 @@ export async function createRecurringEvents(
         templateId: parentEvent.templateId,
         isRecurring: true,
         parentEventId: parentEvent.id,
-        status: "DRAFT",
+        status: "PUBLISHED",
       },
     })
 

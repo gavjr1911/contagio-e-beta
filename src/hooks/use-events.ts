@@ -206,7 +206,7 @@ async function createEvent(data: CreateEventData): Promise<Event> {
     date: data.date, // YYYY-MM-DD string
     startTime: data.startTime, // HH:MM string
     endTime: data.endTime || undefined, // HH:MM string
-    status: data.status || "DRAFT",
+    status: data.status || "PUBLISHED",
     templateId: data.templateId,
   };
 
@@ -347,8 +347,7 @@ export function getEventTypeLabel(type: EventType): string {
 
 export function getEventStatusLabel(status: EventStatus): string {
   const labels: Record<EventStatus, string> = {
-    DRAFT: "Rascunho",
-    PUBLISHED: "Publicado",
+    PUBLISHED: "Ativo",
     COMPLETED: "Concluido",
   };
   return labels[status] || status;

@@ -33,7 +33,7 @@ export const EventTypeEnum = z.enum([
   "SPECIAL",
 ])
 
-export const EventStatusEnum = z.enum(["DRAFT", "PUBLISHED", "COMPLETED"])
+export const EventStatusEnum = z.enum(["PUBLISHED", "COMPLETED"])
 
 export const RecurrencePatternEnum = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY"])
 
@@ -66,7 +66,7 @@ const baseEventSchema = z.object({
   date: localDateSchema,
   startTime: localTimeSchema,
   endTime: localTimeSchema.optional(),
-  status: EventStatusEnum.optional().default("DRAFT"),
+  status: EventStatusEnum.optional().default("PUBLISHED"),
   templateId: z.string().cuid().optional(),
   isRecurring: z.boolean().optional().default(false),
   recurrencePattern: RecurrencePatternEnum.optional(),

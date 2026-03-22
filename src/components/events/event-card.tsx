@@ -32,7 +32,6 @@ function getStatusVariant(
       return "default";
     case "COMPLETED":
       return "secondary";
-    case "DRAFT":
     default:
       return "outline";
   }

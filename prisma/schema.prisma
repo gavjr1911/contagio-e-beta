@@ -29,9 +29,8 @@ enum EventType {
 }
 
 enum EventStatus {
-  DRAFT
-  PUBLISHED
-  COMPLETED
+  PUBLISHED  // Evento ativo/disponivel
+  COMPLETED  // Evento ja realizado
 }
 
 enum RecurrencePattern {
@@ -256,7 +255,7 @@ model Event {
   date       DateTime    @db.Date
   startTime  DateTime    @db.Time()
   endTime    DateTime?   @db.Time()
-  status     EventStatus @default(DRAFT)
+  status     EventStatus @default(PUBLISHED)
   templateId String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
