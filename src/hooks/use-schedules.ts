@@ -30,6 +30,41 @@ export interface Schedule {
   };
 }
 
+// Event Schedule types (grouped by ministry)
+export interface EventScheduleUser {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
+export interface EventScheduleItem {
+  id: string;
+  user: EventScheduleUser;
+  position: string | null;
+  status: ScheduleStatus;
+  confirmedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface EventMinistry {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface EventScheduleGroup {
+  ministry: EventMinistry;
+  schedules: EventScheduleItem[];
+}
+
+export interface CreateScheduleInput {
+  eventId: string;
+  userId: string;
+  ministryId: string;
+  position?: string;
+}
+
 export interface BlockedDate {
   id: string;
   userId: string;
@@ -40,6 +75,14 @@ export interface BlockedDate {
 }
 
 export type ScheduleFilter = "all" | "pending" | "confirmed" | "history";
+
+// Query keys
+export const scheduleKeys = {
+  all: ["schedules"] as const,
+  my: (filter: ScheduleFilter) => [...scheduleKeys.all, "my", filter] as const,
+  event: (eventId: string) => [...scheduleKeys.all, "event", eventId] as const,
+  blocked: () => [...scheduleKeys.all, "blocked-dates"] as const,
+};
 
 // Fetch my schedules
 async function fetchMySchedules(filter: ScheduleFilter): Promise<Schedule[]> {
@@ -124,11 +167,60 @@ async function removeBlockedDate(id: string): Promise<void> {
   }
 }
 
+// Fetch event schedules (grouped by ministry)
+async function fetchEventSchedules(eventId: string): Promise<EventScheduleGroup[]> {
+  const response = await fetch(`/api/events/${eventId}/schedules`);
+  if (!response.ok) {
+    throw new Error("Erro ao carregar escalas do evento");
+  }
+  const result = await response.json();
+  return result.data || [];
+}
+
+// Create schedule (assign member to event)
+async function createSchedule(data: CreateScheduleInput): Promise<Schedule> {
+  const { eventId, ...body } = data;
+  const response = await fetch(`/api/events/${eventId}/schedules`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao criar escala");
+  }
+  const result = await response.json();
+  return result.data;
+}
+
+// Delete schedule
+async function deleteSchedule(data: { eventId: string; scheduleId: string }): Promise<void> {
+  const response = await fetch(`/api/events/${data.eventId}/schedules/${data.scheduleId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao remover escala");
+  }
+}
+
 // Hook: useMySchedules
 export function useMySchedules(filter: ScheduleFilter = "all") {
   return useQuery({
-    queryKey: ["my-schedules", filter],
+    queryKey: scheduleKeys.my(filter),
     queryFn: () => fetchMySchedules(filter),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+// Hook: useEventSchedules
+export function useEventSchedules(eventId: string) {
+  return useQuery({
+    queryKey: scheduleKeys.event(eventId),
+    queryFn: () => fetchEventSchedules(eventId),
+    enabled: !!eventId,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
@@ -140,7 +232,7 @@ export function useConfirmSchedule() {
   return useMutation({
     mutationFn: confirmSchedule,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-schedules"] });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
     },
   });
 }
@@ -152,7 +244,33 @@ export function useDeclineSchedule() {
   return useMutation({
     mutationFn: declineSchedule,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-schedules"] });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+    },
+  });
+}
+
+// Hook: useCreateSchedule
+export function useCreateSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createSchedule,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.event(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+    },
+  });
+}
+
+// Hook: useDeleteSchedule
+export function useDeleteSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteSchedule,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.event(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
     },
   });
 }
@@ -160,7 +278,7 @@ export function useDeclineSchedule() {
 // Hook: useBlockedDates
 export function useBlockedDates() {
   return useQuery({
-    queryKey: ["blocked-dates"],
+    queryKey: scheduleKeys.blocked(),
     queryFn: fetchBlockedDates,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -173,7 +291,7 @@ export function useAddBlockedDate() {
   return useMutation({
     mutationFn: addBlockedDate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["blocked-dates"] });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.blocked() });
     },
   });
 }
@@ -185,7 +303,7 @@ export function useRemoveBlockedDate() {
   return useMutation({
     mutationFn: removeBlockedDate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["blocked-dates"] });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.blocked() });
     },
   });
 }

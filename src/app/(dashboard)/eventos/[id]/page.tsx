@@ -8,7 +8,6 @@ import {
   Calendar,
   Clock,
   Edit,
-  Copy,
   Trash2,
   MoreHorizontal,
   Users,
@@ -16,6 +15,7 @@ import {
   Monitor,
   FileText,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,13 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import {
   useEvent,
   useDeleteEvent,
-  useDuplicateEvent,
+  useUpdateEvent,
   EventStatus,
   EventType,
   getEventTypeLabel,
   getEventStatusLabel,
+  formatTimeFromDate,
 } from "@/hooks/use-events";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type TabType = "ordem" | "escalas" | "midia" | "setlist";
 
@@ -37,15 +39,11 @@ function getStatusVariant(
   status: EventStatus
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
-    case "confirmado":
-    case "concluido":
+    case "PUBLISHED":
       return "default";
-    case "agendado":
-    case "em_andamento":
+    case "COMPLETED":
       return "secondary";
-    case "cancelado":
-      return "destructive";
-    case "rascunho":
+    case "DRAFT":
     default:
       return "outline";
   }
@@ -53,33 +51,25 @@ function getStatusVariant(
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "culto":
+    case "SUNDAY_MORNING":
       return "bg-primary/10 text-primary border-primary/20";
-    case "ensaio":
+    case "SUNDAY_EVENING":
       return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "reuniao":
-      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-    case "evento_especial":
+    case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-    case "conferencia":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString + "T00:00:00");
+function formatDate(dateOrString: string | Date): string {
+  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
   return date.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-}
-
-function formatTime(time: string): string {
-  return time.substring(0, 5);
 }
 
 export default function EventoDetailPage() {
@@ -89,7 +79,7 @@ export default function EventoDetailPage() {
 
   const { data: event, isLoading, error } = useEvent(eventId);
   const deleteEvent = useDeleteEvent();
-  const duplicateEvent = useDuplicateEvent();
+  const updateEvent = useUpdateEvent();
 
   const [activeTab, setActiveTab] = React.useState<TabType>("ordem");
   const [showMenu, setShowMenu] = React.useState(false);
@@ -114,16 +104,60 @@ export default function EventoDetailPage() {
   const handleDelete = async () => {
     if (!event) return;
     if (confirm(`Tem certeza que deseja excluir "${event.name}"?`)) {
-      await deleteEvent.mutateAsync(event.id);
-      router.push("/eventos");
+      try {
+        await deleteEvent.mutateAsync(event.id);
+        toast({
+          title: "Sucesso",
+          description: "Evento excluido com sucesso!",
+        });
+        router.push("/eventos");
+      } catch (error) {
+        toast({
+          title: "Erro ao excluir evento",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleDuplicate = async () => {
+  const handlePublish = async () => {
     if (!event) return;
-    const duplicated = await duplicateEvent.mutateAsync(event.id);
-    if (duplicated) {
-      router.push(`/eventos/${duplicated.id}`);
+    try {
+      await updateEvent.mutateAsync({
+        id: event.id,
+        status: "PUBLISHED",
+      });
+      toast({
+        title: "Sucesso",
+        description: "Evento publicado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao publicar evento",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!event) return;
+    try {
+      await updateEvent.mutateAsync({
+        id: event.id,
+        status: "COMPLETED",
+      });
+      toast({
+        title: "Sucesso",
+        description: "Evento marcado como concluido!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao concluir evento",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
     }
   };
 
@@ -154,6 +188,19 @@ export default function EventoDetailPage() {
     { id: "midia" as TabType, label: "Midia", icon: Monitor },
     { id: "setlist" as TabType, label: "Setlist", icon: Music },
   ];
+
+  const startTimeFormatted = formatTimeFromDate(event.startTime);
+  const endTimeFormatted = event.endTime ? formatTimeFromDate(event.endTime) : null;
+
+  // Group schedules by ministry
+  const schedulesByMinistry = event.schedules?.reduce((acc, schedule) => {
+    const ministryName = schedule.ministry.name;
+    if (!acc[ministryName]) {
+      acc[ministryName] = [];
+    }
+    acc[ministryName].push(schedule);
+    return acc;
+  }, {} as Record<string, typeof event.schedules>);
 
   return (
     <div className="flex-1 p-6 space-y-6">
@@ -186,7 +233,8 @@ export default function EventoDetailPage() {
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>
-                  {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                  {startTimeFormatted}
+                  {endTimeFormatted && ` - ${endTimeFormatted}`}
                 </span>
               </div>
             </div>
@@ -194,9 +242,27 @@ export default function EventoDetailPage() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleDuplicate}>
-              <Copy className="h-4 w-4" />
-            </Button>
+            {event.status === "DRAFT" && (
+              <Button
+                variant="outline"
+                onClick={handlePublish}
+                disabled={updateEvent.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Publicar
+              </Button>
+            )}
+
+            {event.status === "PUBLISHED" && (
+              <Button
+                variant="outline"
+                onClick={handleComplete}
+                disabled={updateEvent.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Concluir
+              </Button>
+            )}
 
             <div className="relative" ref={menuRef}>
               <Button
@@ -228,10 +294,12 @@ export default function EventoDetailPage() {
               )}
             </div>
 
-            <Button className="bg-primary hover:bg-primary-hover">
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
+            <Link href={`/eventos/${event.id}/editar`}>
+              <Button className="bg-primary hover:bg-primary-hover">
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -265,11 +333,37 @@ export default function EventoDetailPage() {
               <CardTitle className="text-lg">Ordem do Culto</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="mb-4">Nenhuma ordem do culto definida</p>
-                <Button variant="outline">Criar Ordem do Culto</Button>
-              </div>
+              {event.items && event.items.length > 0 ? (
+                <div className="space-y-3">
+                  {event.items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 p-3 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{item.title}</p>
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                      {item.durationMinutes && (
+                        <Badge variant="outline">{item.durationMinutes} min</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="mb-4">Nenhuma ordem do culto definida</p>
+                  <Button variant="outline">Criar Ordem do Culto</Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -286,24 +380,62 @@ export default function EventoDetailPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Sample ministry cards */}
-              {["Louvor", "Som e Midia", "Recepcao"].map((ministry) => (
-                <Card key={ministry}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{ministry}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">3 membros</Badge>
-                      <Badge variant="outline" className="text-emerald-500">
-                        2 confirmados
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {schedulesByMinistry && Object.keys(schedulesByMinistry).length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(schedulesByMinistry).map(([ministryName, schedules]) => (
+                  <Card key={ministryName}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">{ministryName}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {schedules?.map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span>{schedule.user.name || schedule.user.email}</span>
+                            <Badge
+                              variant={
+                                schedule.status === "CONFIRMED"
+                                  ? "default"
+                                  : schedule.status === "DECLINED"
+                                  ? "destructive"
+                                  : "outline"
+                              }
+                              className="text-xs"
+                            >
+                              {schedule.status === "CONFIRMED"
+                                ? "Confirmado"
+                                : schedule.status === "DECLINED"
+                                ? "Recusado"
+                                : "Pendente"}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Badge variant="secondary">{schedules?.length || 0} membros</Badge>
+                        <Badge variant="outline" className="text-emerald-500">
+                          {schedules?.filter((s) => s.status === "CONFIRMED").length || 0}{" "}
+                          confirmados
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-8 text-center">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground mb-4">
+                  Nenhuma escala definida para este evento
+                </p>
+                <Link href={`/eventos/${event.id}/escalas`}>
+                  <Button variant="outline">Criar Escalas</Button>
+                </Link>
+              </Card>
+            )}
           </div>
         )}
 
@@ -328,11 +460,39 @@ export default function EventoDetailPage() {
               <CardTitle className="text-lg">Setlist</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="mb-4">Nenhuma musica adicionada ao setlist</p>
-                <Button variant="outline">Criar Setlist</Button>
-              </div>
+              {event.setlists && event.setlists.length > 0 ? (
+                <div className="space-y-3">
+                  {event.setlists.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 p-3 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{item.song.name}</p>
+                        {item.song.artist && (
+                          <p className="text-sm text-muted-foreground">
+                            {item.song.artist}
+                          </p>
+                        )}
+                      </div>
+                      {(item.key || item.song.defaultKey) && (
+                        <Badge variant="outline">
+                          Tom: {item.key || item.song.defaultKey}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="mb-4">Nenhuma musica adicionada ao setlist</p>
+                  <Button variant="outline">Criar Setlist</Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

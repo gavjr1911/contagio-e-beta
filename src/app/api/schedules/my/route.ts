@@ -82,7 +82,6 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            type: true,
           },
         },
       },
@@ -116,7 +115,6 @@ export async function GET(request: NextRequest) {
       ministry: {
         id: schedule.ministry.id,
         name: schedule.ministry.name,
-        type: schedule.ministry.type,
       },
     }));
 

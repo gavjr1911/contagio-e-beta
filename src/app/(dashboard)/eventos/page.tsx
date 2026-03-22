@@ -12,7 +12,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EventCard } from "@/components/events/event-card";
@@ -20,7 +19,6 @@ import { EventCalendar } from "@/components/events/event-calendar";
 import {
   useEvents,
   useDeleteEvent,
-  useDuplicateEvent,
   Event,
   EventType,
   EventStatus,
@@ -29,24 +27,20 @@ import {
   getEventStatusLabel,
 } from "@/hooks/use-events";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type ViewMode = "calendar" | "list";
 
 const eventTypes: EventType[] = [
-  "culto",
-  "reuniao",
-  "ensaio",
-  "evento_especial",
-  "conferencia",
+  "SUNDAY_MORNING",
+  "SUNDAY_EVENING",
+  "SPECIAL",
 ];
 
 const eventStatuses: EventStatus[] = [
-  "rascunho",
-  "agendado",
-  "confirmado",
-  "em_andamento",
-  "concluido",
-  "cancelado",
+  "DRAFT",
+  "PUBLISHED",
+  "COMPLETED",
 ];
 
 export default function EventosPage() {
@@ -59,7 +53,6 @@ export default function EventosPage() {
 
   const { data: events, isLoading, error } = useEvents(filters);
   const deleteEvent = useDeleteEvent();
-  const duplicateEvent = useDuplicateEvent();
 
   const typeDropdownRef = React.useRef<HTMLDivElement>(null);
   const statusDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -89,13 +82,21 @@ export default function EventosPage() {
     router.push(`/eventos/${event.id}`);
   };
 
-  const handleDuplicate = async (event: Event) => {
-    await duplicateEvent.mutateAsync(event.id);
-  };
-
   const handleDelete = async (event: Event) => {
     if (confirm(`Tem certeza que deseja excluir "${event.name}"?`)) {
-      await deleteEvent.mutateAsync(event.id);
+      try {
+        await deleteEvent.mutateAsync(event.id);
+        toast({
+          title: "Sucesso",
+          description: "Evento excluido com sucesso!",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro ao excluir evento",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -301,7 +302,6 @@ export default function EventosPage() {
                 key={event.id}
                 event={event}
                 onEdit={handleEdit}
-                onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
               />
             ))
@@ -338,7 +338,6 @@ export default function EventosPage() {
                   key={event.id}
                   event={event}
                   onEdit={handleEdit}
-                  onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
                 />
               ))

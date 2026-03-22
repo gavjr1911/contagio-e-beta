@@ -53,12 +53,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Membro nao encontrado", 404)
       }
 
-      const { position, active } = bodyResult.data
+      const { positionIds, active } = bodyResult.data
+
+      // If positionIds is provided, update positions (delete old and create new)
+      if (positionIds !== undefined) {
+        // Delete existing positions
+        await prisma.memberPosition.deleteMany({
+          where: { memberId },
+        })
+
+        // Create new positions
+        if (positionIds.length > 0) {
+          await prisma.memberPosition.createMany({
+            data: positionIds.map((positionId: string) => ({
+              memberId,
+              positionId,
+            })),
+          })
+        }
+      }
 
       const updatedMember = await prisma.ministryMember.update({
         where: { id: memberId },
         data: {
-          ...(position !== undefined && { position }),
           ...(active !== undefined && { active }),
         },
         include: {
@@ -67,6 +84,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
               id: true,
               name: true,
               email: true,
+            },
+          },
+          positions: {
+            include: {
+              position: true,
             },
           },
         },

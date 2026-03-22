@@ -4,84 +4,99 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
-  UseQueryOptions,
 } from "@tanstack/react-query";
+import { EventType, EventStatus } from "@/generated/prisma/enums";
 
-// Types
+// Re-export enums for convenience
+export { EventType, EventStatus } from "@/generated/prisma/enums";
+
+// Types matching API response
 export interface Event {
   id: string;
   name: string;
   type: EventType;
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: string | Date;
+  startTime: string | Date;
+  endTime: string | Date | null;
   status: EventStatus;
-  description?: string;
-  templateId?: string;
-  createdAt: string;
-  updatedAt: string;
+  templateId: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  template?: {
+    id: string;
+    name: string;
+  } | null;
+  _count?: {
+    schedules: number;
+    items: number;
+  };
+  // Related data (when fetching single event)
+  items?: EventItem[];
+  schedules?: EventSchedule[];
+  setlists?: EventSetlist[];
 }
 
-export type EventType =
-  | "culto"
-  | "reuniao"
-  | "ensaio"
-  | "evento_especial"
-  | "conferencia";
-
-export type EventStatus =
-  | "rascunho"
-  | "agendado"
-  | "confirmado"
-  | "em_andamento"
-  | "concluido"
-  | "cancelado";
+export interface EventItem {
+  id: string;
+  eventId: string;
+  type: string;
+  title: string;
+  description: string | null;
+  durationMinutes: number | null;
+  order: number;
+  responsible?: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+}
 
 export interface EventSchedule {
   id: string;
   eventId: string;
+  userId: string;
   ministryId: string;
-  ministryName: string;
-  members: ScheduledMember[];
+  position: string | null;
+  status: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+  ministry: {
+    id: string;
+    name: string;
+    type: string | null;
+  };
 }
 
-export interface ScheduledMember {
+export interface EventSetlist {
   id: string;
-  memberId: string;
-  memberName: string;
-  memberAvatar?: string;
-  position: string;
-  status: ConfirmationStatus;
-  hasConflict?: boolean;
-  conflictWith?: string;
+  eventId: string;
+  songId: string;
+  order: number;
+  key: string | null;
+  song: {
+    id: string;
+    name: string;
+    artist: string | null;
+    defaultKey: string | null;
+  };
 }
-
-export type ConfirmationStatus =
-  | "pendente"
-  | "confirmado"
-  | "recusado"
-  | "substituido";
 
 export interface CreateEventData {
   name: string;
   type: EventType;
   date: string;
   startTime: string;
-  endTime: string;
-  description?: string;
+  endTime?: string;
+  status?: EventStatus;
   templateId?: string;
-  copyFromEventId?: string;
 }
 
 export interface UpdateEventData extends Partial<CreateEventData> {
-  status?: EventStatus;
-}
-
-export interface ScheduleMemberData {
-  eventId: string;
-  ministryId: string;
-  memberId: string;
-  position: string;
+  id: string;
 }
 
 export interface EventFilters {
@@ -89,6 +104,8 @@ export interface EventFilters {
   status?: EventStatus;
   startDate?: string;
   endDate?: string;
+  page?: number;
+  limit?: number;
 }
 
 // Query keys
@@ -98,234 +115,128 @@ export const eventKeys = {
   list: (filters?: EventFilters) => [...eventKeys.lists(), filters] as const,
   details: () => [...eventKeys.all, "detail"] as const,
   detail: (id: string) => [...eventKeys.details(), id] as const,
-  schedules: (eventId: string) =>
-    [...eventKeys.detail(eventId), "schedules"] as const,
   calendar: (month: number, year: number) =>
     [...eventKeys.all, "calendar", month, year] as const,
 };
 
-// Mock data - replace with actual API calls
-const mockEvents: Event[] = [
-  {
-    id: "1",
-    name: "Culto de Domingo",
-    type: "culto",
-    date: "2025-03-23",
-    startTime: "18:00",
-    endTime: "20:00",
-    status: "agendado",
-    createdAt: "2025-03-01T10:00:00Z",
-    updatedAt: "2025-03-01T10:00:00Z",
-  },
-  {
-    id: "2",
-    name: "Ensaio Louvor",
-    type: "ensaio",
-    date: "2025-03-22",
-    startTime: "19:00",
-    endTime: "21:00",
-    status: "confirmado",
-    createdAt: "2025-03-01T10:00:00Z",
-    updatedAt: "2025-03-01T10:00:00Z",
-  },
-  {
-    id: "3",
-    name: "Reuniao de Lideres",
-    type: "reuniao",
-    date: "2025-03-25",
-    startTime: "20:00",
-    endTime: "22:00",
-    status: "agendado",
-    createdAt: "2025-03-01T10:00:00Z",
-    updatedAt: "2025-03-01T10:00:00Z",
-  },
-  {
-    id: "4",
-    name: "Conferencia de Jovens",
-    type: "conferencia",
-    date: "2025-03-30",
-    startTime: "09:00",
-    endTime: "18:00",
-    status: "confirmado",
-    createdAt: "2025-03-01T10:00:00Z",
-    updatedAt: "2025-03-01T10:00:00Z",
-  },
-];
+// Helper to convert time input (HH:mm) to ISO string
+function timeToISO(date: string, time: string): string {
+  return new Date(`${date}T${time}:00`).toISOString();
+}
 
-const mockSchedules: EventSchedule[] = [
-  {
-    id: "s1",
-    eventId: "1",
-    ministryId: "m1",
-    ministryName: "Louvor",
-    members: [
-      {
-        id: "sm1",
-        memberId: "u1",
-        memberName: "Ana Silva",
-        position: "Vocal",
-        status: "confirmado",
-      },
-      {
-        id: "sm2",
-        memberId: "u2",
-        memberName: "Carlos Santos",
-        position: "Guitarra",
-        status: "pendente",
-      },
-      {
-        id: "sm3",
-        memberId: "u3",
-        memberName: "Julia Oliveira",
-        position: "Teclado",
-        status: "confirmado",
-        hasConflict: true,
-        conflictWith: "Ensaio Louvor",
-      },
-    ],
-  },
-  {
-    id: "s2",
-    eventId: "1",
-    ministryId: "m2",
-    ministryName: "Som e Midia",
-    members: [
-      {
-        id: "sm4",
-        memberId: "u4",
-        memberName: "Pedro Costa",
-        position: "Operador de Som",
-        status: "confirmado",
-      },
-      {
-        id: "sm5",
-        memberId: "u5",
-        memberName: "Marina Lima",
-        position: "Projeção",
-        status: "recusado",
-      },
-    ],
-  },
-  {
-    id: "s3",
-    eventId: "1",
-    ministryId: "m3",
-    ministryName: "Recepcao",
-    members: [
-      {
-        id: "sm6",
-        memberId: "u6",
-        memberName: "Roberto Alves",
-        position: "Recepcionista",
-        status: "pendente",
-      },
-    ],
-  },
-];
+// Helper to format time from Date/ISO string to HH:mm
+export function formatTimeFromDate(dateOrString: string | Date | null): string {
+  if (!dateOrString) return "";
+  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
+  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
 
-// API functions (mock implementation)
+// Helper to format date from Date/ISO string to YYYY-MM-DD
+export function formatDateFromDate(dateOrString: string | Date): string {
+  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
+  return date.toISOString().split("T")[0];
+}
+
+// API functions
 async function fetchEvents(filters?: EventFilters): Promise<Event[]> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  const params = new URLSearchParams();
 
-  let filteredEvents = [...mockEvents];
+  if (filters?.type) params.set("type", filters.type);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.startDate) params.set("startDate", filters.startDate);
+  if (filters?.endDate) params.set("endDate", filters.endDate);
+  if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.limit) params.set("limit", String(filters.limit));
 
-  if (filters?.type) {
-    filteredEvents = filteredEvents.filter((e) => e.type === filters.type);
+  const response = await fetch(`/api/events?${params.toString()}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao carregar eventos");
   }
 
-  if (filters?.status) {
-    filteredEvents = filteredEvents.filter((e) => e.status === filters.status);
+  const result = await response.json();
+  return result.data || [];
+}
+
+async function fetchEvent(id: string): Promise<Event> {
+  const response = await fetch(`/api/events/${id}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao carregar evento");
   }
 
-  return filteredEvents;
-}
-
-async function fetchEvent(id: string): Promise<Event | null> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return mockEvents.find((e) => e.id === id) || null;
-}
-
-async function fetchEventSchedules(eventId: string): Promise<EventSchedule[]> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  return mockSchedules.filter((s) => s.eventId === eventId);
+  const result = await response.json();
+  return result.data;
 }
 
 async function createEvent(data: CreateEventData): Promise<Event> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  const newEvent: Event = {
-    id: Date.now().toString(),
-    ...data,
-    status: "rascunho",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  // Convert time strings to ISO format
+  const body = {
+    name: data.name,
+    type: data.type,
+    date: new Date(data.date).toISOString(),
+    startTime: timeToISO(data.date, data.startTime),
+    endTime: data.endTime ? timeToISO(data.date, data.endTime) : undefined,
+    status: data.status || "DRAFT",
+    templateId: data.templateId,
   };
-  mockEvents.push(newEvent);
-  return newEvent;
+
+  const response = await fetch("/api/events", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao criar evento");
+  }
+
+  const result = await response.json();
+  return result.data;
 }
 
-async function updateEvent(
-  id: string,
-  data: UpdateEventData
-): Promise<Event | null> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  const index = mockEvents.findIndex((e) => e.id === id);
-  if (index === -1) return null;
+async function updateEvent({ id, ...data }: UpdateEventData): Promise<Event> {
+  const body: Record<string, unknown> = {};
 
-  mockEvents[index] = {
-    ...mockEvents[index],
-    ...data,
-    updatedAt: new Date().toISOString(),
-  };
-  return mockEvents[index];
+  if (data.name) body.name = data.name;
+  if (data.type) body.type = data.type;
+  if (data.date) body.date = new Date(data.date).toISOString();
+  if (data.startTime && data.date) body.startTime = timeToISO(data.date, data.startTime);
+  if (data.endTime && data.date) body.endTime = timeToISO(data.date, data.endTime);
+  if (data.status) body.status = data.status;
+  if (data.templateId) body.templateId = data.templateId;
+
+  const response = await fetch(`/api/events/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao atualizar evento");
+  }
+
+  const result = await response.json();
+  return result.data;
 }
 
-async function deleteEvent(id: string): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const index = mockEvents.findIndex((e) => e.id === id);
-  if (index === -1) return false;
-  mockEvents.splice(index, 1);
-  return true;
-}
+async function deleteEvent(id: string): Promise<void> {
+  const response = await fetch(`/api/events/${id}`, {
+    method: "DELETE",
+  });
 
-async function duplicateEvent(id: string): Promise<Event | null> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  const event = mockEvents.find((e) => e.id === id);
-  if (!event) return null;
-
-  const duplicated: Event = {
-    ...event,
-    id: Date.now().toString(),
-    name: `${event.name} (Copia)`,
-    status: "rascunho",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  mockEvents.push(duplicated);
-  return duplicated;
-}
-
-async function scheduleMember(data: ScheduleMemberData): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  // In real implementation, this would add the member to the schedule
-  return true;
-}
-
-async function updateMemberStatus(
-  scheduleId: string,
-  memberId: string,
-  status: ConfirmationStatus
-): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return true;
-}
-
-async function removeMemberFromSchedule(
-  scheduleId: string,
-  memberId: string
-): Promise<boolean> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return true;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao excluir evento");
+  }
 }
 
 // Hooks
@@ -344,25 +255,13 @@ export function useEvent(id: string) {
   });
 }
 
-export function useEventSchedules(eventId: string) {
-  return useQuery({
-    queryKey: eventKeys.schedules(eventId),
-    queryFn: () => fetchEventSchedules(eventId),
-    enabled: !!eventId,
-  });
-}
-
 export function useEventsForMonth(month: number, year: number) {
   return useQuery({
     queryKey: eventKeys.calendar(month, year),
     queryFn: async () => {
-      const events = await fetchEvents();
-      return events.filter((event) => {
-        const eventDate = new Date(event.date);
-        return (
-          eventDate.getMonth() === month && eventDate.getFullYear() === year
-        );
-      });
+      const startDate = new Date(year, month, 1).toISOString().split("T")[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split("T")[0];
+      return fetchEvents({ startDate, endDate });
     },
   });
 }
@@ -382,10 +281,9 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateEventData }) =>
-      updateEvent(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.id) });
+    mutationFn: updateEvent,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
     },
   });
@@ -402,96 +300,44 @@ export function useDeleteEvent() {
   });
 }
 
-export function useDuplicateEvent() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: duplicateEvent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
-    },
-  });
-}
-
-export function useScheduleMember() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: scheduleMember,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: eventKeys.schedules(variables.eventId),
-      });
-    },
-  });
-}
-
-export function useUpdateMemberStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      scheduleId,
-      memberId,
-      status,
-    }: {
-      scheduleId: string;
-      memberId: string;
-      status: ConfirmationStatus;
-    }) => updateMemberStatus(scheduleId, memberId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.all });
-    },
-  });
-}
-
-export function useRemoveMemberFromSchedule() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      scheduleId,
-      memberId,
-    }: {
-      scheduleId: string;
-      memberId: string;
-    }) => removeMemberFromSchedule(scheduleId, memberId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.all });
-    },
-  });
-}
-
-// Utility functions
+// Utility functions for labels
 export function getEventTypeLabel(type: EventType): string {
   const labels: Record<EventType, string> = {
-    culto: "Culto",
-    reuniao: "Reuniao",
-    ensaio: "Ensaio",
-    evento_especial: "Evento Especial",
-    conferencia: "Conferencia",
+    SUNDAY_MORNING: "Culto Matutino",
+    SUNDAY_EVENING: "Culto Noturno",
+    SPECIAL: "Evento Especial",
   };
-  return labels[type];
+  return labels[type] || type;
 }
 
 export function getEventStatusLabel(status: EventStatus): string {
   const labels: Record<EventStatus, string> = {
-    rascunho: "Rascunho",
-    agendado: "Agendado",
-    confirmado: "Confirmado",
-    em_andamento: "Em Andamento",
-    concluido: "Concluido",
-    cancelado: "Cancelado",
+    DRAFT: "Rascunho",
+    PUBLISHED: "Publicado",
+    COMPLETED: "Concluido",
   };
-  return labels[status];
+  return labels[status] || status;
+}
+
+// Legacy types for schedule-board component compatibility
+export type ConfirmationStatus = "PENDING" | "CONFIRMED" | "DECLINED";
+
+export interface ScheduledMember {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberAvatar?: string;
+  position: string;
+  status: ConfirmationStatus;
+  hasConflict?: boolean;
+  conflictWith?: string;
 }
 
 export function getConfirmationStatusLabel(status: ConfirmationStatus): string {
   const labels: Record<ConfirmationStatus, string> = {
-    pendente: "Pendente",
-    confirmado: "Confirmado",
-    recusado: "Recusado",
-    substituido: "Substituido",
+    PENDING: "Pendente",
+    CONFIRMED: "Confirmado",
+    DECLINED: "Recusado",
   };
-  return labels[status];
+  return labels[status] || status;
 }

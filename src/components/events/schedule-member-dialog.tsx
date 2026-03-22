@@ -16,33 +16,20 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-interface Ministry {
-  id: string;
-  name: string;
-  positions: string[];
-}
-
-interface Member {
-  id: string;
-  name: string;
-  avatar?: string;
-  ministries: string[];
-  hasConflict?: boolean;
-  conflictDescription?: string;
-}
+import { useMinistries, type Ministry, type MinistryMember } from "@/hooks/use-ministries";
 
 interface ScheduleMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSchedule: (memberId: string, ministryId: string, position: string) => void;
-  ministries: Ministry[];
-  members: Member[];
+  onSchedule: (userId: string, ministryId: string, position: string | null) => void;
+  eventId: string;
   selectedMinistryId?: string;
   isLoading?: boolean;
+  existingUserIds?: string[]; // Users already scheduled
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null): string {
+  if (!name) return "?";
   return name
     .split(" ")
     .map((n) => n[0])
@@ -51,49 +38,14 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-// Mock data for demonstration
-const mockMinistries: Ministry[] = [
-  {
-    id: "m1",
-    name: "Louvor",
-    positions: ["Vocal", "Guitarra", "Baixo", "Bateria", "Teclado"],
-  },
-  {
-    id: "m2",
-    name: "Som e Midia",
-    positions: ["Operador de Som", "Projecao", "Transmissao"],
-  },
-  {
-    id: "m3",
-    name: "Recepcao",
-    positions: ["Recepcionista", "Diacono"],
-  },
-];
-
-const mockMembers: Member[] = [
-  { id: "u1", name: "Ana Silva", ministries: ["m1"], hasConflict: false },
-  { id: "u2", name: "Carlos Santos", ministries: ["m1", "m2"], hasConflict: false },
-  {
-    id: "u3",
-    name: "Julia Oliveira",
-    ministries: ["m1"],
-    hasConflict: true,
-    conflictDescription: "Ja escalada no Ensaio Louvor",
-  },
-  { id: "u4", name: "Pedro Costa", ministries: ["m2"], hasConflict: false },
-  { id: "u5", name: "Marina Lima", ministries: ["m2"], hasConflict: false },
-  { id: "u6", name: "Roberto Alves", ministries: ["m3"], hasConflict: false },
-  { id: "u7", name: "Fernanda Souza", ministries: ["m3"], hasConflict: false },
-];
-
 export function ScheduleMemberDialog({
   open,
   onOpenChange,
   onSchedule,
-  ministries = mockMinistries,
-  members = mockMembers,
+  eventId,
   selectedMinistryId,
   isLoading = false,
+  existingUserIds = [],
 }: ScheduleMemberDialogProps) {
   const [search, setSearch] = React.useState("");
   const [selectedMinistry, setSelectedMinistry] = React.useState<string>(
@@ -101,6 +53,9 @@ export function ScheduleMemberDialog({
   );
   const [selectedMember, setSelectedMember] = React.useState<string>("");
   const [selectedPosition, setSelectedPosition] = React.useState<string>("");
+
+  // Fetch ministries with members
+  const { data: ministries, isLoading: ministriesLoading } = useMinistries();
 
   // Reset state when dialog opens/closes
   React.useEffect(() => {
@@ -112,43 +67,47 @@ export function ScheduleMemberDialog({
     }
   }, [open, selectedMinistryId]);
 
+  // Get current ministry data
+  const currentMinistry = React.useMemo(() => {
+    if (!ministries || !selectedMinistry) return null;
+    return ministries.find((m) => m.id === selectedMinistry);
+  }, [ministries, selectedMinistry]);
+
   // Filter members based on search and selected ministry
   const filteredMembers = React.useMemo(() => {
-    let filtered = [...members];
+    if (!currentMinistry?.members) return [];
 
-    // Filter by ministry
-    if (selectedMinistry) {
-      filtered = filtered.filter((m) =>
-        m.ministries.includes(selectedMinistry)
-      );
-    }
+    let filtered = currentMinistry.members.filter((m) => m.active);
 
     // Filter by search
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter((m) =>
-        m.name.toLowerCase().includes(searchLower)
+        m.user.name?.toLowerCase().includes(searchLower)
       );
     }
 
     return filtered;
-  }, [members, selectedMinistry, search]);
+  }, [currentMinistry, search]);
 
   // Get positions for selected ministry
   const positions = React.useMemo(() => {
-    if (!selectedMinistry) return [];
-    const ministry = ministries.find((m) => m.id === selectedMinistry);
-    return ministry?.positions || [];
-  }, [ministries, selectedMinistry]);
+    if (!currentMinistry?.positions) return [];
+    return currentMinistry.positions;
+  }, [currentMinistry]);
+
+  // Check if member is already scheduled
+  const isMemberScheduled = React.useCallback((userId: string) => {
+    return existingUserIds.includes(userId);
+  }, [existingUserIds]);
 
   const handleSubmit = () => {
-    if (selectedMember && selectedMinistry && selectedPosition) {
-      onSchedule(selectedMember, selectedMinistry, selectedPosition);
-      onOpenChange(false);
+    if (selectedMember && selectedMinistry) {
+      onSchedule(selectedMember, selectedMinistry, selectedPosition || null);
     }
   };
 
-  const canSubmit = selectedMember && selectedMinistry && selectedPosition;
+  const canSubmit = selectedMember && selectedMinistry && !isMemberScheduled(selectedMember);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -160,126 +119,158 @@ export function ScheduleMemberDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Ministry Select */}
-          <div className="space-y-2">
-            <Label>Ministerio</Label>
-            <div className="flex flex-wrap gap-2">
-              {ministries.map((ministry) => (
-                <button
-                  key={ministry.id}
-                  onClick={() => {
-                    setSelectedMinistry(ministry.id);
-                    setSelectedMember("");
-                    setSelectedPosition("");
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
-                    selectedMinistry === ministry.id
-                      ? "bg-primary text-white border-primary"
-                      : "bg-background border-border hover:bg-muted"
-                  )}
-                >
-                  {ministry.name}
-                </button>
-              ))}
-            </div>
+        {ministriesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-
-          {/* Position Select */}
-          {selectedMinistry && (
+        ) : (
+          <div className="space-y-4 py-4">
+            {/* Ministry Select */}
             <div className="space-y-2">
-              <Label>Posicao/Funcao</Label>
+              <Label>Ministerio</Label>
               <div className="flex flex-wrap gap-2">
-                {positions.map((position) => (
+                {ministries?.map((ministry) => (
                   <button
-                    key={position}
-                    onClick={() => setSelectedPosition(position)}
+                    key={ministry.id}
+                    onClick={() => {
+                      setSelectedMinistry(ministry.id);
+                      setSelectedMember("");
+                      setSelectedPosition("");
+                    }}
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
-                      selectedPosition === position
+                      selectedMinistry === ministry.id
+                        ? "bg-primary text-white border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    )}
+                  >
+                    {ministry.name}
+                  </button>
+                ))}
+              </div>
+              {(!ministries || ministries.length === 0) && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum ministerio encontrado
+                </p>
+              )}
+            </div>
+
+            {/* Position Select */}
+            {selectedMinistry && positions.length > 0 && (
+              <div className="space-y-2">
+                <Label>Posicao/Funcao (opcional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedPosition("")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                      !selectedPosition
                         ? "bg-secondary text-white border-secondary"
                         : "bg-background border-border hover:bg-muted"
                     )}
                   >
-                    {position}
+                    Nenhuma
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Member Search */}
-          {selectedMinistry && (
-            <div className="space-y-2">
-              <Label>Membro</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar membro..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              <div className="max-h-[200px] overflow-y-auto space-y-2 mt-3">
-                {filteredMembers.map((member) => (
-                  <button
-                    key={member.id}
-                    onClick={() => setSelectedMember(member.id)}
-                    disabled={member.hasConflict}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
-                      selectedMember === member.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:bg-muted",
-                      member.hasConflict &&
-                        "opacity-60 cursor-not-allowed bg-amber-500/5 border-amber-500/30"
-                    )}
-                  >
-                    <Avatar className="h-9 w-9">
-                      {member.avatar && (
-                        <AvatarImage src={member.avatar} alt={member.name} />
+                  {positions.map((position) => (
+                    <button
+                      key={position.id}
+                      onClick={() => setSelectedPosition(position.name)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                        selectedPosition === position.name
+                          ? "bg-secondary text-white border-secondary"
+                          : "bg-background border-border hover:bg-muted"
                       )}
-                      <AvatarFallback className="bg-secondary text-white text-xs">
-                        {getInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    >
+                      {position.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm truncate">
-                          {member.name}
-                        </p>
-                        {member.hasConflict && (
-                          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+            {/* Member Search */}
+            {selectedMinistry && (
+              <div className="space-y-2">
+                <Label>Membro</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar membro..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="max-h-[200px] overflow-y-auto space-y-2 mt-3">
+                  {filteredMembers.map((member) => {
+                    const isScheduled = isMemberScheduled(member.userId);
+                    return (
+                      <button
+                        key={member.id}
+                        onClick={() => !isScheduled && setSelectedMember(member.userId)}
+                        disabled={isScheduled}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                          selectedMember === member.userId
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:bg-muted",
+                          isScheduled &&
+                            "opacity-60 cursor-not-allowed bg-amber-500/5 border-amber-500/30"
                         )}
-                      </div>
-                      {member.hasConflict && member.conflictDescription && (
-                        <p className="text-xs text-amber-500">
-                          {member.conflictDescription}
-                        </p>
-                      )}
-                    </div>
+                      >
+                        <Avatar className="h-9 w-9">
+                          {member.user.image && (
+                            <AvatarImage src={member.user.image} alt={member.user.name || ""} />
+                          )}
+                          <AvatarFallback className="bg-secondary text-white text-xs">
+                            {getInitials(member.user.name)}
+                          </AvatarFallback>
+                        </Avatar>
 
-                    {selectedMember === member.id && (
-                      <Badge className="bg-primary text-white">
-                        Selecionado
-                      </Badge>
-                    )}
-                  </button>
-                ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">
+                              {member.user.name || member.user.email}
+                            </p>
+                            {isScheduled && (
+                              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          {member.positions.length > 0 && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {member.positions.map((p) => p.position.name).join(", ")}
+                            </p>
+                          )}
+                          {isScheduled && (
+                            <p className="text-xs text-amber-500">
+                              Ja escalado neste evento
+                            </p>
+                          )}
+                        </div>
 
-                {filteredMembers.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum membro encontrado
-                  </p>
-                )}
+                        {selectedMember === member.userId && (
+                          <Badge className="bg-primary text-white">
+                            Selecionado
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {filteredMembers.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {currentMinistry?.members?.length === 0
+                        ? "Nenhum membro neste ministerio"
+                        : "Nenhum membro encontrado"}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

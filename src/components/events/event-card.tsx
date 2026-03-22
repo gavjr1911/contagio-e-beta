@@ -13,12 +13,13 @@ import {
   EventType,
   getEventTypeLabel,
   getEventStatusLabel,
+  formatTimeFromDate,
+  formatDateFromDate,
 } from "@/hooks/use-events";
 
 interface EventCardProps {
   event: Event;
   onEdit?: (event: Event) => void;
-  onDuplicate?: (event: Event) => void;
   onDelete?: (event: Event) => void;
   className?: string;
 }
@@ -27,15 +28,11 @@ function getStatusVariant(
   status: EventStatus
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
-    case "confirmado":
-    case "concluido":
+    case "PUBLISHED":
       return "default";
-    case "agendado":
-    case "em_andamento":
+    case "COMPLETED":
       return "secondary";
-    case "cancelado":
-      return "destructive";
-    case "rascunho":
+    case "DRAFT":
     default:
       return "outline";
   }
@@ -43,23 +40,19 @@ function getStatusVariant(
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "culto":
+    case "SUNDAY_MORNING":
       return "bg-primary/10 text-primary border-primary/20";
-    case "ensaio":
+    case "SUNDAY_EVENING":
       return "bg-info/10 text-info border-info/20";
-    case "reuniao":
-      return "bg-warning/10 text-warning border-warning/20";
-    case "evento_especial":
+    case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-    case "conferencia":
-      return "bg-success/10 text-success border-success/20";
     default:
       return "bg-muted text-muted-foreground";
   }
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString + "T00:00:00");
+function formatDate(dateOrString: string | Date): string {
+  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
   return date.toLocaleDateString("pt-BR", {
     weekday: "short",
     day: "numeric",
@@ -67,14 +60,9 @@ function formatDate(dateString: string): string {
   });
 }
 
-function formatTime(time: string): string {
-  return time.substring(0, 5);
-}
-
 export function EventCard({
   event,
   onEdit,
-  onDuplicate,
   onDelete,
   className,
 }: EventCardProps) {
@@ -96,6 +84,9 @@ export function EventCard({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMenu]);
+
+  const startTimeFormatted = formatTimeFromDate(event.startTime);
+  const endTimeFormatted = event.endTime ? formatTimeFromDate(event.endTime) : null;
 
   return (
     <Card
@@ -134,7 +125,8 @@ export function EventCard({
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>
-                  {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                  {startTimeFormatted}
+                  {endTimeFormatted && ` - ${endTimeFormatted}`}
                 </span>
               </div>
             </div>
@@ -162,17 +154,6 @@ export function EventCard({
                       }}
                     >
                       Editar
-                    </button>
-                  )}
-                  {onDuplicate && (
-                    <button
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-                      onClick={() => {
-                        onDuplicate(event);
-                        setShowMenu(false);
-                      }}
-                    >
-                      Duplicar
                     </button>
                   )}
                   {onDelete && (

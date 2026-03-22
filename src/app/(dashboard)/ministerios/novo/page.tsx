@@ -122,7 +122,6 @@ export default function NovoMinisterioPage() {
           phone: newLeader.phone || undefined,
           birthDate: newLeader.birthDate || undefined,
           ministryId: ministry.id,
-          position: "Lider",
         });
 
         // Atualiza o ministerio com o lider

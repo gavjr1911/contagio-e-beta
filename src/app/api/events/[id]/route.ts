@@ -37,7 +37,7 @@ export async function GET(
               select: { id: true, name: true, email: true, image: true },
             },
             ministry: {
-              select: { id: true, name: true, type: true },
+              select: { id: true, name: true },
             },
           },
           orderBy: [{ ministry: { name: "asc" } }, { createdAt: "asc" }],

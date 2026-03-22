@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Eye, EyeOff, Loader2, Lock, Check, AlertCircle } from "lucide-react"
 
-export default function SetPasswordPage() {
+function SetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
@@ -277,5 +277,24 @@ export default function SetPasswordPage() {
         </Link>
       </p>
     </div>
+  )
+}
+
+function SetPasswordLoading() {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-8 backdrop-blur-sm">
+      <div className="flex flex-col items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={<SetPasswordLoading />}>
+      <SetPasswordContent />
+    </Suspense>
   )
 }

@@ -4,9 +4,8 @@ import * as React from "react";
 import { DayPicker } from "react-day-picker";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ptBR } from "date-fns/locale";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Event, EventType } from "@/hooks/use-events";
+import { Event, EventType, formatTimeFromDate } from "@/hooks/use-events";
 import Link from "next/link";
 
 interface EventCalendarProps {
@@ -18,19 +17,20 @@ interface EventCalendarProps {
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "culto":
+    case "SUNDAY_MORNING":
       return "bg-primary";
-    case "ensaio":
+    case "SUNDAY_EVENING":
       return "bg-blue-500";
-    case "reuniao":
-      return "bg-amber-500";
-    case "evento_especial":
+    case "SPECIAL":
       return "bg-purple-500";
-    case "conferencia":
-      return "bg-emerald-500";
     default:
       return "bg-muted";
   }
+}
+
+function getDateKey(dateOrString: string | Date): string {
+  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
+  return date.toISOString().split("T")[0];
 }
 
 export function EventCalendar({
@@ -45,7 +45,7 @@ export function EventCalendar({
   const eventsByDate = React.useMemo(() => {
     const map = new Map<string, Event[]>();
     events.forEach((event) => {
-      const dateKey = event.date;
+      const dateKey = getDateKey(event.date);
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -61,7 +61,10 @@ export function EventCalendar({
 
   // Get dates with events for modifiers
   const datesWithEvents = React.useMemo(() => {
-    return events.map(e => new Date(e.date + "T00:00:00"));
+    return events.map(e => {
+      const dateStr = typeof e.date === "string" ? e.date : e.date.toISOString().split("T")[0];
+      return new Date(dateStr + "T00:00:00");
+    });
   }, [events]);
 
   return (
@@ -127,32 +130,38 @@ export function EventCalendar({
           Proximos Eventos
         </h3>
         <div className="space-y-2">
-          {events.slice(0, 5).map((event) => (
-            <Link
-              key={event.id}
-              href={`/eventos/${event.id}`}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group"
-            >
-              <div
-                className={cn(
-                  "w-1 h-8 rounded-full",
-                  getTypeColor(event.type)
-                )}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                  {event.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(event.date + "T00:00:00").toLocaleDateString("pt-BR", {
-                    day: "numeric",
-                    month: "short",
-                  })}{" "}
-                  - {event.startTime.substring(0, 5)}
-                </p>
-              </div>
-            </Link>
-          ))}
+          {events.slice(0, 5).map((event) => {
+            const eventDate = typeof event.date === "string"
+              ? new Date(event.date)
+              : event.date;
+
+            return (
+              <Link
+                key={event.id}
+                href={`/eventos/${event.id}`}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group"
+              >
+                <div
+                  className={cn(
+                    "w-1 h-8 rounded-full",
+                    getTypeColor(event.type)
+                  )}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                    {event.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {eventDate.toLocaleDateString("pt-BR", {
+                      day: "numeric",
+                      month: "short",
+                    })}{" "}
+                    - {formatTimeFromDate(event.startTime)}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
           {events.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
               Nenhum evento programado

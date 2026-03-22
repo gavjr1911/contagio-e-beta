@@ -11,6 +11,7 @@ import {
   AlertCircle,
   History,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +26,7 @@ import {
   type Schedule,
   type ScheduleFilter,
 } from "@/hooks/use-schedules";
+import { useToast } from "@/hooks/use-toast";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 
 export default function MinhasEscalasPage() {
@@ -32,8 +34,9 @@ export default function MinhasEscalasPage() {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
+  const { toast } = useToast();
 
-  const { data: schedules, isLoading, error } = useMySchedules(filter);
+  const { data: schedules, isLoading, error, refetch } = useMySchedules(filter);
   const confirmMutation = useConfirmSchedule();
   const declineMutation = useDeclineSchedule();
 
@@ -44,6 +47,17 @@ export default function MinhasEscalasPage() {
       onSuccess: () => {
         setConfirmDialogOpen(false);
         setSelectedSchedule(null);
+        toast({
+          title: "Presenca confirmada!",
+          description: "Sua participacao foi confirmada com sucesso.",
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Erro ao confirmar",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
       },
     });
   };
@@ -57,6 +71,17 @@ export default function MinhasEscalasPage() {
         onSuccess: () => {
           setDeclineDialogOpen(false);
           setSelectedSchedule(null);
+          toast({
+            title: "Escala recusada",
+            description: "Sua recusa foi registrada.",
+          });
+        },
+        onError: (error) => {
+          toast({
+            title: "Erro ao recusar",
+            description: error instanceof Error ? error.message : "Erro desconhecido",
+            variant: "destructive",
+          });
         },
       }
     );
@@ -92,6 +117,14 @@ export default function MinhasEscalasPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button
+                size="icon"
+                variant="outline"
+                className="border-border text-muted-foreground hover:bg-muted"
+                onClick={() => refetch()}
+              >
+                <RefreshCw className="h-5 w-5" />
+              </Button>
               <Link href="/escalas/calendario">
                 <Button
                   size="icon"

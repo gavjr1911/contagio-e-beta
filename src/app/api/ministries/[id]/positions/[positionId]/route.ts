@@ -133,7 +133,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
 
       // Verificar se existem membros usando essa posicao
-      const membersUsingPosition = await prisma.ministryMember.count({
+      const membersUsingPosition = await prisma.memberPosition.count({
         where: { positionId },
       })
 
