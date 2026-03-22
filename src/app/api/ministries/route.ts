@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return queryResult.response
     }
 
-    const { page = 1, limit = 20, search, includeMembers, includeLeader } = queryResult.data
+    const { page = 1, limit = 20, search, includeMembers, includeLeader, includePositions } = queryResult.data
 
     try {
       const { skip, take } = getPaginationParams(page, limit)
@@ -67,6 +67,17 @@ export async function GET(request: NextRequest) {
                       },
                     },
                   },
+                }
+              : false,
+            positions: includePositions
+              ? {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    ministryId: true,
+                  },
+                  orderBy: { name: "asc" as const },
                 }
               : false,
           },

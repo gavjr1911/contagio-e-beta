@@ -421,6 +421,56 @@ export function useMinistryPositions(ministryId: string) {
   });
 }
 
+// Position with ministry info
+export interface PositionWithMinistry extends MinistryPosition {
+  ministry: {
+    id: string;
+    name: string;
+  };
+}
+
+// Fetch all positions from all ministries
+async function fetchAllPositions(): Promise<PositionWithMinistry[]> {
+  const response = await fetch("/api/ministries?includePositions=true");
+  if (!response.ok) {
+    throw new Error("Erro ao carregar posicoes");
+  }
+  const result = await response.json();
+  const ministries = result.data?.items || [];
+
+  // Flatten positions from all ministries
+  const allPositions: PositionWithMinistry[] = [];
+  for (const ministry of ministries) {
+    if (ministry.positions) {
+      for (const position of ministry.positions) {
+        allPositions.push({
+          ...position,
+          ministry: {
+            id: ministry.id,
+            name: ministry.name,
+          },
+        });
+      }
+    }
+  }
+
+  // Sort by ministry name, then position name
+  allPositions.sort((a, b) => {
+    const ministryCompare = a.ministry.name.localeCompare(b.ministry.name);
+    if (ministryCompare !== 0) return ministryCompare;
+    return a.name.localeCompare(b.name);
+  });
+
+  return allPositions;
+}
+
+export function useAllPositions() {
+  return useQuery({
+    queryKey: ["all-positions"],
+    queryFn: fetchAllPositions,
+  });
+}
+
 export function useCreatePosition() {
   const queryClient = useQueryClient();
 

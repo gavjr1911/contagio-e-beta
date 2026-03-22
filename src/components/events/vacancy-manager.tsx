@@ -1,166 +1,100 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
-  useMinistries,
-  useMinistryPositions,
-  type Ministry,
-  type MinistryPosition,
+  useAllPositions,
+  type PositionWithMinistry,
 } from "@/hooks/use-ministries";
-import { useEventVacancies, type EventVacancy } from "@/hooks/use-vacancies";
+import { useEventVacancies } from "@/hooks/use-vacancies";
 
 export interface VacancyConfig {
   ministryId: string;
   positionId: string;
-  quantity: number;
+  quantity: number; // Always 1 for checkbox-based selection
 }
 
 interface VacancyManagerProps {
   eventId?: string;
-  ministries: Ministry[];
   onChange?: (vacancies: VacancyConfig[]) => void;
   readOnly?: boolean;
 }
 
-interface MinistryAccordionProps {
-  ministry: Ministry;
-  vacancies: VacancyConfig[];
-  onVacancyChange: (ministryId: string, positionId: string, quantity: number) => void;
+interface PositionCheckboxProps {
+  position: PositionWithMinistry;
+  isSelected: boolean;
+  onToggle: (position: PositionWithMinistry, selected: boolean) => void;
   readOnly?: boolean;
-  defaultExpanded?: boolean;
 }
 
-function MinistryAccordion({
-  ministry,
-  vacancies,
-  onVacancyChange,
+function PositionCheckbox({
+  position,
+  isSelected,
+  onToggle,
   readOnly = false,
-  defaultExpanded = false,
-}: MinistryAccordionProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const { data: positions, isLoading: positionsLoading } = useMinistryPositions(ministry.id);
-
-  // Calculate total vacancies for this ministry
-  const totalVacancies = useMemo(() => {
-    return vacancies
-      .filter((v) => v.ministryId === ministry.id && v.quantity > 0)
-      .reduce((sum, v) => sum + v.quantity, 0);
-  }, [vacancies, ministry.id]);
-
-  const getQuantity = useCallback(
-    (positionId: string): number => {
-      const vacancy = vacancies.find(
-        (v) => v.ministryId === ministry.id && v.positionId === positionId
-      );
-      return vacancy?.quantity || 0;
-    },
-    [vacancies, ministry.id]
-  );
-
-  const handleQuantityChange = (positionId: string, value: string) => {
-    const quantity = Math.max(0, parseInt(value) || 0);
-    onVacancyChange(ministry.id, positionId, quantity);
-  };
-
+}: PositionCheckboxProps) {
   return (
-    <Card className="overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between p-4 text-left hover:bg-secondary/50 transition-colors"
-        disabled={readOnly && !isExpanded}
-      >
-        <div className="flex items-center gap-3">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-          <span className="font-medium text-foreground">{ministry.name}</span>
-        </div>
-        {totalVacancies > 0 && (
-          <Badge variant="secondary">
-            {totalVacancies} {totalVacancies === 1 ? "vaga" : "vagas"}
-          </Badge>
-        )}
-      </button>
-
-      {isExpanded && (
-        <CardContent className="border-t border-border pt-4">
-          {positionsLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between gap-4">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-10 w-20" />
-                </div>
-              ))}
-            </div>
-          ) : !positions || positions.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-2">
-              Nenhuma posicao cadastrada neste ministerio.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {positions.map((position) => (
-                <div
-                  key={position.id}
-                  className="flex items-center justify-between gap-4"
-                >
-                  <Label
-                    htmlFor={`vacancy-${ministry.id}-${position.id}`}
-                    className="flex-1 text-sm font-normal text-foreground"
-                  >
-                    {position.name}
-                  </Label>
-                  <Input
-                    id={`vacancy-${ministry.id}-${position.id}`}
-                    type="number"
-                    min="0"
-                    value={getQuantity(position.id)}
-                    onChange={(e) => handleQuantityChange(position.id, e.target.value)}
-                    disabled={readOnly}
-                    className="w-20 text-center"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
+    <button
+      type="button"
+      onClick={() => !readOnly && onToggle(position, !isSelected)}
+      disabled={readOnly}
+      className={cn(
+        "flex items-center gap-3 w-full p-3 rounded-lg border transition-colors text-left",
+        isSelected
+          ? "bg-primary/10 border-primary/30 text-foreground"
+          : "bg-background border-border hover:bg-secondary/50 text-muted-foreground",
+        readOnly && "cursor-default opacity-70"
       )}
-    </Card>
+    >
+      {/* Checkbox indicator */}
+      <div
+        className={cn(
+          "flex items-center justify-center w-5 h-5 rounded border-2 transition-colors",
+          isSelected
+            ? "bg-primary border-primary"
+            : "bg-background border-muted-foreground/30"
+        )}
+      >
+        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+      </div>
+
+      {/* Position info */}
+      <div className="flex-1 min-w-0">
+        <p className={cn("font-medium", isSelected && "text-foreground")}>
+          {position.name}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {position.ministry.name}
+        </p>
+      </div>
+    </button>
   );
 }
 
 export function VacancyManager({
   eventId,
-  ministries,
   onChange,
   readOnly = false,
 }: VacancyManagerProps) {
-  const [vacancies, setVacancies] = useState<VacancyConfig[]>([]);
+  const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+
+  // Fetch all positions
+  const { data: allPositions, isLoading: positionsLoading } = useAllPositions();
 
   // Load existing vacancies if editing an event
   const { data: existingVacancies, isLoading: vacanciesLoading } = useEventVacancies(
     eventId || ""
   );
 
-  // Initialize vacancies from existing data
+  // Initialize from existing vacancies
   useEffect(() => {
     if (eventId && existingVacancies && !initialized) {
-      const configs: VacancyConfig[] = existingVacancies.map((v) => ({
-        ministryId: v.ministryId,
-        positionId: v.positionId,
-        quantity: v.quantity,
-      }));
-      setVacancies(configs);
+      const positionIds = new Set(existingVacancies.map((v) => v.positionId));
+      setSelectedPositions(positionIds);
       setInitialized(true);
     } else if (!eventId && !initialized) {
       setInitialized(true);
@@ -169,84 +103,116 @@ export function VacancyManager({
 
   // Notify parent of changes
   useEffect(() => {
-    if (initialized && onChange) {
+    if (initialized && onChange && allPositions) {
+      const vacancies: VacancyConfig[] = [];
+      for (const position of allPositions) {
+        if (selectedPositions.has(position.id)) {
+          vacancies.push({
+            ministryId: position.ministry.id,
+            positionId: position.id,
+            quantity: 1,
+          });
+        }
+      }
       onChange(vacancies);
     }
-  }, [vacancies, initialized, onChange]);
+  }, [selectedPositions, initialized, onChange, allPositions]);
 
-  const handleVacancyChange = useCallback(
-    (ministryId: string, positionId: string, quantity: number) => {
-      setVacancies((prev) => {
-        const existingIndex = prev.findIndex(
-          (v) => v.ministryId === ministryId && v.positionId === positionId
-        );
-
-        if (existingIndex >= 0) {
-          // Update existing
-          const updated = [...prev];
-          if (quantity === 0) {
-            // Remove if quantity is 0
-            updated.splice(existingIndex, 1);
-          } else {
-            updated[existingIndex] = { ministryId, positionId, quantity };
-          }
-          return updated;
-        } else if (quantity > 0) {
-          // Add new
-          return [...prev, { ministryId, positionId, quantity }];
+  const handleToggle = useCallback(
+    (position: PositionWithMinistry, selected: boolean) => {
+      setSelectedPositions((prev) => {
+        const newSet = new Set(prev);
+        if (selected) {
+          newSet.add(position.id);
+        } else {
+          newSet.delete(position.id);
         }
-        return prev;
+        return newSet;
       });
     },
     []
   );
 
-  // Calculate summary
-  const summary = useMemo(() => {
-    const activeVacancies = vacancies.filter((v) => v.quantity > 0);
-    const totalVacancies = activeVacancies.reduce((sum, v) => sum + v.quantity, 0);
-    const uniqueMinistries = new Set(activeVacancies.map((v) => v.ministryId)).size;
-    return { totalVacancies, uniqueMinistries };
-  }, [vacancies]);
+  // Group positions by ministry
+  const groupedPositions = useMemo(() => {
+    if (!allPositions) return new Map<string, PositionWithMinistry[]>();
 
-  if (eventId && vacanciesLoading) {
+    const groups = new Map<string, PositionWithMinistry[]>();
+    for (const position of allPositions) {
+      const ministryName = position.ministry.name;
+      if (!groups.has(ministryName)) {
+        groups.set(ministryName, []);
+      }
+      groups.get(ministryName)!.push(position);
+    }
+    return groups;
+  }, [allPositions]);
+
+  // Summary
+  const summary = useMemo(() => {
+    const totalPositions = selectedPositions.size;
+    const ministries = new Set<string>();
+    if (allPositions) {
+      for (const position of allPositions) {
+        if (selectedPositions.has(position.id)) {
+          ministries.add(position.ministry.id);
+        }
+      }
+    }
+    return { totalPositions, uniqueMinistries: ministries.size };
+  }, [selectedPositions, allPositions]);
+
+  const isLoading = positionsLoading || (eventId && vacanciesLoading);
+
+  if (isLoading) {
     return <VacancyManagerSkeleton />;
   }
 
-  if (!ministries || ministries.length === 0) {
+  if (!allPositions || allPositions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <p>Nenhum ministerio disponivel.</p>
+        <p>Nenhuma posicao cadastrada nos ministerios.</p>
+        <p className="text-sm mt-1">
+          Cadastre posicoes nos ministerios primeiro.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Ministry list with accordions */}
-      <div className="space-y-3">
-        {ministries.map((ministry) => (
-          <MinistryAccordion
-            key={ministry.id}
-            ministry={ministry}
-            vacancies={vacancies}
-            onVacancyChange={handleVacancyChange}
-            readOnly={readOnly}
-            defaultExpanded={
-              // Expand if has vacancies
-              vacancies.some((v) => v.ministryId === ministry.id && v.quantity > 0)
-            }
-          />
-        ))}
-      </div>
+    <div className="space-y-6">
+      {/* Positions grouped by ministry */}
+      {Array.from(groupedPositions.entries()).map(([ministryName, positions]) => (
+        <div key={ministryName} className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground px-1">
+            {ministryName}
+          </h4>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {positions.map((position) => (
+              <PositionCheckbox
+                key={position.id}
+                position={position}
+                isSelected={selectedPositions.has(position.id)}
+                onToggle={handleToggle}
+                readOnly={readOnly}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
 
       {/* Summary */}
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-        <span className="text-sm text-muted-foreground">Total:</span>
+      <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+        <span className="text-sm text-muted-foreground">Selecionadas:</span>
         <Badge variant="default">
-          {summary.totalVacancies} {summary.totalVacancies === 1 ? "vaga" : "vagas"} em{" "}
-          {summary.uniqueMinistries}{" "}
-          {summary.uniqueMinistries === 1 ? "ministerio" : "ministerios"}
+          {summary.totalPositions}{" "}
+          {summary.totalPositions === 1 ? "posicao" : "posicoes"}
+          {summary.uniqueMinistries > 0 && (
+            <>
+              {" "}de {summary.uniqueMinistries}{" "}
+              {summary.uniqueMinistries === 1 ? "ministerio" : "ministerios"}
+            </>
+          )}
         </Badge>
       </div>
     </div>
@@ -255,22 +221,28 @@ export function VacancyManager({
 
 export function VacancyManagerSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-4 w-4" />
-                <Skeleton className="h-4 w-32" />
+    <div className="space-y-6">
+      {Array.from({ length: 2 }).map((_, groupIndex) => (
+        <div key={groupIndex} className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-lg border border-border"
+              >
+                <Skeleton className="h-5 w-5 rounded" />
+                <div className="flex-1 space-y-1">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
               </div>
-              <Skeleton className="h-5 w-16" />
-            </div>
-          </Card>
-        ))}
-      </div>
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-        <Skeleton className="h-4 w-12" />
+            ))}
+          </div>
+        </div>
+      ))}
+      <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+        <Skeleton className="h-4 w-20" />
         <Skeleton className="h-5 w-32" />
       </div>
     </div>

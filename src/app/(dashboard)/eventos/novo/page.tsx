@@ -24,7 +24,6 @@ import {
   RecurrencePattern,
 } from "@/hooks/use-events";
 import { Switch } from "@/components/ui/switch";
-import { useMinistries } from "@/hooks/use-ministries";
 import { useCreateBulkVacancies } from "@/hooks/use-vacancies";
 import { VacancyManager, VacancyConfig } from "@/components/events/vacancy-manager";
 import { cn } from "@/lib/utils";
@@ -59,7 +58,6 @@ export default function NovoEventoPage() {
   const router = useRouter();
   const createEvent = useCreateEvent();
   const createBulkVacancies = useCreateBulkVacancies();
-  const { data: ministries, isLoading: ministriesLoading } = useMinistries();
 
   const [formData, setFormData] = React.useState<CreateEventData>({
     name: "",
@@ -396,23 +394,14 @@ export default function NovoEventoPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Vagas por Ministerio
+              Posicoes Necessarias
             </CardTitle>
             <CardDescription>
-              Defina quantas pessoas de cada funcao serao necessarias para este evento
+              Selecione as posicoes que serao necessarias para este evento
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {ministriesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <VacancyManager
-                ministries={ministries || []}
-                onChange={handleVacanciesChange}
-              />
-            )}
+            <VacancyManager onChange={handleVacanciesChange} />
           </CardContent>
         </Card>
 

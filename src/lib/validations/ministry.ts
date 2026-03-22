@@ -48,6 +48,7 @@ export const ministryQuerySchema = z.object({
   search: z.string().optional(),
   includeMembers: z.coerce.boolean().default(false).optional(),
   includeLeader: z.coerce.boolean().default(true).optional(),
+  includePositions: z.coerce.boolean().default(false).optional(),
 })
 
 // Types inferidos dos schemas
