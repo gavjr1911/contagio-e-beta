@@ -94,6 +94,7 @@ model User {
   notifications       Notification[]
   blockedDates        BlockedDate[]
   eventItems          EventItem[]      @relation("EventItemResponsible")
+  assignmentLogs      AssignmentLog[]
 
   @@index([email])
   @@index([role])
@@ -155,11 +156,13 @@ model Ministry {
   updatedAt   DateTime @updatedAt
 
   // Relacionamentos
-  leader    User?              @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
-  members   MinistryMember[]
-  schedules Schedule[]
-  positions MinistryPosition[]
-  vacancies EventVacancy[]
+  leader           User?                     @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  members          MinistryMember[]
+  schedules        Schedule[]
+  positions        MinistryPosition[]
+  vacancies        EventVacancy[]
+  autoAssignConfig MinistryAutoAssignConfig?
+  assignmentLogs   AssignmentLog[]
 
   @@index([leaderId])
   @@map("ministries")
@@ -246,12 +249,13 @@ model Event {
   updatedAt  DateTime    @updatedAt
 
   // Relacionamentos
-  template  EventTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  items     EventItem[]
-  schedules Schedule[]
-  setlists  Setlist[]
-  media     Media[]
-  vacancies EventVacancy[]
+  template       EventTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  items          EventItem[]
+  schedules      Schedule[]
+  setlists       Setlist[]
+  media          Media[]
+  vacancies      EventVacancy[]
+  assignmentLogs AssignmentLog[]
 
   @@index([date])
   @@index([type])
@@ -334,6 +338,48 @@ model Schedule {
   @@index([vacancyId])
   @@index([status])
   @@map("schedules")
+}
+
+// ============================================
+// AUTO-ASSIGN (DISTRIBUICAO AUTOMATICA)
+// ============================================
+
+model MinistryAutoAssignConfig {
+  id                String    @id @default(cuid())
+  ministryId        String    @unique
+  enabled           Boolean   @default(false)
+  autoAssignUntil   DateTime? // Ate quando distribuir automaticamente
+  avoidConsecutive  Boolean   @default(true) // Evitar eventos consecutivos
+  maxEventsPerMonth Int? // Limite de escalas por mes por membro
+  rotationWeight    Int       @default(40) // Peso da rotacao (0-100)
+  availabilityWeight Int      @default(40) // Peso da disponibilidade (0-100)
+  updatedAt         DateTime  @updatedAt
+
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+
+  @@map("ministry_auto_assign_configs")
+}
+
+model AssignmentLog {
+  id           String   @id @default(cuid())
+  eventId      String
+  ministryId   String
+  userId       String
+  vacancyId    String?
+  score        Int // Score final (0-100)
+  scoreDetails Json? // Breakdown: {rotation: 40, availability: 50, ...}
+  reason       String? // "auto" | "manual"
+  assignedAt   DateTime @default(now())
+
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([ministryId])
+  @@index([userId])
+  @@index([assignedAt])
+  @@map("assignment_logs")
 }
 
 // ============================================
