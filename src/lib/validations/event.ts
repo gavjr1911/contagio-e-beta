@@ -12,6 +12,8 @@ export const EventTypeEnum = z.enum([
 
 export const EventStatusEnum = z.enum(["DRAFT", "PUBLISHED", "COMPLETED"])
 
+export const RecurrencePatternEnum = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY"])
+
 export const EventItemTypeEnum = z.enum([
   "WORSHIP",
   "PREACHING",
@@ -24,7 +26,8 @@ export const EventItemTypeEnum = z.enum([
 // Event Schemas
 // ============================================
 
-export const createEventSchema = z.object({
+// Base schema without refinement (for .partial() compatibility)
+const baseEventSchema = z.object({
   name: z
     .string()
     .min(1, "Nome e obrigatorio")
@@ -35,9 +38,27 @@ export const createEventSchema = z.object({
   endTime: z.coerce.date({ message: "Horario de termino invalido" }).optional(),
   status: EventStatusEnum.optional().default("DRAFT"),
   templateId: z.string().cuid().optional(),
+  isRecurring: z.boolean().optional().default(false),
+  recurrencePattern: RecurrencePatternEnum.optional(),
+  recurrenceEndDate: z.string().optional(),
 })
 
-export const updateEventSchema = createEventSchema.partial()
+export const createEventSchema = baseEventSchema.refine(
+  (data) => {
+    // If isRecurring is true, pattern and endDate are required
+    if (data.isRecurring) {
+      return !!data.recurrencePattern && !!data.recurrenceEndDate
+    }
+    return true
+  },
+  {
+    message:
+      "Padrao de recorrencia e data final sao obrigatorios para eventos recorrentes",
+    path: ["recurrencePattern"],
+  }
+)
+
+export const updateEventSchema = baseEventSchema.partial()
 
 export const eventFiltersSchema = z.object({
   startDate: z.coerce.date().optional(),

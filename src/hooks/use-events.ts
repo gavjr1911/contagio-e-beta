@@ -5,10 +5,10 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { EventType, EventStatus } from "@/generated/prisma/enums";
+import { EventType, EventStatus, RecurrencePattern } from "@/generated/prisma/enums";
 
 // Re-export enums for convenience
-export { EventType, EventStatus } from "@/generated/prisma/enums";
+export { EventType, EventStatus, RecurrencePattern } from "@/generated/prisma/enums";
 
 // Types matching API response
 export interface Event {
@@ -22,6 +22,11 @@ export interface Event {
   templateId: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
+  // Recurrence fields
+  isRecurring?: boolean;
+  recurrencePattern?: RecurrencePattern | null;
+  recurrenceEndDate?: string | Date | null;
+  parentEventId?: string | null;
   template?: {
     id: string;
     name: string;
@@ -29,11 +34,13 @@ export interface Event {
   _count?: {
     schedules: number;
     items: number;
+    childEvents?: number;
   };
   // Related data (when fetching single event)
   items?: EventItem[];
   schedules?: EventSchedule[];
   setlists?: EventSetlist[];
+  childEvents?: Event[];
 }
 
 export interface EventItem {
@@ -93,6 +100,10 @@ export interface CreateEventData {
   endTime?: string;
   status?: EventStatus;
   templateId?: string;
+  // Recurrence fields
+  isRecurring?: boolean;
+  recurrencePattern?: RecurrencePattern;
+  recurrenceEndDate?: string;
 }
 
 export interface UpdateEventData extends Partial<CreateEventData> {
@@ -173,7 +184,7 @@ async function fetchEvent(id: string): Promise<Event> {
 
 async function createEvent(data: CreateEventData): Promise<Event> {
   // Convert time strings to ISO format
-  const body = {
+  const body: Record<string, unknown> = {
     name: data.name,
     type: data.type,
     date: new Date(data.date).toISOString(),
@@ -182,6 +193,13 @@ async function createEvent(data: CreateEventData): Promise<Event> {
     status: data.status || "DRAFT",
     templateId: data.templateId,
   };
+
+  // Add recurrence fields if present
+  if (data.isRecurring) {
+    body.isRecurring = true;
+    body.recurrencePattern = data.recurrencePattern;
+    body.recurrenceEndDate = data.recurrenceEndDate;
+  }
 
   const response = await fetch("/api/events", {
     method: "POST",
@@ -340,4 +358,13 @@ export function getConfirmationStatusLabel(status: ConfirmationStatus): string {
     DECLINED: "Recusado",
   };
   return labels[status] || status;
+}
+
+export function getRecurrencePatternLabel(pattern: RecurrencePattern): string {
+  const labels: Record<RecurrencePattern, string> = {
+    WEEKLY: "Semanal",
+    BIWEEKLY: "Quinzenal",
+    MONTHLY: "Mensal",
+  };
+  return labels[pattern] || pattern;
 }

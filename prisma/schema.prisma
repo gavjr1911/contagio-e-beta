@@ -34,6 +34,12 @@ enum EventStatus {
   COMPLETED
 }
 
+enum RecurrencePattern {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
 enum EventItemType {
   WORSHIP
   PREACHING
@@ -248,6 +254,12 @@ model Event {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
+  // Campos de Recorrencia
+  isRecurring       Boolean            @default(false)
+  recurrencePattern RecurrencePattern?
+  recurrenceEndDate DateTime?          @db.Date
+  parentEventId     String?
+
   // Relacionamentos
   template       EventTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
   items          EventItem[]
@@ -257,10 +269,15 @@ model Event {
   vacancies      EventVacancy[]
   assignmentLogs AssignmentLog[]
 
+  // Self-relation para series de eventos
+  parentEvent Event?  @relation("EventSeries", fields: [parentEventId], references: [id], onDelete: SetNull)
+  childEvents Event[] @relation("EventSeries")
+
   @@index([date])
   @@index([type])
   @@index([status])
   @@index([templateId])
+  @@index([parentEventId])
   @@map("events")
 }
 

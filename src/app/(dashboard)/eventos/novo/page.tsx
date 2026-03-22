@@ -9,6 +9,7 @@ import {
   Clock,
   Loader2,
   Users,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,11 @@ import {
   useCreateEvent,
   CreateEventData,
   getEventTypeLabel,
+  getRecurrencePatternLabel,
   EventType,
+  RecurrencePattern,
 } from "@/hooks/use-events";
+import { Switch } from "@/components/ui/switch";
 import { useMinistries } from "@/hooks/use-ministries";
 import { useCreateBulkVacancies } from "@/hooks/use-vacancies";
 import { VacancyManager, VacancyConfig } from "@/components/events/vacancy-manager";
@@ -30,6 +34,12 @@ const eventTypes: EventType[] = [
   "SUNDAY_MORNING",
   "SUNDAY_EVENING",
   "SPECIAL",
+];
+
+const recurrencePatterns: RecurrencePattern[] = [
+  "WEEKLY",
+  "BIWEEKLY",
+  "MONTHLY",
 ];
 
 function getTypeColor(type: EventType): string {
@@ -83,6 +93,18 @@ export default function NovoEventoPage() {
       }
     }
 
+    // Recurrence validation
+    if (formData.isRecurring) {
+      if (!formData.recurrencePattern) {
+        newErrors.recurrencePattern = "Padrao de recorrencia e obrigatorio";
+      }
+      if (!formData.recurrenceEndDate) {
+        newErrors.recurrenceEndDate = "Data final e obrigatoria";
+      } else if (formData.date && formData.recurrenceEndDate <= formData.date) {
+        newErrors.recurrenceEndDate = "Data final deve ser depois da data inicial";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -108,9 +130,21 @@ export default function NovoEventoPage() {
         });
       }
 
+      // Build success message
+      const parts: string[] = [];
+      if (vacancies.length > 0) {
+        parts.push(`${vacancies.reduce((sum, v) => sum + v.quantity, 0)} vagas`);
+      }
+      const childEventsCount = (newEvent as { childEventsCreated?: number }).childEventsCreated;
+      if (childEventsCount && childEventsCount > 0) {
+        parts.push(`${childEventsCount} eventos recorrentes`);
+      }
+
       toast({
         title: "Sucesso",
-        description: `Evento criado${vacancies.length > 0 ? ` com ${vacancies.reduce((sum, v) => sum + v.quantity, 0)} vagas` : ""}!`,
+        description: parts.length > 0
+          ? `Evento criado com ${parts.join(" e ")}!`
+          : "Evento criado!",
       });
       router.push(`/eventos/${newEvent.id}`);
     } catch (error) {
@@ -255,6 +289,105 @@ export default function NovoEventoPage() {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Recurrence Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Repeat className="h-5 w-5" />
+              Evento Recorrente
+            </CardTitle>
+            <CardDescription>
+              Configure se este evento se repete automaticamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Toggle Recurrence */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="isRecurring">Ativar recorrencia</Label>
+                <p className="text-sm text-muted-foreground">
+                  O evento sera criado automaticamente nas datas seguintes
+                </p>
+              </div>
+              <Switch
+                id="isRecurring"
+                checked={formData.isRecurring || false}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    isRecurring: checked,
+                    recurrencePattern: checked ? "WEEKLY" : undefined,
+                    recurrenceEndDate: checked ? "" : undefined,
+                  })
+                }
+              />
+            </div>
+
+            {/* Recurrence Options (shown when enabled) */}
+            {formData.isRecurring && (
+              <div className="space-y-4 pt-4 border-t border-border">
+                {/* Pattern Selection */}
+                <div className="space-y-2">
+                  <Label>Padrao de Repeticao</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {recurrencePatterns.map((pattern) => (
+                      <button
+                        key={pattern}
+                        type="button"
+                        onClick={() =>
+                          setFormData({ ...formData, recurrencePattern: pattern })
+                        }
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                          formData.recurrencePattern === pattern
+                            ? "bg-primary/10 text-primary border-primary/20"
+                            : "bg-background border-border hover:bg-muted"
+                        )}
+                      >
+                        {getRecurrencePatternLabel(pattern)}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.recurrencePattern && (
+                    <p className="text-xs text-destructive">
+                      {errors.recurrencePattern}
+                    </p>
+                  )}
+                </div>
+
+                {/* End Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="recurrenceEndDate">
+                    <CalendarDays className="h-4 w-4 inline mr-1" />
+                    Repetir ate
+                  </Label>
+                  <Input
+                    id="recurrenceEndDate"
+                    type="date"
+                    value={formData.recurrenceEndDate || ""}
+                    min={formData.date || undefined}
+                    onChange={(e) =>
+                      setFormData({ ...formData, recurrenceEndDate: e.target.value })
+                    }
+                    className={cn(
+                      "max-w-xs",
+                      errors.recurrenceEndDate && "border-destructive"
+                    )}
+                  />
+                  {errors.recurrenceEndDate && (
+                    <p className="text-xs text-destructive">
+                      {errors.recurrenceEndDate}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Os eventos serao criados ate esta data, de acordo com o padrao selecionado
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -6,6 +6,11 @@ import {
   createEventSchema,
   eventFiltersSchema,
 } from "@/lib/validations/event"
+import {
+  createRecurringEvents,
+  copyVacanciesToEvent,
+} from "@/lib/scheduling/recurrence"
+import type { RecurrencePattern } from "@/generated/prisma/client"
 
 // GET /api/events - List events with filters
 export async function GET(request: NextRequest) {
@@ -106,8 +111,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, type, date, startTime, endTime, status, templateId } =
-      parseResult.data
+    const {
+      name,
+      type,
+      date,
+      startTime,
+      endTime,
+      status,
+      templateId,
+      isRecurring,
+      recurrencePattern,
+      recurrenceEndDate,
+    } = parseResult.data
 
     // Validate templateId if provided
     if (templateId) {
@@ -122,6 +137,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create the parent event
     const event = await prisma.event.create({
       data: {
         name,
@@ -131,13 +147,56 @@ export async function POST(request: NextRequest) {
         endTime,
         status,
         templateId,
+        isRecurring: isRecurring ?? false,
+        recurrencePattern: isRecurring
+          ? (recurrencePattern as RecurrencePattern)
+          : null,
+        recurrenceEndDate: isRecurring && recurrenceEndDate
+          ? new Date(recurrenceEndDate)
+          : null,
       },
       include: {
         template: { select: { id: true, name: true } },
       },
     })
 
-    return Response.json({ data: event }, { status: 201 })
+    // If recurring, create child events and copy vacancies
+    let childEventsCount = 0
+    if (isRecurring && recurrencePattern && recurrenceEndDate) {
+      const childEventIds = await createRecurringEvents(
+        {
+          id: event.id,
+          name: event.name,
+          type: event.type,
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          templateId: event.templateId,
+        },
+        {
+          pattern: recurrencePattern as RecurrencePattern,
+          endDate: new Date(recurrenceEndDate),
+        }
+      )
+
+      childEventsCount = childEventIds.length
+
+      // Copy vacancies from parent to all child events
+      // Note: At this point, the parent event may not have vacancies yet
+      // Vacancies will be copied when they are added to the parent
+      // But if vacancies were created before (e.g., via template), copy them now
+      for (const childEventId of childEventIds) {
+        await copyVacanciesToEvent(event.id, childEventId)
+      }
+    }
+
+    return Response.json(
+      {
+        data: event,
+        ...(isRecurring && { childEventsCreated: childEventsCount }),
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error("Error creating event:", error)
     return Response.json(
