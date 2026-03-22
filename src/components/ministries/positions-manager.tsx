@@ -85,7 +85,7 @@ export function PositionsManager({ ministryId }: PositionsManagerProps) {
             value={newPosition}
             onChange={(e) => setNewPosition(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nome da nova posicao..."
+            placeholder="Nome da nova funcao..."
             disabled={createPosition.isPending}
             className="flex-1"
           />
@@ -110,10 +110,10 @@ export function PositionsManager({ ministryId }: PositionsManagerProps) {
               <Briefcase className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">
-              Nenhuma posicao cadastrada
+              Nenhuma funcao cadastrada
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Adicione posicoes para organizar os membros do ministerio.
+              Adicione funcoes para organizar os membros do ministerio.
             </p>
           </div>
         ) : (
@@ -160,7 +160,7 @@ export function PositionsManager({ ministryId }: PositionsManagerProps) {
                       className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Remover posicao</span>
+                      <span className="sr-only">Remover funcao</span>
                     </Button>
                   </div>
                 </Card>
@@ -177,13 +177,13 @@ export function PositionsManager({ ministryId }: PositionsManagerProps) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remover posicao</DialogTitle>
+            <DialogTitle>Remover funcao</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja remover a posicao &quot;{deletingPosition?.name}&quot;?
+              Tem certeza que deseja remover a funcao &quot;{deletingPosition?.name}&quot;?
               {getMemberCount(deletingPosition?.id || "") > 0 && (
                 <>
                   {" "}
-                  Esta posicao esta sendo usada por{" "}
+                  Esta funcao esta sendo usada por{" "}
                   {getMemberCount(deletingPosition?.id || "")}{" "}
                   {getMemberCount(deletingPosition?.id || "") === 1
                     ? "membro"

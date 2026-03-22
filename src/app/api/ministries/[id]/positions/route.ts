@@ -15,7 +15,7 @@ type RouteParams = {
   params: Promise<{ id: string }>
 }
 
-// Schema para criar posicao
+// Schema para criar funcao
 const createPositionSchema = z.object({
   name: z
     .string()
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/ministries/[id]/positions - Criar nova posicao
+// POST /api/ministries/[id]/positions - Criar nova funcao
 export async function POST(request: NextRequest, { params }: RouteParams) {
   return withAuth(async (session: AuthSession) => {
     const { id } = await params
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return apiError("Permissao negada", 403)
       }
 
-      // Verificar se ja existe uma posicao com esse nome no ministerio
+      // Verificar se ja existe uma funcao com esse nome no ministerio
       const existingPosition = await prisma.ministryPosition.findFirst({
         where: {
           ministryId: id,
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
 
       if (existingPosition) {
-        return apiError("Ja existe uma posicao com esse nome neste ministerio", 409)
+        return apiError("Ja existe uma funcao com esse nome neste ministerio", 409)
       }
 
       const position = await prisma.ministryPosition.create({
@@ -106,8 +106,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       return apiSuccess(position, 201)
     } catch (error) {
-      console.error("Erro ao criar posicao:", error)
-      return apiError("Erro ao criar posicao", 500)
+      console.error("Erro ao criar funcao:", error)
+      return apiError("Erro ao criar funcao", 500)
     }
   })
 }

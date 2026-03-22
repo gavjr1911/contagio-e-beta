@@ -232,7 +232,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
             {canEdit && (
               <TabsTrigger value="positions" className="gap-2">
                 <Briefcase className="h-4 w-4" />
-                Posicoes
+                Funcoes
               </TabsTrigger>
             )}
           </TabsList>

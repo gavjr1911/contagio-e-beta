@@ -171,9 +171,9 @@ export function VacancyManager({
   if (!allPositions || allPositions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <p>Nenhuma posicao cadastrada nos ministerios.</p>
+        <p>Nenhuma funcao cadastrada nos ministerios.</p>
         <p className="text-sm mt-1">
-          Cadastre posicoes nos ministerios primeiro.
+          Cadastre funcoes nos ministerios primeiro.
         </p>
       </div>
     );
@@ -206,7 +206,7 @@ export function VacancyManager({
         <span className="text-sm text-muted-foreground">Selecionadas:</span>
         <Badge variant="default">
           {summary.totalPositions}{" "}
-          {summary.totalPositions === 1 ? "posicao" : "posicoes"}
+          {summary.totalPositions === 1 ? "funcao" : "funcoes"}
           {summary.uniqueMinistries > 0 && (
             <>
               {" "}de {summary.uniqueMinistries}{" "}

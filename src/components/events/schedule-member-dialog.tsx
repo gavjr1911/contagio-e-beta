@@ -158,7 +158,7 @@ export function ScheduleMemberDialog({
             {/* Position Select */}
             {selectedMinistry && positions.length > 0 && (
               <div className="space-y-2">
-                <Label>Posicao/Funcao (opcional)</Label>
+                <Label>Funcao (opcional)</Label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setSelectedPosition("")}

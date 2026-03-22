@@ -394,10 +394,10 @@ export default function NovoEventoPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Posicoes Necessarias
+              Funcoes Necessarias
             </CardTitle>
             <CardDescription>
-              Selecione as posicoes que serao necessarias para este evento
+              Selecione as funcoes que serao necessarias para este evento
             </CardDescription>
           </CardHeader>
           <CardContent>

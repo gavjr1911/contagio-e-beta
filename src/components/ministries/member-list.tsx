@@ -180,7 +180,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleEdit(member)}>
                         <Pencil className="mr-2 h-4 w-4" />
-                        Editar posicoes
+                        Editar funcoes
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleToggleActive(member)}>
                         {member.active ? (
@@ -216,17 +216,17 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
       <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar posicoes</DialogTitle>
+            <DialogTitle>Editar funcoes</DialogTitle>
             <DialogDescription>
-              Selecione as posicoes de {editingMember?.user.name} no ministerio.
+              Selecione as funcoes de {editingMember?.user.name} no ministerio.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Posicoes</Label>
+              <Label>Funcoes</Label>
               {!positions || positions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma posicao cadastrada para este ministerio.
+                  Nenhuma funcao cadastrada para este ministerio.
                 </p>
               ) : (
                 <div className="grid gap-2">
@@ -258,7 +258,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
               )}
               {selectedPositionIds.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  {selectedPositionIds.length} posicao(oes) selecionada(s)
+                  {selectedPositionIds.length} funcao(oes) selecionada(s)
                 </p>
               )}
             </div>

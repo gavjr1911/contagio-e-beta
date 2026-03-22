@@ -198,10 +198,10 @@ export function AddMemberDialog({
       return (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Nenhuma posicao cadastrada para este ministerio.
+            Nenhuma funcao cadastrada para este ministerio.
           </p>
           <p className="text-xs text-muted-foreground">
-            Cadastre posicoes na aba "Posicoes" para seleciona-las aqui.
+            Cadastre funcoes na aba "Funcoes" para seleciona-las aqui.
           </p>
         </div>
       );
@@ -237,7 +237,7 @@ export function AddMemberDialog({
         </div>
         {currentPositionIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {currentPositionIds.length} posicao(oes) selecionada(s)
+            {currentPositionIds.length} funcao(oes) selecionada(s)
           </p>
         )}
       </div>
@@ -299,7 +299,7 @@ export function AddMemberDialog({
 
                 {/* Posicoes - para usuario existente */}
                 <div className="space-y-2">
-                  <Label>Posicoes no ministerio</Label>
+                  <Label>Funcoes no ministerio</Label>
                   <PositionSelector isNewUser={false} />
                 </div>
               </div>
@@ -433,7 +433,7 @@ export function AddMemberDialog({
 
                 {/* Posicoes - para novo usuario */}
                 <div className="space-y-2">
-                  <Label>Posicoes no ministerio</Label>
+                  <Label>Funcoes no ministerio</Label>
                   <PositionSelector isNewUser={true} />
                 </div>
 

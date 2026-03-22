@@ -15,7 +15,7 @@ type RouteParams = {
   params: Promise<{ id: string; positionId: string }>
 }
 
-// Schema para atualizar posicao
+// Schema para atualizar funcao
 const updatePositionSchema = z.object({
   name: z
     .string()
@@ -29,7 +29,7 @@ const updatePositionSchema = z.object({
     .nullable(),
 })
 
-// PATCH /api/ministries/[id]/positions/[positionId] - Atualizar posicao
+// PATCH /api/ministries/[id]/positions/[positionId] - Atualizar funcao
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return withAuth(async (session: AuthSession) => {
     const { id, positionId } = await params
@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Permissao negada", 403)
       }
 
-      // Verificar se a posicao existe
+      // Verificar se a funcao existe
       const position = await prisma.ministryPosition.findFirst({
         where: {
           id: positionId,
@@ -64,12 +64,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       })
 
       if (!position) {
-        return apiError("Posicao nao encontrada", 404)
+        return apiError("Funcao nao encontrada", 404)
       }
 
       const { name, description } = bodyResult.data
 
-      // Se name foi fornecido, verificar se ja existe outra posicao com esse nome
+      // Se name foi fornecido, verificar se ja existe outra funcao com esse nome
       if (name && name !== position.name) {
         const existingPosition = await prisma.ministryPosition.findFirst({
           where: {
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         })
 
         if (existingPosition) {
-          return apiError("Ja existe uma posicao com esse nome neste ministerio", 409)
+          return apiError("Ja existe uma funcao com esse nome neste ministerio", 409)
         }
       }
 
@@ -94,13 +94,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       return apiSuccess(updatedPosition)
     } catch (error) {
-      console.error("Erro ao atualizar posicao:", error)
-      return apiError("Erro ao atualizar posicao", 500)
+      console.error("Erro ao atualizar funcao:", error)
+      return apiError("Erro ao atualizar funcao", 500)
     }
   })
 }
 
-// DELETE /api/ministries/[id]/positions/[positionId] - Remover posicao
+// DELETE /api/ministries/[id]/positions/[positionId] - Remover funcao
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   return withAuth(async (session: AuthSession) => {
     const { id, positionId } = await params
@@ -120,7 +120,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         return apiError("Permissao negada", 403)
       }
 
-      // Verificar se a posicao existe
+      // Verificar se a funcao existe
       const position = await prisma.ministryPosition.findFirst({
         where: {
           id: positionId,
@@ -129,17 +129,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       })
 
       if (!position) {
-        return apiError("Posicao nao encontrada", 404)
+        return apiError("Funcao nao encontrada", 404)
       }
 
-      // Verificar se existem membros usando essa posicao
+      // Verificar se existem membros usando essa funcao
       const membersUsingPosition = await prisma.memberPosition.count({
         where: { positionId },
       })
 
       if (membersUsingPosition > 0) {
         return apiError(
-          `Nao e possivel remover posicao com ${membersUsingPosition} membro(s) atribuido(s). Remova os membros primeiro.`,
+          `Nao e possivel remover funcao com ${membersUsingPosition} membro(s) atribuido(s). Remova os membros primeiro.`,
           400
         )
       }
@@ -148,10 +148,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         where: { id: positionId },
       })
 
-      return apiSuccess({ message: "Posicao removida com sucesso" })
+      return apiSuccess({ message: "Funcao removida com sucesso" })
     } catch (error) {
-      console.error("Erro ao remover posicao:", error)
-      return apiError("Erro ao remover posicao", 500)
+      console.error("Erro ao remover funcao:", error)
+      return apiError("Erro ao remover funcao", 500)
     }
   })
 }
