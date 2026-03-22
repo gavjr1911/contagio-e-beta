@@ -1,4 +1,4 @@
-// Prisma Schema - Sistema Contagio e Beta
+// Prisma Schema - Sistema Contagie Beta
 // Sistema de gestao de ministerios e escalas para igreja
 
 generator client {

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Contagio e Beta",
+    name: "Contagie Beta",
     short_name: "Beta",
     description: "Sistema de gestao de eventos da Igreja Beta",
     start_url: "/",

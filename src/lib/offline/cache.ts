@@ -2,10 +2,10 @@
  * IndexedDB Cache Manager for Offline Support
  *
  * Provides functions to cache and retrieve schedules and events data
- * for offline access in the Contagio e Beta PWA.
+ * for offline access in the Contagie Beta PWA.
  */
 
-const DB_NAME = "contagio-beta-offline";
+const DB_NAME = "contagie-beta-offline";
 const DB_VERSION = 1;
 const SCHEDULES_STORE = "schedules";
 const EVENTS_STORE = "events";

@@ -17,10 +17,10 @@ async function main() {
   const passwordHash = await hash("senha123", 12)
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@contagio.com" },
+    where: { email: "admin@contagie.com" },
     update: {},
     create: {
-      email: "admin@contagio.com",
+      email: "admin@contagie.com",
       name: "Administrador",
       password: passwordHash,
       role: "ADMIN",
@@ -29,10 +29,10 @@ async function main() {
   })
 
   const lider1 = await prisma.user.upsert({
-    where: { email: "marcos@contagio.com" },
+    where: { email: "marcos@contagie.com" },
     update: {},
     create: {
-      email: "marcos@contagio.com",
+      email: "marcos@contagie.com",
       name: "Marcos Silva",
       password: passwordHash,
       role: "LEADER",
@@ -41,10 +41,10 @@ async function main() {
   })
 
   const lider2 = await prisma.user.upsert({
-    where: { email: "ana@contagio.com" },
+    where: { email: "ana@contagie.com" },
     update: {},
     create: {
-      email: "ana@contagio.com",
+      email: "ana@contagie.com",
       name: "Ana Paula",
       password: passwordHash,
       role: "LEADER",
@@ -53,10 +53,10 @@ async function main() {
   })
 
   const voluntario1 = await prisma.user.upsert({
-    where: { email: "joao@contagio.com" },
+    where: { email: "joao@contagie.com" },
     update: {},
     create: {
-      email: "joao@contagio.com",
+      email: "joao@contagie.com",
       name: "Joao Pedro",
       password: passwordHash,
       role: "VOLUNTEER",
@@ -65,10 +65,10 @@ async function main() {
   })
 
   const voluntario2 = await prisma.user.upsert({
-    where: { email: "maria@contagio.com" },
+    where: { email: "maria@contagie.com" },
     update: {},
     create: {
-      email: "maria@contagio.com",
+      email: "maria@contagie.com",
       name: "Maria Clara",
       password: passwordHash,
       role: "VOLUNTEER",
@@ -77,10 +77,10 @@ async function main() {
   })
 
   const voluntario3 = await prisma.user.upsert({
-    where: { email: "pedro@contagio.com" },
+    where: { email: "pedro@contagie.com" },
     update: {},
     create: {
-      email: "pedro@contagio.com",
+      email: "pedro@contagie.com",
       name: "Pedro Henrique",
       password: passwordHash,
       role: "VOLUNTEER",
@@ -89,10 +89,10 @@ async function main() {
   })
 
   const voluntario4 = await prisma.user.upsert({
-    where: { email: "julia@contagio.com" },
+    where: { email: "julia@contagie.com" },
     update: {},
     create: {
-      email: "julia@contagio.com",
+      email: "julia@contagie.com",
       name: "Julia Santos",
       password: passwordHash,
       role: "VOLUNTEER",
@@ -354,13 +354,13 @@ async function main() {
 
   console.log("\n=== SEED CONCLUIDO ===")
   console.log("\nUsuarios de teste:")
-  console.log("  admin@contagio.com - Administrador")
-  console.log("  marcos@contagio.com - Lider Louvor")
-  console.log("  ana@contagio.com - Lider Midia")
-  console.log("  joao@contagio.com - Voluntario Louvor")
-  console.log("  maria@contagio.com - Voluntaria Louvor")
-  console.log("  pedro@contagio.com - Voluntario Midia")
-  console.log("  julia@contagio.com - Voluntaria Recepcao")
+  console.log("  admin@contagie.com - Administrador")
+  console.log("  marcos@contagie.com - Lider Louvor")
+  console.log("  ana@contagie.com - Lider Midia")
+  console.log("  joao@contagie.com - Voluntario Louvor")
+  console.log("  maria@contagie.com - Voluntaria Louvor")
+  console.log("  pedro@contagie.com - Voluntario Midia")
+  console.log("  julia@contagie.com - Voluntaria Recepcao")
   console.log("\nSenha para todos: senha123")
 }
 

@@ -1,4 +1,4 @@
-# Melhorias Identificadas - Contagio e Beta
+# Melhorias Identificadas - Contagie Beta
 
 ## Status Geral
 - **Data**: 2026-03-22

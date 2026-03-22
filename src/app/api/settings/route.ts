@@ -17,7 +17,7 @@ import {
 } from "@/lib/validations/settings"
 
 // Chave para criptografia (em producao, usar variavel de ambiente segura)
-const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagio-beta-settings-key-32ch"
+const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagie-beta-settings-key-32ch"
 
 // Funcoes de criptografia
 function encrypt(text: string): string {

@@ -19,8 +19,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Contagio e Beta",
-    template: "%s | Contagio e Beta",
+    default: "Contagie Beta",
+    template: "%s | Contagie Beta",
   },
   description:
     "Sistema de gestao de escalas e eventos da Igreja Beta. Organize ministerios, escalas de louvor e eventos com facilidade.",

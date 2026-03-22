@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma"
 import { testEmailSchema } from "@/lib/validations/settings"
 
 // Chave para criptografia
-const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagio-beta-settings-key-32ch"
+const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagie-beta-settings-key-32ch"
 
 function decrypt(encryptedText: string): string {
   try {

@@ -1,7 +1,7 @@
 /**
  * Offline Support Module
  *
- * This module provides offline capabilities for the Contagio e Beta PWA.
+ * This module provides offline capabilities for the Contagie Beta PWA.
  * It includes IndexedDB caching for schedules and events data.
  */
 
