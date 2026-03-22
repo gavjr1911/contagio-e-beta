@@ -51,21 +51,21 @@ export function DeclineDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-beta-navy border-beta-gray-blue/20 max-w-[340px] mx-auto">
+      <DialogContent className="bg-card border-border max-w-[340px] mx-auto">
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20">
             <AlertTriangle className="h-8 w-8 text-red-400" />
           </div>
-          <DialogTitle className="text-xl text-beta-cream">
+          <DialogTitle className="text-xl text-foreground">
             {showConfirmation ? "Tem certeza?" : "Recusar escala?"}
           </DialogTitle>
-          <DialogDescription className="text-beta-gray-blue">
+          <DialogDescription className="text-muted-foreground">
             {showConfirmation ? (
               "Esta acao nao pode ser desfeita. O lider do ministerio sera notificado."
             ) : eventName ? (
               <>
                 Voce esta recusando sua participacao em{" "}
-                <span className="text-beta-terracotta font-medium">
+                <span className="text-primary font-medium">
                   {eventName}
                 </span>
                 .
@@ -80,7 +80,7 @@ export function DeclineDialog({
           <div className="space-y-2">
             <Label
               htmlFor="reason"
-              className="text-beta-cream text-sm font-medium"
+              className="text-foreground text-sm font-medium"
             >
               Motivo (opcional)
             </Label>
@@ -89,10 +89,10 @@ export function DeclineDialog({
               placeholder="Conte-nos o motivo, se quiser..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="bg-beta-black/50 border-beta-gray-blue/30 text-beta-cream placeholder:text-beta-gray-blue/50 min-h-[100px] resize-none"
+              className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 min-h-[100px] resize-none"
               disabled={isLoading}
             />
-            <p className="text-xs text-beta-gray-blue">
+            <p className="text-xs text-muted-foreground">
               Isso ajuda os lideres a entenderem sua disponibilidade.
             </p>
           </div>
@@ -116,7 +116,7 @@ export function DeclineDialog({
                 : handleClose(false)
             }
             disabled={isLoading}
-            className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+            className="border-border text-muted-foreground hover:bg-muted"
           >
             {showConfirmation ? "Voltar" : "Cancelar"}
           </Button>

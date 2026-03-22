@@ -80,14 +80,14 @@ export default function MinhasEscalasPage() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-beta-gray-blue/10">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-beta-cream font-display">
+              <h1 className="text-2xl font-bold text-foreground font-display">
                 Minhas Escalas
               </h1>
-              <p className="text-beta-gray-blue text-sm mt-0.5">
+              <p className="text-muted-foreground text-sm mt-0.5">
                 Gerencie suas participacoes nos eventos
               </p>
             </div>
@@ -96,7 +96,7 @@ export default function MinhasEscalasPage() {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+                  className="border-border text-muted-foreground hover:bg-muted"
                 >
                   <CalendarDays className="h-5 w-5" />
                 </Button>
@@ -105,7 +105,7 @@ export default function MinhasEscalasPage() {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+                  className="border-border text-muted-foreground hover:bg-muted"
                 >
                   <Clock className="h-5 w-5" />
                 </Button>
@@ -140,7 +140,7 @@ export default function MinhasEscalasPage() {
           onValueChange={(v) => setFilter(v as ScheduleFilter)}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-4 w-full bg-beta-navy/50 p-1 h-auto">
+          <TabsList className="grid grid-cols-4 w-full bg-secondary p-1 h-auto">
             <TabsTrigger
               value="pending"
               className="text-xs py-2.5 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400"
@@ -157,14 +157,14 @@ export default function MinhasEscalasPage() {
             </TabsTrigger>
             <TabsTrigger
               value="all"
-              className="text-xs py-2.5 data-[state=active]:bg-beta-terracotta/20 data-[state=active]:text-beta-terracotta"
+              className="text-xs py-2.5 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
               <Filter className="h-4 w-4 mr-1.5" />
               Todas
             </TabsTrigger>
             <TabsTrigger
               value="history"
-              className="text-xs py-2.5 data-[state=active]:bg-beta-gray-blue/20 data-[state=active]:text-beta-gray-blue"
+              className="text-xs py-2.5 data-[state=active]:bg-muted data-[state=active]:text-muted-foreground"
             >
               <History className="h-4 w-4 mr-1.5" />
               Historico
@@ -178,7 +178,7 @@ export default function MinhasEscalasPage() {
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-32 rounded-lg bg-beta-navy/30 animate-pulse"
+                    className="h-32 rounded-lg bg-muted animate-pulse"
                   />
                 ))}
               </div>
@@ -189,7 +189,7 @@ export default function MinhasEscalasPage() {
                 <p className="text-red-400 font-medium">
                   Erro ao carregar escalas
                 </p>
-                <p className="text-beta-gray-blue text-sm mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                   Tente novamente mais tarde
                 </p>
               </div>
@@ -222,8 +222,8 @@ export default function MinhasEscalasPage() {
             ) : (
               // Empty state
               <div className="text-center py-12">
-                <Calendar className="h-16 w-16 text-beta-gray-blue/30 mx-auto mb-4" />
-                <p className="text-beta-cream font-medium text-lg">
+                <Calendar className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-foreground font-medium text-lg">
                   {filter === "pending"
                     ? "Nenhuma escala pendente"
                     : filter === "confirmed"
@@ -232,7 +232,7 @@ export default function MinhasEscalasPage() {
                     ? "Nenhum historico ainda"
                     : "Nenhuma escala encontrada"}
                 </p>
-                <p className="text-beta-gray-blue text-sm mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                   {filter === "pending"
                     ? "Voce esta em dia com suas confirmacoes!"
                     : filter === "confirmed"

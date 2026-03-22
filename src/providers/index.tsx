@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "./theme-provider";
 import { useState } from "react";
 
 interface ProvidersProps {
@@ -23,11 +24,13 @@ export function Providers({ children }: ProvidersProps) {
   );
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster />
-      </QueryClientProvider>
-    </SessionProvider>
+    <ThemeProvider defaultTheme="light" storageKey="beta-theme">
+      <SessionProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <Toaster />
+        </QueryClientProvider>
+      </SessionProvider>
+    </ThemeProvider>
   );
 }

@@ -5,6 +5,7 @@ import { ScheduleReminderEmail, ScheduleReminderEmailProps } from "./templates/s
 import { ScheduleConfirmedEmail, ScheduleConfirmedEmailProps } from "./templates/schedule-confirmed"
 import { ScheduleChangedEmail, ScheduleChangedEmailProps } from "./templates/schedule-changed"
 import { SetlistUpdateEmail, SetlistUpdateEmailProps } from "./templates/setlist-update"
+import { UserInviteEmail, UserInviteEmailProps } from "./templates/user-invite"
 import { prisma } from "@/lib/prisma"
 import { createHash } from "crypto"
 import { format } from "date-fns"
@@ -365,6 +366,52 @@ export async function sendAllReminders(): Promise<{
   }
 
   return { sent, failed, errors }
+}
+
+/**
+ * Interface para dados de convite de usuario
+ */
+interface InviteUserData {
+  id: string
+  name: string | null
+  email: string
+  inviteToken: string
+  inviteExpires: Date
+}
+
+/**
+ * Interface para dados do ministerio
+ */
+interface MinistryData {
+  id: string
+  name: string
+}
+
+/**
+ * Envia email de convite para novo usuario
+ */
+export async function sendUserInvite(
+  user: InviteUserData,
+  ministry: MinistryData,
+  position?: string
+): Promise<SendEmailResult> {
+  const inviteUrl = `${APP_URL}/set-password?token=${user.inviteToken}`
+
+  const props: UserInviteEmailProps = {
+    userName: user.name || "Voluntário",
+    ministryName: ministry.name,
+    position,
+    inviteUrl,
+    expiresAt: user.inviteExpires,
+  }
+
+  const html = await render(UserInviteEmail(props))
+
+  return sendEmail({
+    to: user.email,
+    subject: `Convite: Junte-se ao ministério ${ministry.name}`,
+    html,
+  })
 }
 
 export { generateConfirmToken, generateActionUrls }

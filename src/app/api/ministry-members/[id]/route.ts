@@ -44,14 +44,37 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Permissao negada", 403)
       }
 
-      const { position, active } = bodyResult.data
+      const { positionIds, active } = bodyResult.data
 
-      const updatedMember = await prisma.ministryMember.update({
+      // Se positionIds foi fornecido, atualizar posicoes
+      if (positionIds !== undefined) {
+        // Remover todas as posicoes atuais
+        await prisma.memberPosition.deleteMany({
+          where: { memberId: id },
+        })
+
+        // Criar novas posicoes
+        if (positionIds.length > 0) {
+          await prisma.memberPosition.createMany({
+            data: positionIds.map((positionId: string) => ({
+              memberId: id,
+              positionId,
+            })),
+          })
+        }
+      }
+
+      // Atualizar active se fornecido
+      if (active !== undefined) {
+        await prisma.ministryMember.update({
+          where: { id },
+          data: { active },
+        })
+      }
+
+      // Buscar membro atualizado
+      const updatedMember = await prisma.ministryMember.findUnique({
         where: { id },
-        data: {
-          ...(position !== undefined && { position }),
-          ...(active !== undefined && { active }),
-        },
         include: {
           user: {
             select: {
@@ -60,6 +83,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
               email: true,
               image: true,
               role: true,
+            },
+          },
+          positions: {
+            include: {
+              position: true,
             },
           },
         },

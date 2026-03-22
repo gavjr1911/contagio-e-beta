@@ -48,15 +48,15 @@ function MemberCard({
   canRemove: boolean;
 }) {
   return (
-    <div className="group flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-beta-terracotta/30">
+    <div className="group flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/30">
       {/* Avatar */}
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-beta-navy text-lg font-semibold text-beta-cream">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground">
         {member.name.charAt(0)}
       </div>
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-beta-cream">{member.name}</p>
+        <p className="font-medium text-foreground">{member.name}</p>
         <div className="mt-1 flex flex-wrap gap-1">
           {member.instruments.map((instrument) => (
             <Badge key={instrument} variant="secondary" className="text-xs">
@@ -130,9 +130,9 @@ function AddMemberDialog({
                   key={member.id}
                   onClick={() => handleAdd(member.id)}
                   disabled={addMutation.isPending}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-all hover:border-beta-terracotta/50 hover:bg-muted disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-all hover:border-primary/50 hover:bg-muted disabled:opacity-50"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-beta-navy text-sm font-medium text-beta-cream">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium text-foreground">
                     {member.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -233,11 +233,11 @@ export default function BandaDetailPage({ params }: PageProps) {
               <span className="sr-only">Voltar</span>
             </Link>
           </Button>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-beta-terracotta/20">
-            <Users className="h-7 w-7 text-beta-terracotta" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+            <Users className="h-7 w-7 text-primary" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-bold text-beta-cream sm:text-3xl">
+            <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
               {band.name}
             </h1>
             <p className="text-muted-foreground">
@@ -291,7 +291,7 @@ export default function BandaDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-beta-terracotta" />
+                <Users className="h-5 w-5 text-primary" />
                 Membros da Banda
               </CardTitle>
             </CardHeader>
@@ -326,7 +326,7 @@ export default function BandaDetailPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Music2 className="h-5 w-5 text-beta-terracotta" />
+                  <Music2 className="h-5 w-5 text-primary" />
                   Instrumentos
                 </CardTitle>
               </CardHeader>
@@ -359,7 +359,7 @@ export default function BandaDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="h-5 w-5 text-beta-terracotta" />
+                <Calendar className="h-5 w-5 text-primary" />
                 Historico de Eventos
               </CardTitle>
             </CardHeader>
@@ -371,11 +371,11 @@ export default function BandaDetailPage({ params }: PageProps) {
                       key={event.id}
                       className="flex items-center gap-3 rounded-lg border border-border p-3"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-beta-navy/50">
-                        <Calendar className="h-5 w-5 text-beta-cream" />
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary/50">
+                        <Calendar className="h-5 w-5 text-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-beta-cream">
+                        <p className="text-sm font-medium text-foreground">
                           {event.eventName}
                         </p>
                         <p className="text-xs text-muted-foreground">

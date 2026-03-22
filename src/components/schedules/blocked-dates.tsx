@@ -69,26 +69,26 @@ export function BlockedDates({
   return (
     <div className="space-y-4">
       {/* Calendar showing blocked dates */}
-      <Card className="bg-beta-navy/50 border-beta-gray-blue/20">
+      <Card className="bg-secondary border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg text-beta-cream flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-beta-terracotta" />
+            <CardTitle className="text-lg text-foreground flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary" />
               Calendario de Disponibilidade
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-beta-terracotta hover:bg-beta-terracotta/90">
+                <Button size="sm" className="bg-primary hover:bg-primary/90">
                   <Plus className="h-4 w-4 mr-1" />
                   Adicionar
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-beta-navy border-beta-gray-blue/20 max-w-[380px]">
+              <DialogContent className="bg-card border-border max-w-[380px]">
                 <DialogHeader>
-                  <DialogTitle className="text-beta-cream">
+                  <DialogTitle className="text-foreground">
                     Nova indisponibilidade
                   </DialogTitle>
-                  <DialogDescription className="text-beta-gray-blue">
+                  <DialogDescription className="text-muted-foreground">
                     Selecione as datas em que voce nao estara disponivel.
                   </DialogDescription>
                 </DialogHeader>
@@ -99,15 +99,15 @@ export function BlockedDates({
                     selected={selectedRange}
                     onSelect={setSelectedRange}
                     disabled={{ before: new Date() }}
-                    className="rounded-lg border border-beta-gray-blue/20 bg-beta-black/30"
+                    className="rounded-lg border border-border bg-muted"
                   />
 
                   {selectedRange?.from && (
-                    <div className="bg-beta-terracotta/10 border border-beta-terracotta/20 rounded-lg p-3">
-                      <p className="text-beta-cream text-sm font-medium">
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                      <p className="text-foreground text-sm font-medium">
                         Periodo selecionado:
                       </p>
-                      <p className="text-beta-terracotta text-sm">
+                      <p className="text-primary text-sm">
                         {format(selectedRange.from, "dd 'de' MMMM", {
                           locale: ptBR,
                         })}
@@ -127,7 +127,7 @@ export function BlockedDates({
                   <div className="space-y-2">
                     <Label
                       htmlFor="block-reason"
-                      className="text-beta-cream text-sm font-medium"
+                      className="text-foreground text-sm font-medium"
                     >
                       Motivo (opcional)
                     </Label>
@@ -136,7 +136,7 @@ export function BlockedDates({
                       placeholder="Ex: Viagem, compromisso familiar..."
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      className="bg-beta-black/50 border-beta-gray-blue/30 text-beta-cream placeholder:text-beta-gray-blue/50 min-h-[80px] resize-none"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 min-h-[80px] resize-none"
                     />
                   </div>
                 </div>
@@ -145,14 +145,14 @@ export function BlockedDates({
                   <Button
                     variant="outline"
                     onClick={() => setIsDialogOpen(false)}
-                    className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+                    className="border-border text-muted-foreground hover:bg-muted"
                   >
                     Cancelar
                   </Button>
                   <Button
                     onClick={handleAdd}
                     disabled={!selectedRange?.from || isAdding}
-                    className="bg-beta-terracotta hover:bg-beta-terracotta/90"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     {isAdding ? (
                       <span className="flex items-center gap-2">
@@ -188,13 +188,13 @@ export function BlockedDates({
               selected: "bg-red-500/30 text-red-300",
             }}
           />
-          <div className="mt-3 flex items-center gap-4 text-xs text-beta-gray-blue">
+          <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-full bg-red-500/30" />
               <span>Indisponivel</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-full bg-beta-terracotta" />
+              <div className="h-3 w-3 rounded-full bg-primary" />
               <span>Hoje</span>
             </div>
           </div>
@@ -202,20 +202,20 @@ export function BlockedDates({
       </Card>
 
       {/* List of blocked dates */}
-      <Card className="bg-beta-navy/50 border-beta-gray-blue/20">
+      <Card className="bg-secondary border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg text-beta-cream">
+          <CardTitle className="text-lg text-foreground">
             Datas bloqueadas
           </CardTitle>
         </CardHeader>
         <CardContent>
           {blockedDates.length === 0 ? (
             <div className="text-center py-8">
-              <CalendarIcon className="h-12 w-12 text-beta-gray-blue/50 mx-auto mb-3" />
-              <p className="text-beta-gray-blue text-sm">
+              <CalendarIcon className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">
                 Nenhuma data bloqueada
               </p>
-              <p className="text-beta-gray-blue/70 text-xs mt-1">
+              <p className="text-muted-foreground/70 text-xs mt-1">
                 Adicione datas em que voce nao estara disponivel
               </p>
             </div>
@@ -229,10 +229,10 @@ export function BlockedDates({
                 return (
                   <div
                     key={blocked.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-beta-black/30 border border-beta-gray-blue/10"
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted border border-border"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-beta-cream text-sm font-medium">
+                      <p className="text-foreground text-sm font-medium">
                         {isSingleDay
                           ? format(startDate, "dd 'de' MMMM", { locale: ptBR })
                           : `${format(startDate, "dd/MM", {
@@ -242,7 +242,7 @@ export function BlockedDates({
                             })}`}
                       </p>
                       {blocked.reason && (
-                        <p className="text-beta-gray-blue text-xs mt-0.5 truncate">
+                        <p className="text-muted-foreground text-xs mt-0.5 truncate">
                           {blocked.reason}
                         </p>
                       )}

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               id: true,
               name: true,
               email: true,
+              image: true,
             },
           },
           members: {
@@ -38,6 +39,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                   id: true,
                   name: true,
                   email: true,
+                  image: true,
+                },
+              },
+              positions: {
+                include: {
+                  position: true,
                 },
               },
             },
@@ -84,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Permissao negada", 403)
       }
 
-      const { name, description, type, leaderId } = bodyResult.data
+      const { name, description, leaderId } = bodyResult.data
 
       // Se name foi fornecido, verificar se ja existe outro ministerio com esse nome
       if (name && name !== ministry.name) {
@@ -109,6 +116,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (!leader) {
           return apiError("Lider nao encontrado", 404)
         }
+
+        // Atualizar role do usuario para LEADER se ainda nao for ADMIN ou LEADER
+        if (leader.role !== "ADMIN" && leader.role !== "LEADER") {
+          await prisma.user.update({
+            where: { id: leaderId },
+            data: { role: "LEADER" },
+          })
+        }
       }
 
       const updatedMinistry = await prisma.ministry.update({
@@ -116,7 +131,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         data: {
           ...(name !== undefined && { name }),
           ...(description !== undefined && { description }),
-          ...(type !== undefined && { type }),
           ...(leaderId !== undefined && { leaderId }),
         },
         include: {

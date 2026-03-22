@@ -31,7 +31,7 @@ export function SongCard({ song, showActions = true, onSelect }: SongCardProps) 
 
   return (
     <Card
-      className={`group transition-all duration-200 hover:border-beta-terracotta/50 hover:shadow-lg ${
+      className={`group transition-all duration-200 hover:border-primary/50 hover:shadow-lg ${
         onSelect ? "cursor-pointer" : ""
       }`}
       onClick={onSelect ? handleClick : undefined}
@@ -40,20 +40,20 @@ export function SongCard({ song, showActions = true, onSelect }: SongCardProps) 
         <div className="flex items-start justify-between gap-3">
           {/* Icon and main info */}
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-beta-terracotta/20">
-              <Music className="h-5 w-5 text-beta-terracotta" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+              <Music className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               {showActions ? (
                 <Link
                   href={`/musicas/${song.id}`}
-                  className="block truncate font-display text-lg font-semibold text-beta-cream hover:text-beta-terracotta transition-colors"
+                  className="block truncate font-display text-lg font-semibold text-foreground hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {song.name}
                 </Link>
               ) : (
-                <span className="block truncate font-display text-lg font-semibold text-beta-cream">
+                <span className="block truncate font-display text-lg font-semibold text-foreground">
                   {song.name}
                 </span>
               )}
@@ -100,7 +100,7 @@ export function SongCard({ song, showActions = true, onSelect }: SongCardProps) 
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 text-xs text-beta-terracotta hover:text-beta-terracotta hover:bg-beta-terracotta/10"
+              className="h-8 gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
               asChild
               onClick={(e) => e.stopPropagation()}
             >
@@ -136,16 +136,16 @@ export function SongCardCompact({
     <div
       className={`flex items-center gap-3 rounded-lg border p-3 transition-all ${
         selected
-          ? "border-beta-terracotta bg-beta-terracotta/10"
-          : "border-border hover:border-beta-terracotta/30"
+          ? "border-primary bg-primary/10"
+          : "border-border hover:border-primary/30"
       } ${onSelect ? "cursor-pointer" : ""}`}
       onClick={() => onSelect?.(song)}
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-beta-navy/50">
-        <Music className="h-4 w-4 text-beta-cream" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-secondary">
+        <Music className="h-4 w-4 text-foreground" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-beta-cream">{song.name}</p>
+        <p className="truncate text-sm font-medium text-foreground">{song.name}</p>
         <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
       </div>
       <Badge variant="secondary" className="shrink-0 font-mono text-xs">

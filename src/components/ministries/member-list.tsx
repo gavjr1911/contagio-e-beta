@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, UserMinus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MoreHorizontal, Pencil, Trash2, UserMinus, UserCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,30 +22,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   MinistryMember,
+  MinistryPosition,
   useUpdateMember,
   useRemoveMember,
+  useMinistryPositions,
 } from "@/hooks/use-ministries";
 
 interface MemberListProps {
   members: MinistryMember[];
   canEdit: boolean;
+  ministryId?: string;
 }
 
-export function MemberList({ members, canEdit }: MemberListProps) {
+export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
   const [editingMember, setEditingMember] = useState<MinistryMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<MinistryMember | null>(null);
-  const [editPosition, setEditPosition] = useState("");
+  const [selectedPositionIds, setSelectedPositionIds] = useState<string[]>([]);
 
+  const { data: positions } = useMinistryPositions(ministryId || "");
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
 
+  // Atualiza os IDs selecionados quando o membro sendo editado muda
+  useEffect(() => {
+    if (editingMember) {
+      const currentIds = editingMember.positions?.map((p) => p.positionId) || [];
+      setSelectedPositionIds(currentIds);
+    }
+  }, [editingMember]);
+
   const handleEdit = (member: MinistryMember) => {
     setEditingMember(member);
-    setEditPosition(member.position || "");
+  };
+
+  const togglePosition = (positionId: string) => {
+    setSelectedPositionIds((prev) =>
+      prev.includes(positionId)
+        ? prev.filter((id) => id !== positionId)
+        : [...prev, positionId]
+    );
   };
 
   const handleSaveEdit = async () => {
@@ -52,10 +71,10 @@ export function MemberList({ members, canEdit }: MemberListProps) {
 
     await updateMember.mutateAsync({
       id: editingMember.id,
-      position: editPosition || undefined,
+      positionIds: selectedPositionIds,
     });
     setEditingMember(null);
-    setEditPosition("");
+    setSelectedPositionIds([]);
   };
 
   const handleToggleActive = async (member: MinistryMember) => {
@@ -72,16 +91,21 @@ export function MemberList({ members, canEdit }: MemberListProps) {
     setDeletingMember(null);
   };
 
+  // Helper para obter nomes das posições de um membro
+  const getPositionNames = (member: MinistryMember): string[] => {
+    return member.positions?.map((p) => p.position?.name).filter(Boolean) as string[] || [];
+  };
+
   if (members.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-beta-navy/10">
-          <UserMinus className="h-8 w-8 text-beta-navy/50" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+          <UserMinus className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="mt-4 text-lg font-medium text-beta-black">
+        <h3 className="mt-4 text-lg font-medium text-foreground">
           Nenhum membro
         </h3>
-        <p className="mt-1 text-sm text-beta-navy/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Este ministerio ainda nao possui membros cadastrados.
         </p>
       </div>
@@ -90,110 +114,153 @@ export function MemberList({ members, canEdit }: MemberListProps) {
 
   return (
     <>
-      <div className="divide-y divide-beta-navy/10">
-        {members.map((member) => (
-          <div
-            key={member.id}
-            className="flex items-center justify-between gap-4 py-4"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-10 w-10 shrink-0">
-                <AvatarImage src={member.user.image || undefined} />
-                <AvatarFallback className="bg-beta-terracotta text-white">
-                  {member.user.name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-beta-black">
-                  {member.user.name || member.user.email}
-                </p>
-                <div className="flex items-center gap-2 text-sm text-beta-navy/60">
-                  {member.position && (
-                    <span className="truncate">{member.position}</span>
+      <div className="divide-y divide-border">
+        {members.map((member) => {
+          const positionNames = getPositionNames(member);
+
+          return (
+            <div
+              key={member.id}
+              className="flex items-center justify-between gap-4 py-4"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={member.user.image || undefined} />
+                  <AvatarFallback className="bg-primary text-white">
+                    {member.user.name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">
+                    {member.user.name || member.user.email}
+                  </p>
+                  {positionNames.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {positionNames.map((name, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="text-xs font-normal"
+                        >
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge
+                  variant={member.active ? "default" : "secondary"}
+                  className={
+                    member.active
+                      ? "bg-green-500/10 text-green-700 hover:bg-green-500/20"
+                      : "bg-secondary text-muted-foreground"
+                  }
+                >
+                  {member.active ? "Ativo" : "Inativo"}
+                </Badge>
+                {canEdit && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Acoes</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(member)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar posicoes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleToggleActive(member)}>
+                        {member.active ? (
+                          <>
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            Desativar
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            Ativar
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600"
+                        onClick={() => setDeletingMember(member)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                variant={member.active ? "default" : "secondary"}
-                className={
-                  member.active
-                    ? "bg-green-500/10 text-green-700 hover:bg-green-500/20"
-                    : "bg-beta-navy/10 text-beta-navy/60"
-                }
-              >
-                {member.active ? "Ativo" : "Inativo"}
-              </Badge>
-              {canEdit && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-beta-navy/60 hover:text-beta-black"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Acoes</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEdit(member)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Editar posicao
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleToggleActive(member)}>
-                      {member.active ? (
-                        <>
-                          <UserMinus className="mr-2 h-4 w-4" />
-                          Desativar
-                        </>
-                      ) : (
-                        <>
-                          <UserMinus className="mr-2 h-4 w-4" />
-                          Ativar
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
-                      onClick={() => setDeletingMember(member)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Remover
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar posicao</DialogTitle>
+            <DialogTitle>Editar posicoes</DialogTitle>
             <DialogDescription>
-              Atualize a posicao de {editingMember?.user.name} no ministerio.
+              Selecione as posicoes de {editingMember?.user.name} no ministerio.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="position">Posicao</Label>
-              <Input
-                id="position"
-                value={editPosition}
-                onChange={(e) => setEditPosition(e.target.value)}
-                placeholder="Ex: Mesa de Som, Guitarra, Recepcionista..."
-              />
+              <Label>Posicoes</Label>
+              {!positions || positions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma posicao cadastrada para este ministerio.
+                </p>
+              ) : (
+                <div className="grid gap-2">
+                  {positions.map((pos) => (
+                    <div
+                      key={pos.id}
+                      className="flex items-center space-x-3 rounded-lg border border-border p-3 hover:bg-muted/50 cursor-pointer"
+                      onClick={() => togglePosition(pos.id)}
+                    >
+                      <Checkbox
+                        id={`edit-pos-${pos.id}`}
+                        checked={selectedPositionIds.includes(pos.id)}
+                        onCheckedChange={() => togglePosition(pos.id)}
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`edit-pos-${pos.id}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {pos.name}
+                        </label>
+                        {pos.description && (
+                          <p className="text-xs text-muted-foreground">{pos.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedPositionIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {selectedPositionIds.length} posicao(oes) selecionada(s)
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -206,7 +273,7 @@ export function MemberList({ members, canEdit }: MemberListProps) {
             <Button
               onClick={handleSaveEdit}
               disabled={updateMember.isPending}
-              className="bg-beta-terracotta hover:bg-beta-terracotta/90"
+              className="bg-primary hover:bg-primary/90"
             >
               {updateMember.isPending ? "Salvando..." : "Salvar"}
             </Button>
@@ -247,7 +314,7 @@ export function MemberList({ members, canEdit }: MemberListProps) {
 
 export function MemberListSkeleton() {
   return (
-    <div className="divide-y divide-beta-navy/10">
+    <div className="divide-y divide-border">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-center justify-between gap-4 py-4">
           <div className="flex items-center gap-3">

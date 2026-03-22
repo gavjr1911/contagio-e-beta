@@ -5,53 +5,107 @@
 
 /* ============================================
    CSS Variables - Igreja Beta Theme
-   Dark mode by default
+   Professional Design System with Dark/Light Mode Support
    ============================================ */
 
 :root {
-  /* Beta Brand Colors */
+  /* ============================================
+     LIGHT MODE (Default)
+     Clean, professional, high contrast
+     ============================================ */
+
+  /* Brand Colors - Core Identity */
   --beta-black: #1B1B1B;
-  --beta-navy: #3B5562;
-  --beta-cream: #F5E7D7;
   --beta-terracotta: #BF531A;
-  --beta-gray-blue: #C5CACD;
+  --beta-cream: #F5E7D7;
 
-  /* Semantic Colors - Dark Mode (Default) */
-  --background: #1B1B1B;
-  --foreground: #F5E7D7;
+  /* Neutral Palette - Light Mode */
+  --neutral-50: #FAFAFA;
+  --neutral-100: #F5F5F5;
+  --neutral-200: #E5E5E5;
+  --neutral-300: #D4D4D4;
+  --neutral-400: #A3A3A3;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+  --neutral-700: #404040;
+  --neutral-800: #262626;
+  --neutral-900: #171717;
+  --neutral-950: #0A0A0A;
 
-  --card: #3B5562;
-  --card-foreground: #F5E7D7;
+  /* Orange Palette - Accessible Scale */
+  --orange-50: #FFF7ED;
+  --orange-100: #FFEDD5;
+  --orange-200: #FED7AA;
+  --orange-300: #FDBA74;
+  --orange-400: #FB923C;
+  --orange-500: #F97316;
+  --orange-600: #EA580C;
+  --orange-700: #C85400;  /* 4.5:1 on white - WCAG AA */
+  --orange-800: #9C4221;
+  --orange-900: #7C2D12;
+  --orange-950: #431407;
 
-  --primary: #BF531A;
-  --primary-foreground: #F5E7D7;
+  /* Semantic Colors - Light Mode */
+  --background: #FAFAFA;
+  --foreground: #1A1A1A;
 
-  --secondary: #3B5562;
-  --secondary-foreground: #F5E7D7;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --card-border: #E8E8E8;
 
-  --muted: #3B5562;
-  --muted-foreground: #C5CACD;
+  --primary: #D45A00;
+  --primary-hover: #B84D00;
+  --primary-foreground: #FFFFFF;
 
-  --accent: #BF531A;
-  --accent-foreground: #F5E7D7;
+  --secondary: #F0F0F0;
+  --secondary-hover: #E0E0E0;
+  --secondary-foreground: #1A1A1A;
 
-  --destructive: #E53935;
-  --destructive-foreground: #F5E7D7;
+  --muted: #F5F5F5;
+  --muted-foreground: #6B6B6B;
 
-  --success: #22C55E;
-  --success-foreground: #F5E7D7;
+  --accent: #F0F0F0;
+  --accent-hover: #E0E0E0;
+  --accent-foreground: #1A1A1A;
 
-  --warning: #BF531A;
-  --warning-foreground: #F5E7D7;
+  --destructive: #DC2626;
+  --destructive-hover: #B91C1C;
+  --destructive-foreground: #FFFFFF;
 
-  --popover: #3B5562;
-  --popover-foreground: #F5E7D7;
+  --success: #16A34A;
+  --success-hover: #15803D;
+  --success-foreground: #FFFFFF;
 
-  --border: rgba(197, 202, 205, 0.2);
-  --input: rgba(59, 85, 98, 0.5);
-  --ring: #BF531A;
+  --warning: #EA580C;
+  --warning-hover: #C85400;
+  --warning-foreground: #FFFFFF;
 
-  /* Border Radius */
+  --info: #0284C7;
+  --info-hover: #0369A1;
+  --info-foreground: #FFFFFF;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+
+  --border: #E5E5E5;
+  --input: #FFFFFF;
+  --input-border: #D4D4D4;
+  --ring: #D45A00;
+
+  /* Shadows - Light Mode */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Border Radius - Consistent Scale */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
   --radius-card: 16px;
   --radius-button: 8px;
   --radius: 8px;
@@ -61,12 +115,76 @@
   --font-display: 'DM Sans', system-ui, sans-serif;
 }
 
+.dark {
+  /* ============================================
+     DARK MODE
+     Refined, reduced eye strain, desaturated accents
+     Using dark gray instead of pure black
+     ============================================ */
+
+  /* Backgrounds - Dark gray for better visual comfort */
+  --background: #1C1C1E;
+  --foreground: #F5F5F7;
+
+  --card: #2C2C2E;
+  --card-foreground: #F5F5F7;
+  --card-border: rgba(255, 255, 255, 0.1);
+
+  /* Primary - Bright orange for dark backgrounds, WCAG compliant */
+  --primary: #FF7A3D;
+  --primary-hover: #E86A2D;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #3A3A3C;
+  --secondary-hover: #48484A;
+  --secondary-foreground: #F5F5F7;
+
+  --muted: #3A3A3C;
+  --muted-foreground: #98989D;
+
+  --accent: #FF7A3D;
+  --accent-hover: #E86A2D;
+  --accent-foreground: #FFFFFF;
+
+  /* Semantic colors adjusted for dark mode */
+  --destructive: #FF453A;
+  --destructive-hover: #E63B31;
+  --destructive-foreground: #FFFFFF;
+
+  --success: #30D158;
+  --success-hover: #28B84C;
+  --success-foreground: #FFFFFF;
+
+  --warning: #FF9F0A;
+  --warning-hover: #E68F09;
+  --warning-foreground: #1C1C1E;
+
+  --info: #64D2FF;
+  --info-hover: #5AC8F5;
+  --info-foreground: #1C1C1E;
+
+  --popover: #2C2C2E;
+  --popover-foreground: #F5F5F7;
+
+  --border: rgba(255, 255, 255, 0.12);
+  --input: #2C2C2E;
+  --input-border: rgba(255, 255, 255, 0.16);
+  --ring: #FF7A3D;
+
+  /* Shadows - Dark Mode with subtle glow effect */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 /* ============================================
    Tailwind v4 Theme Configuration
    ============================================ */
 
 @theme inline {
-  /* Colors */
+  /* Semantic Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -74,52 +192,96 @@
   --color-card-foreground: var(--card-foreground);
 
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
 
   --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
   --color-secondary-foreground: var(--secondary-foreground);
 
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
 
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
   --color-destructive-foreground: var(--destructive-foreground);
 
   --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
   --color-success-foreground: var(--success-foreground);
 
   --color-warning: var(--warning);
+  --color-warning-hover: var(--warning-hover);
   --color-warning-foreground: var(--warning-foreground);
+
+  --color-info: var(--info);
+  --color-info-hover: var(--info-hover);
+  --color-info-foreground: var(--info-foreground);
 
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
 
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-border: var(--input-border);
   --color-ring: var(--ring);
 
-  /* Beta Brand Colors */
-  --color-beta-black: #1B1B1B;
-  --color-beta-navy: #3B5562;
-  --color-beta-cream: #F5E7D7;
-  --color-beta-terracotta: #BF531A;
-  --color-beta-gray-blue: #C5CACD;
+  /* Brand Colors */
+  --color-beta-black: var(--beta-black);
+  --color-beta-terracotta: var(--beta-terracotta);
+  --color-beta-cream: var(--beta-cream);
+
+  /* Neutral Palette */
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+
+  /* Orange Palette */
+  --color-orange-50: var(--orange-50);
+  --color-orange-100: var(--orange-100);
+  --color-orange-200: var(--orange-200);
+  --color-orange-300: var(--orange-300);
+  --color-orange-400: var(--orange-400);
+  --color-orange-500: var(--orange-500);
+  --color-orange-600: var(--orange-600);
+  --color-orange-700: var(--orange-700);
+  --color-orange-800: var(--orange-800);
+  --color-orange-900: var(--orange-900);
+  --color-orange-950: var(--orange-950);
 
   /* Fonts */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'DM Sans', system-ui, sans-serif;
 
   /* Border Radius */
-  --radius-card: 16px;
-  --radius-button: 8px;
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-2xl: 24px;
+  --radius-card: 16px;
+  --radius-button: 8px;
+  --radius: 8px;
+
+  /* Box Shadows */
+  --box-shadow-sm: var(--shadow-sm);
+  --box-shadow: var(--shadow);
+  --box-shadow-md: var(--shadow-md);
+  --box-shadow-lg: var(--shadow-lg);
+  --box-shadow-xl: var(--shadow-xl);
 }
 
 /* ============================================
@@ -131,6 +293,10 @@
 }
 
 html {
+  color-scheme: light;
+}
+
+html.dark {
   color-scheme: dark;
 }
 
@@ -140,43 +306,71 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 /* ============================================
    Custom Utility Classes
    ============================================ */
 
-/* Text Colors */
-.text-beta-black { color: var(--beta-black); }
-.text-beta-navy { color: var(--beta-navy); }
-.text-beta-cream { color: var(--beta-cream); }
-.text-beta-terracotta { color: var(--beta-terracotta); }
-.text-beta-gray-blue { color: var(--beta-gray-blue); }
-
-/* Background Colors */
-.bg-beta-black { background-color: var(--beta-black); }
-.bg-beta-navy { background-color: var(--beta-navy); }
-.bg-beta-cream { background-color: var(--beta-cream); }
-.bg-beta-terracotta { background-color: var(--beta-terracotta); }
-.bg-beta-gray-blue { background-color: var(--beta-gray-blue); }
-
-/* Border Colors */
-.border-beta-black { border-color: var(--beta-black); }
-.border-beta-navy { border-color: var(--beta-navy); }
-.border-beta-cream { border-color: var(--beta-cream); }
-.border-beta-terracotta { border-color: var(--beta-terracotta); }
-.border-beta-gray-blue { border-color: var(--beta-gray-blue); }
-
 /* Font Families */
 .font-display {
   font-family: var(--font-display);
 }
 
+/* Text Colors - Brand */
+.text-beta-black { color: var(--beta-black); }
+.text-beta-cream { color: var(--beta-cream); }
+.text-beta-terracotta { color: var(--beta-terracotta); }
+
+/* Background Colors - Brand */
+.bg-beta-black { background-color: var(--beta-black); }
+.bg-beta-cream { background-color: var(--beta-cream); }
+.bg-beta-terracotta { background-color: var(--beta-terracotta); }
+
+/* Border Colors - Brand */
+.border-beta-black { border-color: var(--beta-black); }
+.border-beta-cream { border-color: var(--beta-cream); }
+.border-beta-terracotta { border-color: var(--beta-terracotta); }
+
 /* Card Style */
 .card-beta {
   background-color: var(--card);
   border-radius: var(--radius-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease-out;
+}
+
+.card-beta:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--muted-foreground);
+  transform: translateY(-2px);
+}
+
+.card-beta:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow);
+}
+
+/* Card with subtle highlight */
+.card-highlight {
+  background-color: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
 }
 
 /* Button Styles */
@@ -186,11 +380,25 @@ body {
   border-radius: var(--radius-button);
   padding: 0.75rem 1.5rem;
   font-weight: 500;
-  transition: opacity 0.2s ease;
+  transition: all 0.15s ease-out;
+  border: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
 }
 
 .btn-secondary {
@@ -199,31 +407,78 @@ body {
   border-radius: var(--radius-button);
   padding: 0.75rem 1.5rem;
   font-weight: 500;
-  transition: opacity 0.2s ease;
+  transition: all 0.15s ease-out;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
-  opacity: 0.9;
+  background-color: var(--secondary-hover);
+  border-color: var(--muted-foreground);
+  box-shadow: var(--shadow);
+}
+
+.btn-secondary:active {
+  box-shadow: none;
+}
+
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+}
+
+/* Ghost Button */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--foreground);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.15s ease-out;
+  border: none;
+}
+
+.btn-ghost:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.btn-ghost:active {
+  background-color: var(--secondary-hover);
 }
 
 /* Input Styles */
 .input-beta {
   background-color: var(--input);
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-button);
   padding: 0.75rem 1rem;
   color: var(--foreground);
+  transition: all 0.15s ease-out;
+  box-shadow: var(--shadow-sm);
+}
+
+.input-beta:hover {
+  border-color: var(--muted-foreground);
 }
 
 .input-beta:focus {
   outline: none;
-  ring: 2px;
-  ring-color: var(--ring);
   border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(212, 90, 0, 0.15);
+}
+
+.dark .input-beta:focus {
+  box-shadow: 0 0 0 3px rgba(255, 122, 61, 0.25);
 }
 
 .input-beta::placeholder {
   color: var(--muted-foreground);
+}
+
+.input-beta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Focus Ring */
@@ -234,11 +489,11 @@ body {
 
 /* Gradient Overlays */
 .gradient-beta {
-  background: linear-gradient(135deg, var(--beta-terracotta) 0%, var(--beta-navy) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
 }
 
 .gradient-beta-subtle {
-  background: linear-gradient(180deg, transparent 0%, rgba(27, 27, 27, 0.8) 100%);
+  background: linear-gradient(180deg, transparent 0%, var(--background) 100%);
 }
 
 /* Scrollbar Styles */
@@ -248,20 +503,213 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--beta-black);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--beta-navy);
+  background: var(--muted);
   border-radius: 4px;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--beta-gray-blue);
+  background: var(--muted-foreground);
 }
 
 /* Selection */
 ::selection {
-  background-color: var(--beta-terracotta);
-  color: var(--beta-cream);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Smooth Transitions for Theme Toggle */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+}
+
+/* Disable transitions for elements that shouldn't animate */
+.no-transition,
+.no-transition * {
+  transition: none !important;
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+/* Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Animation Classes */
+.animate-in {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.fade-out {
+  animation-name: fadeOut;
+}
+
+.slide-in-from-bottom-4 {
+  animation-name: slideInFromBottom;
+}
+
+.slide-in-from-top-4 {
+  animation-name: slideInFromTop;
+}
+
+.slide-in-from-left-4 {
+  animation-name: slideInFromLeft;
+}
+
+.slide-in-from-right-4 {
+  animation-name: slideInFromRight;
+}
+
+.scale-in {
+  animation-name: scaleIn;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.hover-lift:active {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.hover-glow {
+  transition: box-shadow 0.2s ease-out;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(212, 90, 0, 0.15);
+}
+
+.dark .hover-glow:hover {
+  box-shadow: 0 0 20px rgba(255, 122, 61, 0.2);
+}
+
+/* Interactive Links */
+.link-hover {
+  position: relative;
+  transition: color 0.15s ease-out;
+}
+
+.link-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary);
+  transition: width 0.2s ease-out;
+}
+
+.link-hover:hover {
+  color: var(--primary);
+}
+
+.link-hover:hover::after {
+  width: 100%;
+}
+
+/* Skeleton Shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--secondary) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

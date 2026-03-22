@@ -60,8 +60,8 @@ export function ScheduleCard({
   return (
     <Card
       className={cn(
-        "bg-beta-navy/50 border-beta-gray-blue/20 transition-all duration-200",
-        onClick && "cursor-pointer hover:bg-beta-navy/70 active:scale-[0.98]",
+        "bg-secondary border-border transition-all duration-200",
+        onClick && "cursor-pointer hover:bg-secondary/70 active:scale-[0.98]",
         isPending && "border-l-4 border-l-amber-500"
       )}
       onClick={onClick}
@@ -70,13 +70,13 @@ export function ScheduleCard({
         {/* Header - Event name and status */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-beta-cream truncate text-base">
+            <h3 className="font-semibold text-foreground truncate text-base">
               {schedule.event.title}
             </h3>
-            <p className="text-beta-gray-blue text-sm mt-0.5">
+            <p className="text-muted-foreground text-sm mt-0.5">
               {schedule.ministry.name}
               {schedule.position && (
-                <span className="text-beta-terracotta ml-1">
+                <span className="text-primary ml-1">
                   - {schedule.position}
                 </span>
               )}
@@ -88,15 +88,15 @@ export function ScheduleCard({
         </div>
 
         {/* Date and time info */}
-        <div className="flex flex-wrap gap-3 text-sm text-beta-gray-blue mb-4">
+        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
           <div className="flex items-center gap-1.5">
-            <Calendar className="h-4 w-4 text-beta-terracotta" />
+            <Calendar className="h-4 w-4 text-primary" />
             <span className="capitalize">
               {format(eventDate, "EEE, dd 'de' MMMM", { locale: ptBR })}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4 text-beta-terracotta" />
+            <Clock className="h-4 w-4 text-primary" />
             <span>
               {schedule.event.startTime}
               {schedule.event.endTime && ` - ${schedule.event.endTime}`}
@@ -160,7 +160,7 @@ export function ScheduleCard({
         {/* Arrow indicator for clickable cards */}
         {onClick && !isPending && (
           <div className="flex justify-end mt-2">
-            <ChevronRight className="h-5 w-5 text-beta-gray-blue" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>
         )}
       </CardContent>

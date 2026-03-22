@@ -54,7 +54,7 @@ function getStatusVariant(
 function getTypeColor(type: EventType): string {
   switch (type) {
     case "culto":
-      return "bg-beta-terracotta/10 text-beta-terracotta border-beta-terracotta/20";
+      return "bg-primary/10 text-primary border-primary/20";
     case "ensaio":
       return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "reuniao":
@@ -130,7 +130,7 @@ export default function EventoDetailPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-beta-terracotta" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -228,7 +228,7 @@ export default function EventoDetailPage() {
               )}
             </div>
 
-            <Button className="bg-beta-terracotta hover:bg-beta-terracotta/90">
+            <Button className="bg-primary hover:bg-primary-hover">
               <Edit className="h-4 w-4 mr-2" />
               Editar
             </Button>
@@ -246,7 +246,7 @@ export default function EventoDetailPage() {
               className={cn(
                 "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
                 activeTab === tab.id
-                  ? "border-beta-terracotta text-beta-terracotta"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
               )}
             >
@@ -279,7 +279,7 @@ export default function EventoDetailPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Escalas do Evento</h2>
               <Link href={`/eventos/${event.id}/escalas`}>
-                <Button className="bg-beta-terracotta hover:bg-beta-terracotta/90">
+                <Button className="bg-primary hover:bg-primary-hover">
                   <Users className="h-4 w-4 mr-2" />
                   Gerenciar Escalas
                 </Button>

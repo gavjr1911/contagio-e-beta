@@ -64,7 +64,7 @@ const mockTemplates: Template[] = [
 function getTypeColor(type: EventType): string {
   switch (type) {
     case "culto":
-      return "bg-beta-terracotta/10 text-beta-terracotta border-beta-terracotta/20";
+      return "bg-primary/10 text-primary border-primary/20";
     case "ensaio":
       return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "reuniao":
@@ -330,7 +330,7 @@ export default function NovoEventoPage() {
               <Button
                 type="submit"
                 disabled={createEvent.isPending}
-                className="bg-beta-terracotta hover:bg-beta-terracotta/90"
+                className="bg-primary hover:bg-primary-hover"
               >
                 {createEvent.isPending ? (
                   <>
@@ -379,7 +379,7 @@ export default function NovoEventoPage() {
                       className={cn(
                         "w-full p-3 rounded-lg border text-left transition-all",
                         selectedTemplate === template.id
-                          ? "border-beta-terracotta bg-beta-terracotta/10"
+                          ? "border-primary bg-primary/10"
                           : "border-border hover:bg-muted"
                       )}
                     >
@@ -440,7 +440,7 @@ export default function NovoEventoPage() {
                         className={cn(
                           "w-full p-3 rounded-lg border text-left transition-all",
                           selectedEventToCopy === event.id
-                            ? "border-beta-terracotta bg-beta-terracotta/10"
+                            ? "border-primary bg-primary/10"
                             : "border-border hover:bg-muted"
                         )}
                       >

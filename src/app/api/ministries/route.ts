@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return queryResult.response
     }
 
-    const { page = 1, limit = 20, search, type, includeMembers, includeLeader } = queryResult.data
+    const { page = 1, limit = 20, search, includeMembers, includeLeader } = queryResult.data
 
     try {
       const { skip, take } = getPaginationParams(page, limit)
@@ -38,10 +38,6 @@ export async function GET(request: NextRequest) {
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
         ]
-      }
-
-      if (type) {
-        where.type = type
       }
 
       const [ministries, total] = await Promise.all([
@@ -95,7 +91,7 @@ export async function POST(request: NextRequest) {
       return bodyResult.response
     }
 
-    const { name, description, type, leaderId } = bodyResult.data
+    const { name, description, leaderId } = bodyResult.data
 
     try {
       // Verificar se ja existe ministerio com esse nome
@@ -122,7 +118,6 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description,
-          type,
           leaderId,
         },
         include: {

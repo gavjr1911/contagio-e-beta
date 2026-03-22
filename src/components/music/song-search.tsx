@@ -119,14 +119,14 @@ export function SongSearch({
                     type="button"
                     className={`flex w-full items-center gap-3 px-4 py-2 text-left transition-colors ${
                       index === highlightedIndex
-                        ? "bg-beta-terracotta/20 text-beta-cream"
+                        ? "bg-primary/20 text-foreground"
                         : "hover:bg-muted"
                     }`}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => handleSelect(song)}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-beta-navy/50">
-                      <Music className="h-4 w-4 text-beta-cream" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-secondary">
+                      <Music className="h-4 w-4 text-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{song.name}</p>

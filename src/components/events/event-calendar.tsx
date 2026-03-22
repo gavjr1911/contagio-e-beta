@@ -19,7 +19,7 @@ interface EventCalendarProps {
 function getTypeColor(type: EventType): string {
   switch (type) {
     case "culto":
-      return "bg-beta-terracotta";
+      return "bg-primary";
     case "ensaio":
       return "bg-blue-500";
     case "reuniao":
@@ -78,7 +78,7 @@ export function EventCalendar({
           hasEvent: datesWithEvents,
         }}
         modifiersClassNames={{
-          hasEvent: "font-bold text-beta-terracotta",
+          hasEvent: "font-bold text-primary",
         }}
         classNames={{
           months: "flex flex-col",
@@ -107,7 +107,7 @@ export function EventCalendar({
             "flex flex-col items-center justify-start pt-1"
           ),
           selected:
-            "bg-beta-terracotta text-white hover:bg-beta-terracotta/90",
+            "bg-primary text-white hover:bg-primary-hover",
           today: "bg-muted/50 font-semibold",
           outside: "text-muted-foreground/50",
           disabled: "text-muted-foreground/30",
@@ -140,7 +140,7 @@ export function EventCalendar({
                 )}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate group-hover:text-beta-terracotta transition-colors">
+                <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
                   {event.name}
                 </p>
                 <p className="text-xs text-muted-foreground">

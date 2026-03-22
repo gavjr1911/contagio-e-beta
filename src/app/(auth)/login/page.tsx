@@ -44,12 +44,12 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       {/* Card de Login */}
-      <div className="bg-beta-navy/30 border border-beta-gray-blue/20 rounded-2xl p-8 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl p-8 backdrop-blur-sm">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-semibold text-beta-cream">
+          <h1 className="text-2xl font-semibold text-foreground">
             Bem-vindo de volta
           </h1>
-          <p className="text-beta-gray-blue mt-1">
+          <p className="text-muted-foreground mt-1">
             Entre com suas credenciais para continuar
           </p>
         </div>
@@ -59,19 +59,19 @@ export default function LoginPage() {
           <div className="space-y-2">
             <label
               htmlFor="email"
-              className="text-sm font-medium text-beta-cream"
+              className="text-sm font-medium text-foreground"
             >
               Email
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-beta-gray-blue" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 bg-beta-navy/50 border-beta-gray-blue/30 text-beta-cream placeholder:text-beta-gray-blue/60 focus:border-beta-terracotta focus:ring-beta-terracotta"
+                className="pl-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:ring-primary"
                 required
                 disabled={isLoading}
               />
@@ -82,26 +82,26 @@ export default function LoginPage() {
           <div className="space-y-2">
             <label
               htmlFor="password"
-              className="text-sm font-medium text-beta-cream"
+              className="text-sm font-medium text-foreground"
             >
               Senha
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-beta-gray-blue" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Sua senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 bg-beta-navy/50 border-beta-gray-blue/30 text-beta-cream placeholder:text-beta-gray-blue/60 focus:border-beta-terracotta focus:ring-beta-terracotta"
+                className="pl-10 pr-10 bg-muted border-border text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:ring-primary"
                 required
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-beta-gray-blue hover:text-beta-cream transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -123,7 +123,7 @@ export default function LoginPage() {
           <div className="flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-sm text-beta-terracotta hover:text-beta-terracotta/80 transition-colors"
+              className="text-sm text-primary hover:text-primary/80 transition-colors"
             >
               Esqueci minha senha
             </Link>
@@ -132,7 +132,7 @@ export default function LoginPage() {
           {/* Botao de Login */}
           <Button
             type="submit"
-            className="w-full bg-beta-terracotta hover:bg-beta-terracotta/90 text-beta-cream font-semibold h-12"
+            className="w-full bg-primary hover:bg-primary/90 text-foreground font-semibold h-12"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -148,11 +148,11 @@ export default function LoginPage() {
       </div>
 
       {/* Ajuda */}
-      <p className="text-center text-sm text-beta-gray-blue">
+      <p className="text-center text-sm text-muted-foreground">
         Problemas para acessar?{" "}
         <Link
           href="/contato"
-          className="text-beta-terracotta hover:text-beta-terracotta/80 transition-colors"
+          className="text-primary hover:text-primary/80 transition-colors"
         >
           Entre em contato
         </Link>

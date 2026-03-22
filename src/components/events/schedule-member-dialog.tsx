@@ -176,7 +176,7 @@ export function ScheduleMemberDialog({
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
                     selectedMinistry === ministry.id
-                      ? "bg-beta-terracotta text-white border-beta-terracotta"
+                      ? "bg-primary text-white border-primary"
                       : "bg-background border-border hover:bg-muted"
                   )}
                 >
@@ -198,7 +198,7 @@ export function ScheduleMemberDialog({
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
                       selectedPosition === position
-                        ? "bg-beta-navy text-white border-beta-navy"
+                        ? "bg-secondary text-white border-secondary"
                         : "bg-background border-border hover:bg-muted"
                     )}
                   >
@@ -232,7 +232,7 @@ export function ScheduleMemberDialog({
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
                       selectedMember === member.id
-                        ? "border-beta-terracotta bg-beta-terracotta/10"
+                        ? "border-primary bg-primary/10"
                         : "border-border hover:bg-muted",
                       member.hasConflict &&
                         "opacity-60 cursor-not-allowed bg-amber-500/5 border-amber-500/30"
@@ -242,7 +242,7 @@ export function ScheduleMemberDialog({
                       {member.avatar && (
                         <AvatarImage src={member.avatar} alt={member.name} />
                       )}
-                      <AvatarFallback className="bg-beta-navy text-white text-xs">
+                      <AvatarFallback className="bg-secondary text-white text-xs">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -264,7 +264,7 @@ export function ScheduleMemberDialog({
                     </div>
 
                     {selectedMember === member.id && (
-                      <Badge className="bg-beta-terracotta text-white">
+                      <Badge className="bg-primary text-white">
                         Selecionado
                       </Badge>
                     )}
@@ -288,7 +288,7 @@ export function ScheduleMemberDialog({
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit || isLoading}
-            className="bg-beta-terracotta hover:bg-beta-terracotta/90"
+            className="bg-primary hover:bg-primary-hover"
           >
             {isLoading ? (
               <>

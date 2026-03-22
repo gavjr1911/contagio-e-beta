@@ -1,16 +1,5 @@
 import { z } from "zod"
 
-// Tipos de ministerio disponiveis
-export const MinistryType = z.enum([
-  "RECEPTION",
-  "PASTORAL",
-  "TECHNICAL",
-  "WORSHIP",
-  "COMMUNICATION",
-  "CONTAGIE",
-])
-export type MinistryType = z.infer<typeof MinistryType>
-
 // Schema para criar um novo ministerio
 export const createMinistrySchema = z.object({
   name: z
@@ -22,7 +11,6 @@ export const createMinistrySchema = z.object({
     .max(500, "Descricao deve ter no maximo 500 caracteres")
     .optional()
     .nullable(),
-  type: MinistryType,
   leaderId: z.string().optional().nullable(),
 })
 
@@ -38,29 +26,18 @@ export const updateMinistrySchema = z.object({
     .max(500, "Descricao deve ter no maximo 500 caracteres")
     .optional()
     .nullable(),
-  type: MinistryType.optional(),
   leaderId: z.string().optional().nullable(),
 })
 
 // Schema para adicionar membro ao ministerio
 export const addMemberSchema = z.object({
-  userId: z.string().uuid("ID do usuario invalido"),
-  position: z
-    .string()
-    .min(2, "Posicao deve ter pelo menos 2 caracteres")
-    .max(100, "Posicao deve ter no maximo 100 caracteres")
-    .optional()
-    .nullable(),
+  userId: z.string().cuid("ID do usuario invalido"),
+  positionIds: z.array(z.string().cuid()).optional(),
 })
 
 // Schema para atualizar membro do ministerio
 export const updateMemberSchema = z.object({
-  position: z
-    .string()
-    .min(2, "Posicao deve ter pelo menos 2 caracteres")
-    .max(100, "Posicao deve ter no maximo 100 caracteres")
-    .optional()
-    .nullable(),
+  positionIds: z.array(z.string().cuid()).optional(),
   active: z.boolean().optional(),
 })
 
@@ -69,7 +46,6 @@ export const ministryQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1).optional(),
   limit: z.coerce.number().min(1).max(100).default(20).optional(),
   search: z.string().optional(),
-  type: MinistryType.optional(),
   includeMembers: z.coerce.boolean().default(false).optional(),
   includeLeader: z.coerce.boolean().default(true).optional(),
 })

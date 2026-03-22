@@ -129,7 +129,7 @@ export function LyricsViewer({ lyrics, originalKey, className = "" }: LyricsView
 
       if (isChordLine) {
         return (
-          <div key={lineIndex} className="font-mono text-beta-terracotta font-medium">
+          <div key={lineIndex} className="font-mono text-primary font-medium">
             {line}
           </div>
         );
@@ -142,7 +142,7 @@ export function LyricsViewer({ lyrics, originalKey, className = "" }: LyricsView
           {parts.map((part, partIndex) => {
             if (part.startsWith("[") && part.endsWith("]")) {
               return (
-                <span key={partIndex} className="font-mono text-beta-terracotta font-medium">
+                <span key={partIndex} className="font-mono text-primary font-medium">
                   {part.slice(1, -1)}
                 </span>
               );
@@ -155,7 +155,7 @@ export function LyricsViewer({ lyrics, originalKey, className = "" }: LyricsView
   };
 
   return (
-    <div className={`rounded-lg border border-border bg-beta-navy/30 ${className}`}>
+    <div className={`rounded-lg border border-border bg-muted ${className}`}>
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export function LyricsViewer({ lyrics, originalKey, className = "" }: LyricsView
 
       {/* Lyrics content */}
       <div className="max-h-[500px] overflow-auto p-4">
-        <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-beta-cream">
+        <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
           {renderLyrics(transposedLyrics)}
         </div>
       </div>
@@ -269,8 +269,8 @@ interface LyricsDisplayProps {
 
 export function LyricsDisplay({ lyrics, className = "" }: LyricsDisplayProps) {
   return (
-    <div className={`rounded-lg border border-border bg-beta-navy/30 p-4 ${className}`}>
-      <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-beta-cream">
+    <div className={`rounded-lg border border-border bg-muted p-4 ${className}`}>
+      <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
         {lyrics}
       </div>
     </div>

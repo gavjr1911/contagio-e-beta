@@ -113,11 +113,11 @@ export default function NovaMusicaPage() {
             <span className="sr-only">Voltar</span>
           </Link>
         </Button>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-beta-terracotta/20">
-          <Music className="h-6 w-6 text-beta-terracotta" />
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+          <Music className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="font-display text-2xl font-bold text-beta-cream">
+          <h1 className="font-display text-2xl font-bold text-foreground">
             Nova Musica
           </h1>
           <p className="text-muted-foreground">
@@ -215,7 +215,7 @@ export default function NovaMusicaPage() {
                   <Badge
                     key={tag}
                     variant={formData.tags.includes(tag) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors hover:bg-beta-terracotta/80"
+                    className="cursor-pointer transition-colors hover:bg-primary/80"
                     onClick={() => toggleTag(tag)}
                   >
                     {tag}

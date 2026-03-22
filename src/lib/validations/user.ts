@@ -1,5 +1,75 @@
 import { z } from "zod"
 
+// ============================================
+// CPF VALIDATION
+// ============================================
+
+// Validacao de CPF brasileiro
+export function validateCPF(cpf: string): boolean {
+  // Remove caracteres nao numericos
+  const cleanCPF = cpf.replace(/\D/g, "");
+
+  if (cleanCPF.length !== 11) return false;
+
+  // Verifica se todos os digitos sao iguais
+  if (/^(\d)\1+$/.test(cleanCPF)) return false;
+
+  // Validacao do primeiro digito verificador
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cleanCPF[i]) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF[9])) return false;
+
+  // Validacao do segundo digito verificador
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cleanCPF[i]) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF[10])) return false;
+
+  return true;
+}
+
+// Formatar CPF para exibicao
+export function formatCPF(cpf: string): string {
+  const clean = cpf.replace(/\D/g, "");
+  return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
+// Limpar CPF para armazenamento
+export function cleanCPF(cpf: string): string {
+  return cpf.replace(/\D/g, "");
+}
+
+// ============================================
+// PHONE VALIDATION
+// ============================================
+
+// Validacao de telefone brasileiro
+export function validatePhone(phone: string): boolean {
+  const clean = phone.replace(/\D/g, "");
+  // Aceita 10 ou 11 digitos (com ou sem 9)
+  return clean.length === 10 || clean.length === 11;
+}
+
+// Formatar telefone para exibicao
+export function formatPhone(phone: string): string {
+  const clean = phone.replace(/\D/g, "");
+  if (clean.length === 11) {
+    return clean.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  }
+  return clean.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+}
+
+// ============================================
+// USER ROLES
+// ============================================
+
 // Roles disponiveis no sistema
 export const UserRole = z.enum(["ADMIN", "COORDINATOR", "LEADER", "COMMUNICATION", "VOLUNTEER"])
 export type UserRole = z.infer<typeof UserRole>
@@ -73,3 +143,59 @@ export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
 export type UserQueryInput = z.infer<typeof userQuerySchema>
+
+// ============================================
+// INVITE USER SCHEMAS
+// ============================================
+
+// Schema Zod para criacao de usuario via convite
+export const inviteUserSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Nome deve ter pelo menos 2 caracteres")
+    .max(100, "Nome deve ter no maximo 100 caracteres"),
+  email: z
+    .string()
+    .email("Email invalido")
+    .transform((v) => v.toLowerCase()),
+  cpf: z
+    .string()
+    .min(11, "CPF invalido")
+    .refine((val) => validateCPF(val), "CPF invalido")
+    .transform((v) => cleanCPF(v)),
+  phone: z
+    .string()
+    .min(10, "Telefone obrigatório")
+    .refine((val) => validatePhone(val), "Telefone inválido")
+    .transform((v) => v.replace(/\D/g, "")),
+  birthDate: z
+    .string()
+    .optional()
+    .transform((v) => (v ? new Date(v) : undefined)),
+  ministryId: z.string().min(1, "Ministerio obrigatorio"),
+  positionIds: z.array(z.string().cuid()).optional(),
+});
+
+export type InviteUserInput = z.infer<typeof inviteUserSchema>;
+
+// Schema para definir senha
+export const setPasswordSchema = z.object({
+  token: z.string().min(1, "Token obrigatorio"),
+  password: z
+    .string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres")
+    .max(100, "Senha deve ter no maximo 100 caracteres"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Senhas nao conferem",
+  path: ["confirmPassword"],
+});
+
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+
+// Schema para atualizar perfil com foto
+export const updateProfileWithPhotoSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  phone: z.string().optional().refine((val) => !val || validatePhone(val), "Telefone inválido"),
+  image: z.string().url("URL inválida").optional().nullable(),
+})

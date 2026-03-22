@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Logo } from "@/components/ui/logo";
 
 export default function AuthLayout({
   children,
@@ -6,15 +6,13 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-beta-black px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       {/* Logo Beta */}
       <div className="mb-8">
         <div className="flex items-center justify-center">
-          <span className="font-display text-4xl font-light tracking-tight text-beta-cream">
-            Be<span className="relative">t<span className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-beta-cream" /></span>a
-          </span>
+          <Logo variant="orange" size="lg" />
         </div>
-        <p className="text-center text-sm text-beta-gray-blue mt-2">
+        <p className="text-center text-sm text-muted-foreground mt-2">
           /escalas
         </p>
       </div>
@@ -25,7 +23,7 @@ export default function AuthLayout({
       </div>
 
       {/* Footer */}
-      <div className="mt-8 text-center text-xs text-beta-gray-blue">
+      <div className="mt-8 text-center text-xs text-muted-foreground">
         <p>Igreja Beta - Todos os direitos reservados</p>
       </div>
     </div>

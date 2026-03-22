@@ -22,15 +22,6 @@ enum UserRole {
   VOLUNTEER
 }
 
-enum MinistryType {
-  RECEPTION
-  PASTORAL
-  TECHNICAL
-  WORSHIP
-  COMMUNICATION
-  CONTAGIE
-}
-
 enum EventType {
   SUNDAY_MORNING
   SUNDAY_EVENING
@@ -82,6 +73,11 @@ model User {
   image         String?
   password      String? // Hash da senha para login com credenciais
   role          UserRole  @default(VOLUNTEER)
+  cpf           String?   @unique
+  phone         String?
+  birthDate     DateTime?
+  inviteToken   String?   @unique
+  inviteExpires DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -151,41 +147,71 @@ model VerificationToken {
 // ============================================
 
 model Ministry {
-  id          String       @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  description String?      @db.Text
-  type        MinistryType
+  description String?  @db.Text
   leaderId    String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relacionamentos
-  leader    User?            @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  leader    User?              @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
   members   MinistryMember[]
   schedules Schedule[]
+  positions MinistryPosition[]
 
   @@index([leaderId])
-  @@index([type])
   @@map("ministries")
+}
+
+model MinistryPosition {
+  id          String   @id @default(cuid())
+  ministryId  String
+  name        String   // Ex: "Mesa de Som", "Guitarra", "Recepcionista"
+  description String?
+  createdAt   DateTime @default(now())
+
+  ministry Ministry               @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  members  MemberPosition[]
+
+  @@unique([ministryId, name])
+  @@index([ministryId])
+  @@map("ministry_positions")
 }
 
 model MinistryMember {
   id         String   @id @default(cuid())
   userId     String
   ministryId String
-  position   String? // Ex: "Mesa de Som", "Guitarra", "Recepcionista"
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 
   // Relacionamentos
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ministry  Ministry         @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  positions MemberPosition[]
 
   @@unique([userId, ministryId])
   @@index([userId])
   @@index([ministryId])
   @@index([active])
   @@map("ministry_members")
+}
+
+// Tabela de juncao para relacao many-to-many entre MinistryMember e MinistryPosition
+model MemberPosition {
+  id         String   @id @default(cuid())
+  memberId   String
+  positionId String
+  assignedAt DateTime @default(now())
+
+  member   MinistryMember   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  position MinistryPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, positionId])
+  @@index([memberId])
+  @@index([positionId])
+  @@map("member_positions")
 }
 
 // ============================================
@@ -426,4 +452,18 @@ model BlockedDate {
   @@index([startDate])
   @@index([endDate])
   @@map("blocked_dates")
+}
+
+// ============================================
+// APP SETTINGS (CONFIGURACOES DO SISTEMA)
+// ============================================
+
+model AppSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
 }

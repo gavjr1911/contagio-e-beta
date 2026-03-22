@@ -8,10 +8,10 @@ import {
   ArrowLeft,
   Calendar,
   History,
-  Settings,
+  Briefcase,
+  Pencil,
   Trash2,
   Users,
-  User,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +29,11 @@ import {
 } from "@/components/ui/dialog";
 import { MemberList, MemberListSkeleton } from "@/components/ministries/member-list";
 import { AddMemberDialog } from "@/components/ministries/add-member-dialog";
+import { PositionsManager } from "@/components/ministries/positions-manager";
+import { EditMinistryDialog } from "@/components/ministries/edit-ministry-dialog";
 import {
   useMinistry,
   useDeleteMinistry,
-  getMinistryTypeLabel,
 } from "@/hooks/use-ministries";
 import { useState } from "react";
 
@@ -66,10 +67,10 @@ export default function MinisterioDetailPage({ params }: PageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <h3 className="text-lg font-medium text-beta-black">
+          <h3 className="text-lg font-medium text-foreground">
             Erro ao carregar ministerio
           </h3>
-          <p className="mt-1 text-sm text-beta-navy/60">
+          <p className="mt-1 text-sm text-muted-foreground">
             O ministerio nao foi encontrado ou ocorreu um erro.
           </p>
           <Button asChild className="mt-4" variant="outline">
@@ -92,7 +93,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
         </div>
 
         {/* Header */}
-        <Card className="mb-8 border-beta-navy/20 bg-beta-cream/5">
+        <Card className="mb-8 border-border bg-card">
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
@@ -134,7 +135,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Back button */}
       <div className="mb-6">
-        <Button asChild variant="ghost" className="text-beta-navy hover:text-beta-black">
+        <Button asChild variant="ghost" className="text-muted-foreground hover:text-foreground">
           <Link href="/ministerios">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar para ministerios
@@ -143,70 +144,68 @@ export default function MinisterioDetailPage({ params }: PageProps) {
       </div>
 
       {/* Header Card */}
-      <Card className="mb-8 border-beta-navy/20 bg-beta-cream/5">
+      <Card className="mb-8 border-border bg-card">
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="flex items-center gap-3">
-                <CardTitle className="text-2xl font-bold text-beta-black">
-                  {ministry.name}
-                </CardTitle>
-                <Badge
-                  variant="secondary"
-                  className="bg-beta-navy/10 text-beta-navy"
-                >
-                  {getMinistryTypeLabel(ministry.type)}
-                </Badge>
-              </div>
+              <CardTitle className="text-2xl font-bold text-foreground">
+                {ministry.name}
+              </CardTitle>
               {ministry.description && (
-                <p className="mt-2 text-beta-navy/70">{ministry.description}</p>
+                <p className="mt-2 text-muted-foreground">{ministry.description}</p>
               )}
             </div>
-            {isAdmin && (
+            {canEdit && (
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Excluir
-                </Button>
+                <EditMinistryDialog
+                  ministry={ministry}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                  }
+                />
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir
+                  </Button>
+                )}
               </div>
             )}
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-beta-navy/10">
-              <User className="h-6 w-6 text-beta-navy" />
-            </div>
-            <div>
-              <p className="text-sm text-beta-navy/60">Lider</p>
-              {ministry.leader ? (
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={ministry.leader.image || undefined} />
-                    <AvatarFallback className="bg-beta-terracotta text-white text-xs">
-                      {ministry.leader.name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium text-beta-black">
-                    {ministry.leader.name || ministry.leader.email}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-beta-navy/50 italic">
-                  Sem lider definido
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">Lider:</p>
+            {ministry.leader ? (
+              <div className="flex items-center gap-2">
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={ministry.leader.image || undefined} />
+                  <AvatarFallback className="bg-primary text-white text-xs">
+                    {ministry.leader.name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">
+                  {ministry.leader.name || ministry.leader.email}
                 </span>
-              )}
-            </div>
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic">
+                Sem lider definido
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -214,11 +213,11 @@ export default function MinisterioDetailPage({ params }: PageProps) {
       {/* Tabs */}
       <Tabs defaultValue="members" className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="bg-beta-cream/50">
+          <TabsList className="bg-card0">
             <TabsTrigger value="members" className="gap-2">
               <Users className="h-4 w-4" />
               Membros
-              <Badge variant="secondary" className="ml-1 bg-beta-navy/10 text-beta-navy">
+              <Badge variant="secondary" className="ml-1 bg-secondary text-muted-foreground">
                 {activeMembers.length}
               </Badge>
             </TabsTrigger>
@@ -230,6 +229,12 @@ export default function MinisterioDetailPage({ params }: PageProps) {
               <History className="h-4 w-4" />
               Historico
             </TabsTrigger>
+            {canEdit && (
+              <TabsTrigger value="positions" className="gap-2">
+                <Briefcase className="h-4 w-4" />
+                Posicoes
+              </TabsTrigger>
+            )}
           </TabsList>
           {canEdit && (
             <AddMemberDialog
@@ -241,43 +246,43 @@ export default function MinisterioDetailPage({ params }: PageProps) {
 
         <TabsContent value="members" className="space-y-6">
           {/* Active Members */}
-          <Card className="border-beta-navy/20">
+          <Card className="border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg text-beta-black">
+              <CardTitle className="text-lg text-foreground">
                 Membros Ativos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <MemberList members={activeMembers} canEdit={canEdit} />
+              <MemberList members={activeMembers} canEdit={canEdit} ministryId={ministry.id} />
             </CardContent>
           </Card>
 
           {/* Inactive Members */}
           {inactiveMembers.length > 0 && (
-            <Card className="border-beta-navy/20">
+            <Card className="border-border">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-beta-navy/70">
+                <CardTitle className="text-lg text-muted-foreground">
                   Membros Inativos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <MemberList members={inactiveMembers} canEdit={canEdit} />
+                <MemberList members={inactiveMembers} canEdit={canEdit} ministryId={ministry.id} />
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
         <TabsContent value="schedules">
-          <Card className="border-beta-navy/20">
+          <Card className="border-border">
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-beta-navy/10">
-                  <Calendar className="h-8 w-8 text-beta-navy/50" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+                  <Calendar className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-beta-black">
+                <h3 className="mt-4 text-lg font-medium text-foreground">
                   Escalas
                 </h3>
-                <p className="mt-1 text-sm text-beta-navy/60">
+                <p className="mt-1 text-sm text-muted-foreground">
                   As escalas deste ministerio serao exibidas aqui.
                 </p>
               </div>
@@ -286,22 +291,28 @@ export default function MinisterioDetailPage({ params }: PageProps) {
         </TabsContent>
 
         <TabsContent value="history">
-          <Card className="border-beta-navy/20">
+          <Card className="border-border">
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-beta-navy/10">
-                  <History className="h-8 w-8 text-beta-navy/50" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+                  <History className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-beta-black">
+                <h3 className="mt-4 text-lg font-medium text-foreground">
                   Historico
                 </h3>
-                <p className="mt-1 text-sm text-beta-navy/60">
+                <p className="mt-1 text-sm text-muted-foreground">
                   O historico de atividades sera exibido aqui.
                 </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
+
+        {canEdit && (
+          <TabsContent value="positions">
+            <PositionsManager ministryId={ministry.id} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Delete Confirmation Dialog */}

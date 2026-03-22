@@ -2,6 +2,7 @@
 // Based on shadcn/ui with Beta brand colors
 
 export * from "./avatar"
+export * from "./avatar-upload"
 export * from "./badge"
 export * from "./button"
 export * from "./calendar"
@@ -18,3 +19,4 @@ export * from "./tabs"
 export * from "./textarea"
 export * from "./toast"
 export * from "./toaster"
+export { Logo, LogoText } from "./logo"

@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 function getTypeColor(type: EventType): string {
   switch (type) {
     case "culto":
-      return "bg-beta-terracotta/10 text-beta-terracotta border-beta-terracotta/20";
+      return "bg-primary/10 text-primary border-primary/20";
     case "ensaio":
       return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "reuniao":
@@ -126,7 +126,7 @@ export default function EventoEscalasPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-beta-terracotta" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -190,7 +190,7 @@ export default function EventoEscalasPage() {
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button
-              className="bg-beta-terracotta hover:bg-beta-terracotta/90"
+              className="bg-primary hover:bg-primary-hover"
               onClick={() => {
                 setSelectedMinistryId(undefined);
                 setDialogOpen(true);

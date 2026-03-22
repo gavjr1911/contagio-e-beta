@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-beta-black">
+    <div className="min-h-screen bg-background">
       {/* Sidebar */}
       <Sidebar />
 

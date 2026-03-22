@@ -25,13 +25,13 @@ function StatsCard({
   trend?: { value: number; positive: boolean };
 }) {
   return (
-    <div className="bg-beta-navy rounded-2xl p-6 border border-beta-gray-blue/10">
+    <div className="bg-card rounded-2xl p-6 border border-border">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-beta-gray-blue">{title}</p>
-          <p className="text-3xl font-semibold text-beta-cream mt-1">{value}</p>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="text-3xl font-semibold text-foreground mt-1">{value}</p>
           {description && (
-            <p className="text-xs text-beta-gray-blue mt-1">{description}</p>
+            <p className="text-xs text-muted-foreground mt-1">{description}</p>
           )}
           {trend && (
             <p
@@ -44,8 +44,8 @@ function StatsCard({
             </p>
           )}
         </div>
-        <div className="p-3 bg-beta-terracotta/20 rounded-xl">
-          <Icon className="h-6 w-6 text-beta-terracotta" />
+        <div className="p-3 bg-primary/20 rounded-xl">
+          <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
     </div>
@@ -88,12 +88,12 @@ function EventCard({
   const StatusIcon = config.icon;
 
   return (
-    <div className="bg-beta-navy/50 rounded-xl p-4 border border-beta-gray-blue/10 hover:border-beta-terracotta/30 transition-colors">
+    <div className="bg-card/50 rounded-xl p-4 border border-border hover:border-primary/30 transition-colors">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="font-medium text-beta-cream">{title}</h3>
-          <p className="text-sm text-beta-gray-blue mt-1">{type}</p>
-          <div className="flex items-center gap-3 mt-2 text-xs text-beta-gray-blue">
+          <h3 className="font-medium text-foreground">{title}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{type}</p>
+          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
               {date}
@@ -127,7 +127,7 @@ function ScaleCard({
   const statusConfig = {
     pendente: {
       label: "Pendente",
-      color: "border-beta-terracotta bg-beta-terracotta/10",
+      color: "border-primary bg-primary/10",
     },
     confirmado: {
       label: "Confirmado",
@@ -143,13 +143,13 @@ function ScaleCard({
 
   return (
     <div
-      className={`rounded-xl p-4 border-l-4 bg-beta-navy/50 ${config.color}`}
+      className={`rounded-xl p-4 border-l-4 bg-card/50 ${config.color}`}
     >
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-medium text-beta-cream">{event}</h3>
-          <p className="text-sm text-beta-gray-blue mt-1">{role}</p>
-          <p className="text-xs text-beta-gray-blue mt-2 flex items-center gap-1">
+          <h3 className="font-medium text-foreground">{event}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{role}</p>
+          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
             {date}
           </p>
@@ -159,7 +159,7 @@ function ScaleCard({
             <button className="px-3 py-1.5 text-xs font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
               Aceitar
             </button>
-            <button className="px-3 py-1.5 text-xs font-medium bg-beta-black/50 text-beta-gray-blue rounded-lg hover:bg-beta-black/70 transition-colors">
+            <button className="px-3 py-1.5 text-xs font-medium bg-muted text-muted-foreground rounded-lg hover:bg-muted/70 transition-colors">
               Recusar
             </button>
           </div>
@@ -226,10 +226,10 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Greeting */}
       <div>
-        <h2 className="text-3xl font-semibold text-beta-cream">
+        <h2 className="text-3xl font-semibold text-foreground">
           {greeting}, {userName}!
         </h2>
-        <p className="text-beta-gray-blue mt-1">
+        <p className="text-muted-foreground mt-1">
           Confira suas escalas e proximos eventos
         </p>
       </div>
@@ -268,12 +268,12 @@ export default async function DashboardPage() {
         {/* Upcoming Events */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-beta-cream">
+            <h3 className="text-lg font-semibold text-foreground">
               Proximos Eventos
             </h3>
             <Link
               href="/eventos"
-              className="text-sm text-beta-terracotta hover:text-beta-terracotta/80 transition-colors"
+              className="text-sm text-primary hover:text-primary/80 transition-colors"
             >
               Ver todos
             </Link>
@@ -288,12 +288,12 @@ export default async function DashboardPage() {
         {/* Pending Scales */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-beta-cream">
+            <h3 className="text-lg font-semibold text-foreground">
               Minhas Escalas
             </h3>
             <Link
               href="/escalas"
-              className="text-sm text-beta-terracotta hover:text-beta-terracotta/80 transition-colors"
+              className="text-sm text-primary hover:text-primary/80 transition-colors"
             >
               Ver todas
             </Link>
@@ -304,12 +304,12 @@ export default async function DashboardPage() {
                 <ScaleCard key={index} {...scale} />
               ))
             ) : (
-              <div className="bg-beta-navy/50 rounded-xl p-6 text-center">
+              <div className="bg-card/50 rounded-xl p-6 text-center">
                 <CheckCircle2 className="h-12 w-12 text-green-400 mx-auto mb-3" />
-                <p className="text-beta-cream font-medium">
+                <p className="text-foreground font-medium">
                   Todas as escalas confirmadas!
                 </p>
-                <p className="text-sm text-beta-gray-blue mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Voce nao tem escalas pendentes
                 </p>
               </div>
@@ -319,38 +319,38 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-beta-navy/30 rounded-2xl p-6 border border-beta-gray-blue/10">
-        <h3 className="text-lg font-semibold text-beta-cream mb-4">
+      <div className="bg-card/30 rounded-2xl p-6 border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
           Acoes Rapidas
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link
             href="/eventos/novo"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-beta-navy/50 hover:bg-beta-navy transition-colors group"
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
           >
-            <Calendar className="h-8 w-8 text-beta-gray-blue group-hover:text-beta-terracotta transition-colors" />
-            <span className="text-sm text-beta-cream">Novo Evento</span>
+            <Calendar className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-sm text-foreground">Novo Evento</span>
           </Link>
           <Link
             href="/escalas/nova"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-beta-navy/50 hover:bg-beta-navy transition-colors group"
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
           >
-            <Clock className="h-8 w-8 text-beta-gray-blue group-hover:text-beta-terracotta transition-colors" />
-            <span className="text-sm text-beta-cream">Nova Escala</span>
+            <Clock className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-sm text-foreground">Nova Escala</span>
           </Link>
           <Link
             href="/musicas/nova"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-beta-navy/50 hover:bg-beta-navy transition-colors group"
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
           >
-            <Music className="h-8 w-8 text-beta-gray-blue group-hover:text-beta-terracotta transition-colors" />
-            <span className="text-sm text-beta-cream">Nova Musica</span>
+            <Music className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-sm text-foreground">Nova Musica</span>
           </Link>
           <Link
             href="/ministerios"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-beta-navy/50 hover:bg-beta-navy transition-colors group"
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
           >
-            <Users className="h-8 w-8 text-beta-gray-blue group-hover:text-beta-terracotta transition-colors" />
-            <span className="text-sm text-beta-cream">Ministerios</span>
+            <Users className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-sm text-foreground">Ministerios</span>
           </Link>
         </div>
       </div>

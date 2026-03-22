@@ -100,11 +100,11 @@ export default function MusicaDetailPage({ params }: PageProps) {
               <span className="sr-only">Voltar</span>
             </Link>
           </Button>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-beta-terracotta/20">
-            <Music className="h-7 w-7 text-beta-terracotta" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+            <Music className="h-7 w-7 text-primary" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-bold text-beta-cream sm:text-3xl">
+            <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
               {song.name}
             </h1>
             <p className="text-lg text-muted-foreground">{song.artist}</p>
@@ -173,7 +173,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
           {song.lyrics ? (
             <div>
               <h2 className="mb-4 flex items-center gap-2 font-display text-xl font-semibold">
-                <FileText className="h-5 w-5 text-beta-terracotta" />
+                <FileText className="h-5 w-5 text-primary" />
                 Letra e Cifra
               </h2>
               <LyricsViewer
@@ -211,26 +211,26 @@ export default function MusicaDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Clock className="h-5 w-5 text-beta-terracotta" />
+                <Clock className="h-5 w-5 text-primary" />
                 Estatisticas
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Vezes tocada</span>
-                <span className="text-2xl font-bold text-beta-cream">
+                <span className="text-2xl font-bold text-foreground">
                   {song.timesPlayed}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Ultima vez</span>
-                <span className="text-sm font-medium text-beta-cream">
+                <span className="text-sm font-medium text-foreground">
                   {formatDate(song.lastPlayedAt)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Cadastrada em</span>
-                <span className="text-sm font-medium text-beta-cream">
+                <span className="text-sm font-medium text-foreground">
                   {formatDate(song.createdAt)}
                 </span>
               </div>
@@ -241,7 +241,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="h-5 w-5 text-beta-terracotta" />
+                <Calendar className="h-5 w-5 text-primary" />
                 Historico de Eventos
               </CardTitle>
             </CardHeader>
@@ -254,7 +254,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
                       className="flex items-center justify-between rounded-lg border border-border p-3"
                     >
                       <div>
-                        <p className="text-sm font-medium text-beta-cream">
+                        <p className="text-sm font-medium text-foreground">
                           {event.eventName}
                         </p>
                         <p className="text-xs text-muted-foreground">

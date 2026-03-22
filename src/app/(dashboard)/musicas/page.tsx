@@ -50,7 +50,7 @@ export default function MusicasPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-beta-cream">
+          <h1 className="font-display text-3xl font-bold text-foreground">
             Biblioteca de Musicas
           </h1>
           <p className="mt-1 text-muted-foreground">
@@ -128,7 +128,7 @@ export default function MusicasPage() {
                   <Badge
                     key={tag}
                     variant={selectedTags.includes(tag) ? "default" : "outline"}
-                    className="cursor-pointer transition-colors hover:bg-beta-terracotta/80"
+                    className="cursor-pointer transition-colors hover:bg-primary/80"
                     onClick={() => toggleTag(tag)}
                   >
                     {tag}

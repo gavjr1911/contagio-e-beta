@@ -60,7 +60,7 @@ function SortableSetlistItem({ item, onRemove, onKeyChange }: SortableItemProps)
       ref={setNodeRef}
       style={style}
       className={`group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all ${
-        isDragging ? "border-beta-terracotta shadow-lg" : "border-border"
+        isDragging ? "border-primary shadow-lg" : "border-border"
       }`}
     >
       {/* Drag handle */}
@@ -73,16 +73,16 @@ function SortableSetlistItem({ item, onRemove, onKeyChange }: SortableItemProps)
       </button>
 
       {/* Order number */}
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-beta-navy text-sm font-medium text-beta-cream">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium text-foreground">
         {item.order}
       </div>
 
       {/* Song info */}
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-beta-terracotta/20">
-        <Music className="h-4 w-4 text-beta-terracotta" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/20">
+        <Music className="h-4 w-4 text-primary" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-beta-cream">{item.song.name}</p>
+        <p className="truncate text-sm font-medium text-foreground">{item.song.name}</p>
         <p className="truncate text-xs text-muted-foreground">{item.song.artist}</p>
       </div>
 
@@ -90,7 +90,7 @@ function SortableSetlistItem({ item, onRemove, onKeyChange }: SortableItemProps)
       <select
         value={item.key}
         onChange={(e) => onKeyChange(item.id, e.target.value)}
-        className="h-8 rounded border border-border bg-input px-2 text-sm font-mono focus:border-beta-terracotta focus:outline-none focus:ring-1 focus:ring-beta-terracotta"
+        className="h-8 rounded border border-border bg-input px-2 text-sm font-mono focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
       >
         {MUSICAL_KEYS.map((key) => (
           <option key={key} value={key}>
@@ -104,7 +104,7 @@ function SortableSetlistItem({ item, onRemove, onKeyChange }: SortableItemProps)
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-beta-terracotta"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
           asChild
         >
           <a href={item.song.chordLink} target="_blank" rel="noopener noreferrer">
@@ -307,14 +307,14 @@ export function SetlistDisplay({ items, showChordLinks = true }: SetlistDisplayP
           key={item.id}
           className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-beta-navy text-sm font-medium text-beta-cream">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium text-foreground">
             {item.order}
           </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-beta-terracotta/20">
-            <Music className="h-4 w-4 text-beta-terracotta" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/20">
+            <Music className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-beta-cream">{item.song.name}</p>
+            <p className="truncate text-sm font-medium text-foreground">{item.song.name}</p>
             <p className="truncate text-xs text-muted-foreground">{item.song.artist}</p>
           </div>
           <Badge variant="secondary" className="font-mono">

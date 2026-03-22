@@ -9,10 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Ministry, getMinistryTypeLabel } from "@/hooks/use-ministries";
+import { Ministry } from "@/hooks/use-ministries";
 
 interface MinistryCardProps {
   ministry: Ministry;
@@ -23,21 +22,13 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
 
   return (
     <Link href={`/ministerios/${ministry.id}`}>
-      <Card className="group cursor-pointer border-beta-navy/20 bg-beta-cream/5 transition-all hover:border-beta-terracotta/50 hover:shadow-lg">
+      <Card className="group cursor-pointer border-border bg-card transition-all duration-200 hover:border-primary/50 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:shadow-md">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg font-semibold text-beta-black group-hover:text-beta-terracotta">
-              {ministry.name}
-            </CardTitle>
-            <Badge
-              variant="secondary"
-              className="shrink-0 bg-beta-navy/10 text-beta-navy"
-            >
-              {getMinistryTypeLabel(ministry.type)}
-            </Badge>
-          </div>
+          <CardTitle className="text-lg font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
+            {ministry.name}
+          </CardTitle>
           {ministry.description && (
-            <CardDescription className="line-clamp-2 text-beta-navy/70">
+            <CardDescription className="line-clamp-2 text-muted-foreground">
               {ministry.description}
             </CardDescription>
           )}
@@ -45,16 +36,16 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
         <CardContent className="space-y-4">
           {/* Leader info */}
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-beta-navy/10">
-              <User className="h-4 w-4 text-beta-navy" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
+              <User className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-beta-navy/60">Lider</p>
+              <p className="text-xs text-muted-foreground">Lider</p>
               {ministry.leader ? (
                 <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-6 w-6 ring-2 ring-primary/20">
                     <AvatarImage src={ministry.leader.image || undefined} />
-                    <AvatarFallback className="bg-beta-terracotta text-white text-xs">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {ministry.leader.name
                         ?.split(" ")
                         .map((n) => n[0])
@@ -63,12 +54,12 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
                         .toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate text-sm font-medium text-beta-black">
+                  <span className="truncate text-sm font-medium text-foreground">
                     {ministry.leader.name || ministry.leader.email}
                   </span>
                 </div>
               ) : (
-                <span className="text-sm text-beta-navy/50 italic">
+                <span className="text-sm text-muted-foreground italic">
                   Sem lider definido
                 </span>
               )}
@@ -77,12 +68,12 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
 
           {/* Members count */}
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-beta-terracotta/10">
-              <Users className="h-4 w-4 text-beta-terracotta" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+              <Users className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-beta-navy/60">Membros</p>
-              <p className="text-sm font-medium text-beta-black">
+              <p className="text-xs text-muted-foreground">Membros</p>
+              <p className="text-sm font-medium text-foreground">
                 {memberCount} {memberCount === 1 ? "membro" : "membros"}
               </p>
             </div>
@@ -95,12 +86,9 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
 
 export function MinistryCardSkeleton() {
   return (
-    <Card className="border-beta-navy/20 bg-beta-cream/5">
+    <Card className="border-border bg-card animate-pulse">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-5 w-20" />
-        </div>
+        <Skeleton className="h-6 w-32" />
         <Skeleton className="mt-2 h-4 w-full" />
         <Skeleton className="h-4 w-2/3" />
       </CardHeader>

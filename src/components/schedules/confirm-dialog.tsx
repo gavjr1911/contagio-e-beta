@@ -29,19 +29,19 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-beta-navy border-beta-gray-blue/20 max-w-[340px] mx-auto">
+      <DialogContent className="bg-card border-border max-w-[340px] mx-auto">
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20">
             <PartyPopper className="h-8 w-8 text-emerald-400" />
           </div>
-          <DialogTitle className="text-xl text-beta-cream">
+          <DialogTitle className="text-xl text-foreground">
             Confirmar presenca?
           </DialogTitle>
-          <DialogDescription className="text-beta-gray-blue">
+          <DialogDescription className="text-muted-foreground">
             {eventName ? (
               <>
                 Voce esta confirmando sua presenca em{" "}
-                <span className="text-beta-terracotta font-medium">
+                <span className="text-primary font-medium">
                   {eventName}
                 </span>
                 .
@@ -63,7 +63,7 @@ export function ConfirmDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
-            className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+            className="border-border text-muted-foreground hover:bg-muted"
           >
             Cancelar
           </Button>

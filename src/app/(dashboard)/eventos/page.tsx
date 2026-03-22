@@ -117,7 +117,7 @@ export default function EventosPage() {
         </div>
 
         <Link href="/eventos/novo">
-          <Button className="bg-beta-terracotta hover:bg-beta-terracotta/90">
+          <Button className="bg-primary hover:bg-primary-hover">
             <Plus className="h-4 w-4 mr-2" />
             Novo Evento
           </Button>
@@ -158,12 +158,12 @@ export default function EventosPage() {
         <Button
           variant="outline"
           onClick={() => setShowFilters(!showFilters)}
-          className={cn(hasActiveFilters && "border-beta-terracotta")}
+          className={cn(hasActiveFilters && "border-primary")}
         >
           <Filter className="h-4 w-4 mr-2" />
           Filtros
           {hasActiveFilters && (
-            <Badge className="ml-2 bg-beta-terracotta text-white">
+            <Badge className="ml-2 bg-primary text-white">
               {(filters.type ? 1 : 0) + (filters.status ? 1 : 0)}
             </Badge>
           )}
@@ -205,7 +205,7 @@ export default function EventosPage() {
                         key={type}
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors",
-                          filters.type === type && "bg-muted text-beta-terracotta"
+                          filters.type === type && "bg-muted text-primary"
                         )}
                         onClick={() => {
                           setFilters({ ...filters, type });
@@ -252,7 +252,7 @@ export default function EventosPage() {
                         className={cn(
                           "w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors",
                           filters.status === status &&
-                            "bg-muted text-beta-terracotta"
+                            "bg-muted text-primary"
                         )}
                         onClick={() => {
                           setFilters({ ...filters, status });
@@ -280,7 +280,7 @@ export default function EventosPage() {
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-beta-terracotta" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : error ? (
         <Card className="p-8 text-center">
@@ -318,7 +318,7 @@ export default function EventosPage() {
                 </Button>
               ) : (
                 <Link href="/eventos/novo">
-                  <Button className="bg-beta-terracotta hover:bg-beta-terracotta/90">
+                  <Button className="bg-primary hover:bg-primary-hover">
                     <Plus className="h-4 w-4 mr-2" />
                     Criar primeiro evento
                   </Button>

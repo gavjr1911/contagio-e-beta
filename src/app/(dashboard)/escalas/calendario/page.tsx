@@ -87,23 +87,23 @@ export default function CalendarioEscalasPage() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-beta-gray-blue/10">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="px-4 py-4">
           <div className="flex items-center gap-3">
             <Link href="/escalas">
               <Button
                 size="icon"
                 variant="ghost"
-                className="text-beta-gray-blue hover:text-beta-cream"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-beta-cream font-display">
+              <h1 className="text-xl font-bold text-foreground font-display">
                 Calendario de Escalas
               </h1>
-              <p className="text-beta-gray-blue text-sm">
+              <p className="text-muted-foreground text-sm">
                 Visualize suas escalas no calendario
               </p>
             </div>
@@ -112,29 +112,29 @@ export default function CalendarioEscalasPage() {
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-3 flex items-center gap-4 border-b border-beta-gray-blue/10">
-        <span className="text-xs text-beta-gray-blue">Legenda:</span>
+      <div className="px-4 py-3 flex items-center gap-4 border-b border-border">
+        <span className="text-xs text-muted-foreground">Legenda:</span>
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 rounded-full bg-amber-500" />
-          <span className="text-xs text-beta-gray-blue">Pendente</span>
+          <span className="text-xs text-muted-foreground">Pendente</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 rounded-full bg-emerald-500" />
-          <span className="text-xs text-beta-gray-blue">Confirmado</span>
+          <span className="text-xs text-muted-foreground">Confirmado</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 rounded-full bg-red-500" />
-          <span className="text-xs text-beta-gray-blue">Recusado</span>
+          <span className="text-xs text-muted-foreground">Recusado</span>
         </div>
       </div>
 
       {/* Calendar */}
       <div className="px-4 pt-4">
-        <Card className="bg-beta-navy/50 border-beta-gray-blue/20">
+        <Card className="bg-secondary border-border">
           <CardContent className="p-2">
             {isLoading ? (
               <div className="h-[350px] flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-beta-terracotta border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : (
               <Calendar
@@ -162,7 +162,7 @@ export default function CalendarioEscalasPage() {
 
       {/* Upcoming schedules list */}
       <div className="px-4 pt-6">
-        <h2 className="text-lg font-semibold text-beta-cream mb-3">
+        <h2 className="text-lg font-semibold text-foreground mb-3">
           Proximas escalas
         </h2>
         {isLoading ? (
@@ -170,7 +170,7 @@ export default function CalendarioEscalasPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-16 rounded-lg bg-beta-navy/30 animate-pulse"
+                className="h-16 rounded-lg bg-card/30 animate-pulse"
               />
             ))}
           </div>
@@ -182,7 +182,7 @@ export default function CalendarioEscalasPage() {
               .map((schedule) => (
                 <Card
                   key={schedule.id}
-                  className="bg-beta-navy/50 border-beta-gray-blue/20 cursor-pointer hover:bg-beta-navy/70 transition-colors"
+                  className="bg-secondary border-border cursor-pointer hover:bg-card/70 transition-colors"
                   onClick={() => {
                     setSelectedDate(new Date(schedule.event.date));
                     setDetailsOpen(true);
@@ -211,10 +211,10 @@ export default function CalendarioEscalasPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-beta-cream text-sm font-medium truncate">
+                      <p className="text-foreground text-sm font-medium truncate">
                         {schedule.event.title}
                       </p>
-                      <p className="text-beta-gray-blue text-xs">
+                      <p className="text-muted-foreground text-xs">
                         {format(
                           new Date(schedule.event.date),
                           "EEE, dd 'de' MMM",
@@ -241,8 +241,8 @@ export default function CalendarioEscalasPage() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <CalendarIcon className="h-12 w-12 text-beta-gray-blue/30 mx-auto mb-3" />
-            <p className="text-beta-gray-blue text-sm">
+            <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">
               Nenhuma escala futura encontrada
             </p>
           </div>
@@ -251,10 +251,10 @@ export default function CalendarioEscalasPage() {
 
       {/* Day details dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="bg-beta-navy border-beta-gray-blue/20 max-w-[380px]">
+        <DialogContent className="bg-card border-border max-w-[380px]">
           <DialogHeader>
-            <DialogTitle className="text-beta-cream flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-beta-terracotta" />
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary" />
               {selectedDate &&
                 format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </DialogTitle>
@@ -266,7 +266,7 @@ export default function CalendarioEscalasPage() {
                 <Card
                   key={schedule.id}
                   className={cn(
-                    "bg-beta-black/30 border-l-4",
+                    "bg-card border-l-4",
                     schedule.status === ScheduleStatus.PENDING
                       ? "border-l-amber-500"
                       : schedule.status === ScheduleStatus.CONFIRMED
@@ -276,7 +276,7 @@ export default function CalendarioEscalasPage() {
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4 className="font-medium text-beta-cream text-sm">
+                      <h4 className="font-medium text-foreground text-sm">
                         {schedule.event.title}
                       </h4>
                       <Badge
@@ -292,7 +292,7 @@ export default function CalendarioEscalasPage() {
                         {statusLabels[schedule.status]}
                       </Badge>
                     </div>
-                    <div className="space-y-1 text-xs text-beta-gray-blue">
+                    <div className="space-y-1 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
                         <span>
@@ -307,7 +307,7 @@ export default function CalendarioEscalasPage() {
                         </span>
                         <span>{schedule.ministry.name}</span>
                         {schedule.position && (
-                          <span className="text-beta-terracotta">
+                          <span className="text-primary">
                             ({schedule.position})
                           </span>
                         )}
@@ -318,8 +318,8 @@ export default function CalendarioEscalasPage() {
               ))
             ) : (
               <div className="text-center py-6">
-                <CalendarIcon className="h-10 w-10 text-beta-gray-blue/30 mx-auto mb-2" />
-                <p className="text-beta-gray-blue text-sm">
+                <CalendarIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">
                   Nenhuma escala neste dia
                 </p>
               </div>
@@ -330,7 +330,7 @@ export default function CalendarioEscalasPage() {
             <Link href="/escalas">
               <Button
                 variant="outline"
-                className="border-beta-gray-blue/30 text-beta-gray-blue hover:bg-beta-gray-blue/10"
+                className="border-border text-muted-foreground hover:bg-muted"
               >
                 Ver todas as escalas
               </Button>

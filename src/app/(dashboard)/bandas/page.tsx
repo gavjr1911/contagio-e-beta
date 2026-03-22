@@ -38,15 +38,15 @@ function BandCard({ band }: BandCardProps) {
 
   return (
     <Link href={`/bandas/${band.id}`}>
-      <Card className="group transition-all duration-200 hover:border-beta-terracotta/50 hover:shadow-lg">
+      <Card className="group transition-all duration-200 hover:border-primary/50 hover:shadow-lg">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-beta-terracotta/20">
-                <Users className="h-6 w-6 text-beta-terracotta" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+                <Users className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="font-display text-xl text-beta-cream group-hover:text-beta-terracotta transition-colors">
+                <CardTitle className="font-display text-xl text-foreground group-hover:text-primary transition-colors">
                   {band.name}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
@@ -73,16 +73,16 @@ function BandCard({ band }: BandCardProps) {
               {band.members.slice(0, 4).map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center gap-2 rounded-full bg-beta-navy/50 px-3 py-1"
+                  className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-beta-navy text-xs font-medium text-beta-cream">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium text-foreground">
                     {member.name.charAt(0)}
                   </div>
-                  <span className="text-sm text-beta-cream">{member.name.split(" ")[0]}</span>
+                  <span className="text-sm text-foreground">{member.name.split(" ")[0]}</span>
                 </div>
               ))}
               {band.members.length > 4 && (
-                <div className="flex items-center rounded-full bg-beta-navy/50 px-3 py-1">
+                <div className="flex items-center rounded-full bg-secondary px-3 py-1">
                   <span className="text-sm text-muted-foreground">
                     +{band.members.length - 4}
                   </span>
@@ -200,7 +200,7 @@ function CreateBandDialog() {
                       type="checkbox"
                       checked={selectedMembers.includes(member.id)}
                       onChange={() => toggleMember(member.id)}
-                      className="h-4 w-4 rounded border-border text-beta-terracotta focus:ring-beta-terracotta"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                     />
                     <div className="flex-1">
                       <p className="text-sm font-medium">{member.name}</p>
@@ -241,7 +241,7 @@ export default function BandasPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold text-beta-cream">Bandas</h1>
+          <h1 className="font-display text-3xl font-bold text-foreground">Bandas</h1>
           <p className="mt-1 text-muted-foreground">
             {data?.total || 0} {data?.total === 1 ? "banda" : "bandas"} cadastradas
           </p>

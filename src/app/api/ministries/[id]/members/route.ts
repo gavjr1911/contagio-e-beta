@@ -56,7 +56,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 id: true,
                 name: true,
                 email: true,
+                image: true,
                 role: true,
+              },
+            },
+            positions: {
+              include: {
+                position: true,
               },
             },
           },
@@ -83,7 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return bodyResult.response
     }
 
-    const { userId, position } = bodyResult.data
+    const { userId, positionIds } = bodyResult.data
 
     try {
       // Verificar se o ministerio existe
@@ -121,11 +127,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return apiError("Usuario ja e membro deste ministerio", 409)
       }
 
+      // Criar membro com posicoes
       const member = await prisma.ministryMember.create({
         data: {
           ministryId: id,
           userId,
-          position,
+          positions: positionIds && positionIds.length > 0
+            ? {
+                create: positionIds.map((positionId: string) => ({
+                  positionId,
+                })),
+              }
+            : undefined,
         },
         include: {
           user: {
@@ -133,6 +146,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               id: true,
               name: true,
               email: true,
+              image: true,
+            },
+          },
+          positions: {
+            include: {
+              position: true,
             },
           },
         },

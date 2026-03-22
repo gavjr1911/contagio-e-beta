@@ -44,15 +44,15 @@ function getStatusVariant(
 function getTypeColor(type: EventType): string {
   switch (type) {
     case "culto":
-      return "bg-beta-terracotta/10 text-beta-terracotta border-beta-terracotta/20";
+      return "bg-primary/10 text-primary border-primary/20";
     case "ensaio":
-      return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+      return "bg-info/10 text-info border-info/20";
     case "reuniao":
-      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+      return "bg-warning/10 text-warning border-warning/20";
     case "evento_especial":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
     case "conferencia":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      return "bg-success/10 text-success border-success/20";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -100,7 +100,7 @@ export function EventCard({
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden transition-all hover:shadow-md hover:border-beta-terracotta/30",
+        "group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/30 hover:-translate-y-0.5",
         className
       )}
     >
@@ -121,7 +121,7 @@ export function EventCard({
 
             <Link
               href={`/eventos/${event.id}`}
-              className="block group-hover:text-beta-terracotta transition-colors"
+              className="block group-hover:text-primary transition-colors duration-150"
             >
               <h3 className="font-semibold text-base truncate">{event.name}</h3>
             </Link>

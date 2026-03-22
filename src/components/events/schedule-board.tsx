@@ -70,7 +70,7 @@ function MemberCard({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-3 p-3 rounded-lg border border-border bg-background/50 transition-all hover:border-beta-terracotta/30 hover:shadow-sm",
+        "group relative flex items-center gap-3 p-3 rounded-lg border border-border bg-background/50 transition-all hover:border-primary/30 hover:shadow-sm",
         member.hasConflict && "border-amber-500/50 bg-amber-500/5"
       )}
     >
@@ -78,7 +78,7 @@ function MemberCard({
         {member.memberAvatar && (
           <AvatarImage src={member.memberAvatar} alt={member.memberName} />
         )}
-        <AvatarFallback className="bg-beta-navy text-white text-sm">
+        <AvatarFallback className="bg-secondary text-white text-sm">
           {getInitials(member.memberName)}
         </AvatarFallback>
       </Avatar>

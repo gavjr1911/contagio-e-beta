@@ -61,7 +61,7 @@ export function Header({ className }: HeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex flex-col gap-1 bg-beta-black/80 backdrop-blur-sm border-b border-beta-gray-blue/10 px-6 py-4",
+        "sticky top-0 z-30 flex flex-col gap-1 bg-background/80 backdrop-blur-sm border-b border-border px-6 py-4",
         className
       )}
     >
@@ -70,22 +70,22 @@ export function Header({ className }: HeaderProps) {
         {breadcrumbs.map((crumb, index) => (
           <div key={crumb.href} className="flex items-center">
             {index > 0 && (
-              <ChevronRight className="mx-2 h-4 w-4 text-beta-gray-blue/50" />
+              <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground/50" />
             )}
             {index === 0 ? (
               <Link
                 href={crumb.href}
-                className="flex items-center gap-1 text-beta-gray-blue hover:text-beta-cream transition-colors"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Home className="h-3.5 w-3.5" />
                 <span className="sr-only">{crumb.name}</span>
               </Link>
             ) : index === breadcrumbs.length - 1 ? (
-              <span className="text-beta-cream font-medium">{crumb.name}</span>
+              <span className="text-foreground font-medium">{crumb.name}</span>
             ) : (
               <Link
                 href={crumb.href}
-                className="text-beta-gray-blue hover:text-beta-cream transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {crumb.name}
               </Link>
@@ -95,7 +95,7 @@ export function Header({ className }: HeaderProps) {
       </nav>
 
       {/* Page Title */}
-      <h1 className="text-2xl font-semibold text-beta-cream">{pageTitle}</h1>
+      <h1 className="text-2xl font-semibold text-foreground">{pageTitle}</h1>
     </header>
   );
 }
