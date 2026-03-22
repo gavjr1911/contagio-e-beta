@@ -8,17 +8,21 @@ import {
   CalendarDays,
   Clock,
   Loader2,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   useCreateEvent,
   CreateEventData,
   getEventTypeLabel,
   EventType,
 } from "@/hooks/use-events";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useCreateBulkVacancies } from "@/hooks/use-vacancies";
+import { VacancyManager, VacancyConfig } from "@/components/events/vacancy-manager";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -44,6 +48,8 @@ function getTypeColor(type: EventType): string {
 export default function NovoEventoPage() {
   const router = useRouter();
   const createEvent = useCreateEvent();
+  const createBulkVacancies = useCreateBulkVacancies();
+  const { data: ministries, isLoading: ministriesLoading } = useMinistries();
 
   const [formData, setFormData] = React.useState<CreateEventData>({
     name: "",
@@ -53,6 +59,7 @@ export default function NovoEventoPage() {
     endTime: "",
   });
 
+  const [vacancies, setVacancies] = React.useState<VacancyConfig[]>([]);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
   const validateForm = (): boolean => {
@@ -86,10 +93,24 @@ export default function NovoEventoPage() {
     if (!validateForm()) return;
 
     try {
+      // 1. Criar o evento
       const newEvent = await createEvent.mutateAsync(formData);
+
+      // 2. Criar as vagas se houver
+      if (vacancies.length > 0) {
+        await createBulkVacancies.mutateAsync({
+          eventId: newEvent.id,
+          vacancies: vacancies.map((v) => ({
+            ministryId: v.ministryId,
+            positionId: v.positionId,
+            quantity: v.quantity,
+          })),
+        });
+      }
+
       toast({
         title: "Sucesso",
-        description: "Evento criado com sucesso!",
+        description: `Evento criado${vacancies.length > 0 ? ` com ${vacancies.reduce((sum, v) => sum + v.quantity, 0)} vagas` : ""}!`,
       });
       router.push(`/eventos/${newEvent.id}`);
     } catch (error) {
@@ -101,6 +122,12 @@ export default function NovoEventoPage() {
       });
     }
   };
+
+  const handleVacanciesChange = React.useCallback((newVacancies: VacancyConfig[]) => {
+    setVacancies(newVacancies);
+  }, []);
+
+  const isSubmitting = createEvent.isPending || createBulkVacancies.isPending;
 
   return (
     <div className="flex-1 p-6 space-y-6">
@@ -231,6 +258,31 @@ export default function NovoEventoPage() {
           </CardContent>
         </Card>
 
+        {/* Vacancies Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Vagas por Ministerio
+            </CardTitle>
+            <CardDescription>
+              Defina quantas pessoas de cada funcao serao necessarias para este evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {ministriesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <VacancyManager
+                ministries={ministries || []}
+                onChange={handleVacanciesChange}
+              />
+            )}
+          </CardContent>
+        </Card>
+
         {/* Actions */}
         <div className="flex items-center justify-end gap-4">
           <Link href="/eventos">
@@ -240,10 +292,10 @@ export default function NovoEventoPage() {
           </Link>
           <Button
             type="submit"
-            disabled={createEvent.isPending}
+            disabled={isSubmitting}
             className="bg-primary hover:bg-primary-hover"
           >
-            {createEvent.isPending ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Criando...

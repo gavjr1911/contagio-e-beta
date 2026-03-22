@@ -159,6 +159,7 @@ model Ministry {
   members   MinistryMember[]
   schedules Schedule[]
   positions MinistryPosition[]
+  vacancies EventVacancy[]
 
   @@index([leaderId])
   @@map("ministries")
@@ -171,8 +172,9 @@ model MinistryPosition {
   description String?
   createdAt   DateTime @default(now())
 
-  ministry Ministry               @relation(fields: [ministryId], references: [id], onDelete: Cascade)
-  members  MemberPosition[]
+  ministry  Ministry               @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  members   MemberPosition[]
+  vacancies EventVacancy[]
 
   @@unique([ministryId, name])
   @@index([ministryId])
@@ -249,6 +251,7 @@ model Event {
   schedules Schedule[]
   setlists  Setlist[]
   media     Media[]
+  vacancies EventVacancy[]
 
   @@index([date])
   @@index([type])
@@ -278,6 +281,31 @@ model EventItem {
 }
 
 // ============================================
+// EVENT VACANCY (VAGAS DO EVENTO)
+// ============================================
+
+model EventVacancy {
+  id         String   @id @default(cuid())
+  eventId    String
+  ministryId String
+  positionId String
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  // Relacionamentos
+  event    Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministry Ministry         @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  position MinistryPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  schedules Schedule[]
+
+  @@unique([eventId, ministryId, positionId])
+  @@index([eventId])
+  @@index([ministryId])
+  @@index([positionId])
+  @@map("event_vacancies")
+}
+
+// ============================================
 // SCHEDULE (ESCALA)
 // ============================================
 
@@ -286,21 +314,24 @@ model Schedule {
   eventId        String
   ministryId     String
   userId         String
-  position       String? // Funcao especifica na escala
+  vacancyId      String? // Referencia a vaga especifica
+  position       String? // Funcao especifica na escala (legado)
   status         ScheduleStatus @default(PENDING)
   confirmedAt    DateTime?
   declinedReason String?        @db.Text
   createdAt      DateTime       @default(now())
 
   // Relacionamentos
-  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministry Ministry      @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vacancy  EventVacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
 
   @@unique([eventId, ministryId, userId])
   @@index([eventId])
   @@index([ministryId])
   @@index([userId])
+  @@index([vacancyId])
   @@index([status])
   @@map("schedules")
 }

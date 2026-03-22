@@ -238,9 +238,9 @@ export function ScheduleMemberDialog({
                               <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                             )}
                           </div>
-                          {member.positions.length > 0 && (
+                          {member.positions && member.positions.length > 0 && (
                             <p className="text-xs text-muted-foreground truncate">
-                              {member.positions.map((p) => p.position.name).join(", ")}
+                              {member.positions.map((p) => p.position?.name).filter(Boolean).join(", ")}
                             </p>
                           )}
                           {isScheduled && (

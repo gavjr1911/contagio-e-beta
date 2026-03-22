@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, User } from "lucide-react";
+import { Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -33,50 +33,40 @@ export function MinistryCard({ ministry }: MinistryCardProps) {
             </CardDescription>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* Leader info */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
-              <User className="h-4 w-4 text-muted-foreground" />
+          {ministry.leader ? (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+                <AvatarImage src={ministry.leader.image || undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                  {ministry.leader.name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase() || "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {ministry.leader.name || ministry.leader.email}
+                </p>
+                <p className="text-xs text-muted-foreground">Lider</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Lider</p>
-              {ministry.leader ? (
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6 ring-2 ring-primary/20">
-                    <AvatarImage src={ministry.leader.image || undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {ministry.leader.name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {ministry.leader.name || ministry.leader.email}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground italic">
-                  Sem lider definido
-                </span>
-              )}
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              Sem lider definido
+            </p>
+          )}
 
           {/* Members count */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-              <Users className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Membros</p>
-              <p className="text-sm font-medium text-foreground">
-                {memberCount} {memberCount === 1 ? "membro" : "membros"}
-              </p>
-            </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Users className="h-4 w-4" />
+            <span className="text-sm">
+              {memberCount} {memberCount === 1 ? "membro" : "membros"}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -92,24 +82,15 @@ export function MinistryCardSkeleton() {
         <Skeleton className="mt-2 h-4 w-full" />
         <Skeleton className="h-4 w-2/3" />
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
           <div className="flex-1 space-y-1">
+            <Skeleton className="h-4 w-28" />
             <Skeleton className="h-3 w-12" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-6 w-6 rounded-full" />
-              <Skeleton className="h-4 w-24" />
-            </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <div className="space-y-1">
-            <Skeleton className="h-3 w-14" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-        </div>
+        <Skeleton className="h-4 w-20" />
       </CardContent>
     </Card>
   );
