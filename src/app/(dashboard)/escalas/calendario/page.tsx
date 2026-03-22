@@ -28,6 +28,12 @@ import { cn } from "@/lib/utils";
 import { useMySchedules, type Schedule } from "@/hooks/use-schedules";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 
+// Parse date string (YYYY-MM-DD) to Date object in local timezone
+function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
 const statusColors: Record<ScheduleStatus, string> = {
   [ScheduleStatus.PENDING]: "bg-amber-500",
   [ScheduleStatus.CONFIRMED]: "bg-emerald-500",
@@ -53,7 +59,8 @@ export default function CalendarioEscalasPage() {
 
     const map = new Map<string, Schedule[]>();
     schedules.forEach((schedule) => {
-      const dateKey = format(new Date(schedule.event.date), "yyyy-MM-dd");
+      // schedule.event.date is already in YYYY-MM-DD format
+      const dateKey = schedule.event.date;
       const existing = map.get(dateKey) || [];
       map.set(dateKey, [...existing, schedule]);
     });
@@ -70,7 +77,7 @@ export default function CalendarioEscalasPage() {
   // Get dates with schedules for calendar highlighting
   const datesWithSchedules = useMemo(() => {
     if (!schedules) return [];
-    return schedules.map((s) => new Date(s.event.date));
+    return schedules.map((s) => parseLocalDate(s.event.date));
   }, [schedules]);
 
   // Handle date selection
@@ -146,8 +153,8 @@ export default function CalendarioEscalasPage() {
                 className="w-full"
                 modifiers={{
                   hasSchedule: datesWithSchedules,
-                  hasPending: schedules?.filter(s => s.status === ScheduleStatus.PENDING).map(s => new Date(s.event.date)) || [],
-                  hasConfirmed: schedules?.filter(s => s.status === ScheduleStatus.CONFIRMED).map(s => new Date(s.event.date)) || [],
+                  hasPending: schedules?.filter(s => s.status === ScheduleStatus.PENDING).map(s => parseLocalDate(s.event.date)) || [],
+                  hasConfirmed: schedules?.filter(s => s.status === ScheduleStatus.CONFIRMED).map(s => parseLocalDate(s.event.date)) || [],
                 }}
                 modifiersClassNames={{
                   hasSchedule: "font-bold",
@@ -177,14 +184,14 @@ export default function CalendarioEscalasPage() {
         ) : schedules && schedules.length > 0 ? (
           <div className="space-y-2">
             {schedules
-              .filter((s) => new Date(s.event.date) >= new Date())
+              .filter((s) => parseLocalDate(s.event.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
               .slice(0, 5)
               .map((schedule) => (
                 <Card
                   key={schedule.id}
                   className="bg-secondary border-border cursor-pointer hover:bg-card/70 transition-colors"
                   onClick={() => {
-                    setSelectedDate(new Date(schedule.event.date));
+                    setSelectedDate(parseLocalDate(schedule.event.date));
                     setDetailsOpen(true);
                   }}
                 >
@@ -216,7 +223,7 @@ export default function CalendarioEscalasPage() {
                       </p>
                       <p className="text-muted-foreground text-xs">
                         {format(
-                          new Date(schedule.event.date),
+                          parseLocalDate(schedule.event.date),
                           "EEE, dd 'de' MMM",
                           { locale: ptBR }
                         )}{" "}

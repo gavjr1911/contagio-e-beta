@@ -3,30 +3,31 @@
 import * as React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   ArrowLeft,
   Calendar,
   Clock,
-  Plus,
-  AlertTriangle,
   Loader2,
   RefreshCw,
-  UserMinus,
   Users,
   CheckCircle2,
+  AlertTriangle,
+  UserMinus,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { VacancySlot } from "@/components/events/vacancy-slot";
 import { ScheduleMemberDialog } from "@/components/events/schedule-member-dialog";
 import {
   useEventSchedules,
   useCreateSchedule,
   useDeleteSchedule,
-  type EventScheduleGroup,
   type EventScheduleItem,
 } from "@/hooks/use-schedules";
+import { useEventVacancies, type EventVacancy } from "@/hooks/use-vacancies";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -75,16 +76,12 @@ function useEvent(eventId: string) {
 
 function getTypeColor(type: string): string {
   switch (type) {
-    case "CULTO":
+    case "SUNDAY_MORNING":
       return "bg-primary/10 text-primary border-primary/20";
-    case "ENSAIO":
+    case "SUNDAY_EVENING":
       return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-    case "REUNIAO":
-      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-    case "EVENTO_ESPECIAL":
+    case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-    case "CONFERENCIA":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -92,35 +89,11 @@ function getTypeColor(type: string): string {
 
 function getTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    CULTO: "Culto",
-    REUNIAO: "Reuniao",
-    ENSAIO: "Ensaio",
-    EVENTO_ESPECIAL: "Evento Especial",
-    CONFERENCIA: "Conferencia",
+    SUNDAY_MORNING: "Culto Manha",
+    SUNDAY_EVENING: "Culto Noite",
+    SPECIAL: "Evento Especial",
   };
   return labels[type] || type;
-}
-
-function getStatusColor(status: ScheduleStatus): string {
-  switch (status) {
-    case ScheduleStatus.CONFIRMED:
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-    case ScheduleStatus.PENDING:
-      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-    case ScheduleStatus.DECLINED:
-      return "bg-red-500/10 text-red-400 border-red-500/20";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
-
-function getStatusLabel(status: ScheduleStatus): string {
-  const labels: Record<ScheduleStatus, string> = {
-    [ScheduleStatus.PENDING]: "Pendente",
-    [ScheduleStatus.CONFIRMED]: "Confirmado",
-    [ScheduleStatus.DECLINED]: "Recusado",
-  };
-  return labels[status] || status;
 }
 
 function formatDate(dateString: string): string {
@@ -136,76 +109,54 @@ function formatTime(time: string): string {
   return time.substring(0, 5);
 }
 
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+// Agrupar vagas por ministerio
+interface VacancyGroup {
+  ministry: { id: string; name: string };
+  vacancies: EventVacancy[];
 }
 
-interface MemberCardProps {
-  schedule: EventScheduleItem;
-  ministryId: string;
-  eventId: string;
-  onRemove: (scheduleId: string) => void;
-  isRemoving: boolean;
-}
+function groupVacanciesByMinistry(vacancies: EventVacancy[]): VacancyGroup[] {
+  const groups: Record<string, VacancyGroup> = {};
 
-function MemberCard({ schedule, ministryId, eventId, onRemove, isRemoving }: MemberCardProps) {
-  return (
-    <div className="group relative flex items-center gap-3 p-3 rounded-lg border border-border bg-background/50 transition-all hover:border-primary/30 hover:shadow-sm">
-      <Avatar className="h-10 w-10">
-        {schedule.user.image && (
-          <AvatarImage src={schedule.user.image} alt={schedule.user.name || ""} />
-        )}
-        <AvatarFallback className="bg-secondary text-white text-sm">
-          {getInitials(schedule.user.name)}
-        </AvatarFallback>
-      </Avatar>
+  vacancies.forEach((vacancy) => {
+    const ministryId = vacancy.ministryId;
+    if (!groups[ministryId]) {
+      groups[ministryId] = {
+        ministry: vacancy.ministry,
+        vacancies: [],
+      };
+    }
+    groups[ministryId].vacancies.push(vacancy);
+  });
 
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">
-          {schedule.user.name || schedule.user.email}
-        </p>
-        {schedule.position && (
-          <p className="text-xs text-muted-foreground">{schedule.position}</p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className={cn("text-xs", getStatusColor(schedule.status))}>
-          {getStatusLabel(schedule.status)}
-        </Badge>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-          onClick={() => onRemove(schedule.id)}
-          disabled={isRemoving}
-        >
-          {isRemoving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <UserMinus className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-    </div>
+  // Ordenar por nome do ministerio
+  return Object.values(groups).sort((a, b) =>
+    a.ministry.name.localeCompare(b.ministry.name)
   );
+}
+
+// Encontrar o schedule associado a uma vacancy
+function findScheduleForVacancy(
+  vacancyId: string,
+  schedules: EventScheduleItem[]
+): EventScheduleItem | null {
+  return schedules.find((s) => s.vacancyId === vacancyId) || null;
 }
 
 export default function EventoEscalasPage() {
   const params = useParams();
   const eventId = params.id as string;
   const { toast } = useToast();
+  const { data: session } = useSession();
 
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
   const {
-    data: schedules,
+    data: vacancies,
+    isLoading: vacanciesLoading,
+    refetch: refetchVacancies,
+  } = useEventVacancies(eventId);
+  const {
+    data: scheduleGroups,
     isLoading: schedulesLoading,
     refetch: refetchSchedules,
   } = useEventSchedules(eventId);
@@ -214,11 +165,29 @@ export default function EventoEscalasPage() {
   const deleteSchedule = useDeleteSchedule();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [selectedMinistryId, setSelectedMinistryId] = React.useState<string>();
+  const [selectedVacancy, setSelectedVacancy] = React.useState<EventVacancy | null>(null);
   const [removingScheduleId, setRemovingScheduleId] = React.useState<string | null>(null);
 
-  const handleAddMember = (ministryId: string) => {
-    setSelectedMinistryId(ministryId);
+  // Verificar permissao
+  const isAdmin = session?.user?.role === "ADMIN";
+  const isCoordinator = session?.user?.role === "COORDINATOR";
+  const isLeader = session?.user?.role === "LEADER";
+  const canEdit = isAdmin || isCoordinator || isLeader;
+
+  // Flatten schedules from groups
+  const allSchedules = React.useMemo(() => {
+    if (!scheduleGroups) return [];
+    return scheduleGroups.flatMap((group) => group.schedules);
+  }, [scheduleGroups]);
+
+  // Agrupar vagas por ministerio
+  const vacancyGroups = React.useMemo(() => {
+    if (!vacancies) return [];
+    return groupVacanciesByMinistry(vacancies);
+  }, [vacancies]);
+
+  const handleAssignClick = (vacancy: EventVacancy) => {
+    setSelectedVacancy(vacancy);
     setDialogOpen(true);
   };
 
@@ -227,14 +196,20 @@ export default function EventoEscalasPage() {
     ministryId: string,
     position: string | null
   ) => {
+    if (!selectedVacancy) return;
+
     try {
       await createSchedule.mutateAsync({
         eventId,
         userId,
-        ministryId,
-        position: position || undefined,
+        ministryId: selectedVacancy.ministryId,
+        vacancyId: selectedVacancy.id,
+        position: selectedVacancy.position.name,
       });
       setDialogOpen(false);
+      setSelectedVacancy(null);
+      refetchVacancies();
+      refetchSchedules();
       toast({
         title: "Membro escalado",
         description: "O membro foi adicionado a escala com sucesso.",
@@ -256,6 +231,8 @@ export default function EventoEscalasPage() {
     setRemovingScheduleId(scheduleId);
     try {
       await deleteSchedule.mutateAsync({ eventId, scheduleId });
+      refetchVacancies();
+      refetchSchedules();
       toast({
         title: "Membro removido",
         description: "O membro foi removido da escala com sucesso.",
@@ -271,40 +248,42 @@ export default function EventoEscalasPage() {
     }
   };
 
+  const handleRefresh = () => {
+    refetchVacancies();
+    refetchSchedules();
+  };
+
   // Compute stats
   const stats = React.useMemo(() => {
-    if (!schedules) return { total: 0, confirmed: 0, pending: 0, declined: 0 };
+    if (!vacancies || !allSchedules) {
+      return { total: 0, filled: 0, pending: 0, confirmed: 0, declined: 0 };
+    }
 
-    let total = 0;
-    let confirmed = 0;
+    const total = vacancies.length;
+    let filled = 0;
     let pending = 0;
+    let confirmed = 0;
     let declined = 0;
 
-    schedules.forEach((group) => {
-      group.schedules.forEach((schedule) => {
-        total++;
+    vacancies.forEach((vacancy) => {
+      const schedule = findScheduleForVacancy(vacancy.id, allSchedules);
+      if (schedule) {
+        filled++;
         if (schedule.status === ScheduleStatus.CONFIRMED) confirmed++;
         if (schedule.status === ScheduleStatus.PENDING) pending++;
         if (schedule.status === ScheduleStatus.DECLINED) declined++;
-      });
+      }
     });
 
-    return { total, confirmed, pending, declined };
-  }, [schedules]);
+    return { total, filled, pending, confirmed, declined };
+  }, [vacancies, allSchedules]);
 
   // Get existing user IDs for conflict checking
   const existingUserIds = React.useMemo(() => {
-    if (!schedules) return [];
-    const ids: string[] = [];
-    schedules.forEach((group) => {
-      group.schedules.forEach((schedule) => {
-        ids.push(schedule.user.id);
-      });
-    });
-    return ids;
-  }, [schedules]);
+    return allSchedules.map((s) => s.user.id);
+  }, [allSchedules]);
 
-  const isLoading = eventLoading || schedulesLoading;
+  const isLoading = eventLoading || vacanciesLoading || schedulesLoading;
 
   if (isLoading) {
     return (
@@ -369,19 +348,9 @@ export default function EventoEscalasPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => refetchSchedules()}
+              onClick={handleRefresh}
             >
               <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary-hover"
-              onClick={() => {
-                setSelectedMinistryId(undefined);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Escalar Membro
             </Button>
           </div>
         </div>
@@ -392,10 +361,10 @@ export default function EventoEscalasPage() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
+              <Briefcase className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="text-sm text-muted-foreground">Funcoes</p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </div>
           </div>
@@ -424,83 +393,73 @@ export default function EventoEscalasPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <UserMinus className="h-5 w-5 text-red-500" />
+            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+              <Users className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Recusados</p>
-              <p className="text-2xl font-bold text-red-500">{stats.declined}</p>
+              <p className="text-sm text-muted-foreground">Preenchidas</p>
+              <p className="text-2xl font-bold">
+                {stats.filled}/{stats.total}
+              </p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Ministry boards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {schedules?.map((group) => (
-          <Card key={group.ministry.id} className="overflow-hidden">
-            <CardHeader className="pb-3 bg-muted/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">
-                  {group.ministry.name}
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs">
-                  {group.schedules.length} membro
-                  {group.schedules.length !== 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              {group.schedules.map((schedule) => (
-                <MemberCard
-                  key={schedule.id}
-                  schedule={schedule}
-                  ministryId={group.ministry.id}
-                  eventId={eventId}
-                  onRemove={handleRemoveMember}
-                  isRemoving={removingScheduleId === schedule.id}
-                />
-              ))}
-
-              {group.schedules.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum membro escalado
-                </p>
-              )}
-
-              <Button
-                variant="outline"
-                className="w-full mt-2 border-dashed"
-                onClick={() => handleAddMember(group.ministry.id)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Escalar Membro
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {(!schedules || schedules.length === 0) && (
+      {/* Vacancy boards by ministry */}
+      {vacancyGroups.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2">
+          {vacancyGroups.map((group) => (
+            <Card key={group.ministry.id} className="overflow-hidden">
+              <CardHeader className="pb-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">
+                    {group.ministry.name}
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    {group.vacancies.filter((v) =>
+                      findScheduleForVacancy(v.id, allSchedules)
+                    ).length}
+                    /{group.vacancies.length} preenchidas
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                {group.vacancies.map((vacancy) => {
+                  const schedule = findScheduleForVacancy(vacancy.id, allSchedules);
+                  return (
+                    <VacancySlot
+                      key={vacancy.id}
+                      positionName={vacancy.position.name}
+                      schedule={schedule ? {
+                        id: schedule.id,
+                        user: schedule.user,
+                        status: schedule.status,
+                      } : null}
+                      onAssign={() => handleAssignClick(vacancy)}
+                      onRemove={handleRemoveMember}
+                      isRemoving={removingScheduleId === schedule?.id}
+                      canEdit={canEdit}
+                    />
+                  );
+                })}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
         <Card className="p-8">
           <div className="text-center">
-            <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <Briefcase className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-foreground font-medium text-lg mb-2">
-              Nenhuma escala criada
+              Nenhuma funcao definida
             </p>
             <p className="text-muted-foreground mb-4">
-              Comece escalando membros para este evento
+              Este evento ainda nao possui funcoes definidas. Adicione funcoes ao criar ou editar o evento.
             </p>
-            <Button
-              className="bg-primary hover:bg-primary-hover"
-              onClick={() => {
-                setSelectedMinistryId(undefined);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Escalar Primeiro Membro
-            </Button>
+            <Link href={`/eventos/${eventId}`}>
+              <Button variant="outline">Ver detalhes do evento</Button>
+            </Link>
           </div>
         </Card>
       )}
@@ -508,10 +467,13 @@ export default function EventoEscalasPage() {
       {/* Schedule Member Dialog */}
       <ScheduleMemberDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedVacancy(null);
+        }}
         onSchedule={handleScheduleMember}
         eventId={eventId}
-        selectedMinistryId={selectedMinistryId}
+        selectedMinistryId={selectedVacancy?.ministryId}
         isLoading={createSchedule.isPending}
         existingUserIds={existingUserIds}
       />

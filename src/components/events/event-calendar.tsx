@@ -28,9 +28,22 @@ function getTypeColor(type: EventType): string {
   }
 }
 
+// Parse date string (YYYY-MM-DD) to Date object in local timezone
+function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
 function getDateKey(dateOrString: string | Date): string {
-  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
-  return date.toISOString().split("T")[0];
+  // If already a string in YYYY-MM-DD format, return as-is
+  if (typeof dateOrString === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateOrString)) {
+    return dateOrString;
+  }
+  const date = typeof dateOrString === "string" ? parseLocalDate(dateOrString) : dateOrString;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function EventCalendar({
@@ -62,8 +75,8 @@ export function EventCalendar({
   // Get dates with events for modifiers
   const datesWithEvents = React.useMemo(() => {
     return events.map(e => {
-      const dateStr = typeof e.date === "string" ? e.date : e.date.toISOString().split("T")[0];
-      return new Date(dateStr + "T00:00:00");
+      const dateStr = typeof e.date === "string" ? e.date : getDateKey(e.date);
+      return parseLocalDate(dateStr);
     });
   }, [events]);
 
@@ -131,9 +144,8 @@ export function EventCalendar({
         </h3>
         <div className="space-y-2">
           {events.slice(0, 5).map((event) => {
-            const eventDate = typeof event.date === "string"
-              ? new Date(event.date)
-              : event.date;
+            const dateStr = typeof event.date === "string" ? event.date : getDateKey(event.date);
+            const eventDate = parseLocalDate(dateStr);
 
             return (
               <Link

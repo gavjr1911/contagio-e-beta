@@ -1,4 +1,14 @@
 import { z } from "zod"
+import { parseLocalDate } from "@/lib/date-utils"
+
+/**
+ * Schema para data local (YYYY-MM-DD).
+ * Converte a string para Date usando o timezone local, nao UTC.
+ */
+const localDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato YYYY-MM-DD")
+  .transform((val) => parseLocalDate(val))
 
 // ============================================
 // Schedule Status Enum
@@ -13,6 +23,7 @@ export const ScheduleStatusEnum = z.enum(["PENDING", "CONFIRMED", "DECLINED"])
 export const createScheduleSchema = z.object({
   userId: z.string().cuid("ID do usuario invalido"),
   ministryId: z.string().cuid("ID do ministerio invalido"),
+  vacancyId: z.string().cuid("ID da vaga invalido").optional(),
   position: z.string().max(100).optional(),
 })
 
@@ -26,8 +37,8 @@ export const scheduleFiltersSchema = z.object({
   eventId: z.string().cuid().optional(),
   ministryId: z.string().cuid().optional(),
   status: ScheduleStatusEnum.optional(),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
+  startDate: localDateSchema.optional(),
+  endDate: localDateSchema.optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
 })
@@ -49,8 +60,8 @@ export const declineScheduleSchema = z.object({
 
 export const createBlockedDateSchema = z
   .object({
-    startDate: z.coerce.date({ message: "Data inicial invalida" }),
-    endDate: z.coerce.date({ message: "Data final invalida" }),
+    startDate: localDateSchema,
+    endDate: localDateSchema,
     reason: z
       .string()
       .max(500, "Motivo deve ter no maximo 500 caracteres")
@@ -62,8 +73,8 @@ export const createBlockedDateSchema = z
   })
 
 export const blockedDateFiltersSchema = z.object({
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
+  startDate: localDateSchema.optional(),
+  endDate: localDateSchema.optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
 })

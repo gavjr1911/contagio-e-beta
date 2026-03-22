@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { formatDateToISO, formatTimeToHHMM, getTodayLocal } from "@/lib/date-utils";
 
 // GET /api/schedules/my - Get current user's schedules
 export async function GET(request: NextRequest) {
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const filter = searchParams.get("filter");
 
-    const now = new Date();
+    // Get today's date in local timezone for comparison
+    const today = getTodayLocal();
 
     // Build where clause based on filter
     let where: Record<string, unknown> = {
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
           ...where,
           status: "PENDING",
           event: {
-            date: { gte: now },
+            date: { gte: today },
             status: { not: "COMPLETED" },
           },
         };
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
           ...where,
           status: "CONFIRMED",
           event: {
-            date: { gte: now },
+            date: { gte: today },
             status: { not: "COMPLETED" },
           },
         };
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
         where = {
           ...where,
           OR: [
-            { event: { date: { lt: now } } },
+            { event: { date: { lt: today } } },
             { event: { status: "COMPLETED" } },
             { status: "DECLINED" },
           ],
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
         where = {
           ...where,
           event: {
-            date: { gte: now },
+            date: { gte: today },
             status: { not: "COMPLETED" },
           },
         };
@@ -92,6 +94,12 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    // Helper to format time from Date to HH:mm string (using local time, not UTC)
+    const formatTime = (time: Date | null): string | null => {
+      if (!time) return null;
+      return formatTimeToHHMM(time);
+    };
+
     // Transform to match expected interface
     const transformedSchedules = schedules.map((schedule) => ({
       id: schedule.id,
@@ -106,15 +114,17 @@ export async function GET(request: NextRequest) {
       event: {
         id: schedule.event.id,
         title: schedule.event.name,
-        date: schedule.event.date,
-        startTime: schedule.event.startTime,
-        endTime: schedule.event.endTime,
+        // Format date as ISO string to preserve the correct day
+        date: formatDateToISO(schedule.event.date),
+        startTime: formatTime(schedule.event.startTime),
+        endTime: formatTime(schedule.event.endTime),
         type: schedule.event.type,
         status: schedule.event.status,
       },
       ministry: {
         id: schedule.ministry.id,
         name: schedule.ministry.name,
+        type: "MINISTRY", // Default type for compatibility
       },
     }));
 

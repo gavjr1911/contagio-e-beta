@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { updateEventSchema } from "@/lib/validations/event"
+import { transformEventForResponse } from "@/lib/date-utils"
 import { EventStatus } from "@/generated/prisma/enums"
 
 // GET /api/events/[id] - Get event details with schedules and items
@@ -57,7 +58,7 @@ export async function GET(
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
-    return Response.json({ data: event })
+    return Response.json({ data: transformEventForResponse(event) })
   } catch (error) {
     console.error("Error fetching event:", error)
     return Response.json(
@@ -152,7 +153,7 @@ export async function PATCH(
       }
     }
 
-    return Response.json({ data: event })
+    return Response.json({ data: transformEventForResponse(event) })
   } catch (error) {
     console.error("Error updating event:", error)
     return Response.json(

@@ -10,6 +10,7 @@ import {
   createRecurringEvents,
   copyVacanciesToEvent,
 } from "@/lib/scheduling/recurrence"
+import { transformEventForResponse } from "@/lib/date-utils"
 import type { RecurrencePattern } from "@/generated/prisma/client"
 
 // GET /api/events - List events with filters
@@ -66,8 +67,11 @@ export async function GET(request: NextRequest) {
       prisma.event.count({ where }),
     ])
 
+    // Transform events to ensure correct date/time format
+    const transformedEvents = events.map(transformEventForResponse)
+
     return Response.json({
-      data: events,
+      data: transformedEvents,
       pagination: {
         page,
         limit,
@@ -192,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     return Response.json(
       {
-        data: event,
+        data: transformEventForResponse(event),
         ...(isRecurring && { childEventsCreated: childEventsCount }),
       },
       { status: 201 }

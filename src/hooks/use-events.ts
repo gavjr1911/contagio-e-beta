@@ -130,22 +130,37 @@ export const eventKeys = {
     [...eventKeys.all, "calendar", month, year] as const,
 };
 
-// Helper to convert time input (HH:mm) to ISO string
-function timeToISO(date: string, time: string): string {
-  return new Date(`${date}T${time}:00`).toISOString();
-}
-
-// Helper to format time from Date/ISO string to HH:mm
+// Helper to format time from string or Date to HH:mm
+// If it's already a string in HH:mm format, return as-is
+// If it's an ISO string or Date, extract local time
 export function formatTimeFromDate(dateOrString: string | Date | null): string {
   if (!dateOrString) return "";
+
+  // If it's already in HH:mm format, return as-is
+  if (typeof dateOrString === "string" && /^\d{2}:\d{2}$/.test(dateOrString)) {
+    return dateOrString;
+  }
+
   const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
-  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
-// Helper to format date from Date/ISO string to YYYY-MM-DD
+// Helper to format date from string or Date to YYYY-MM-DD
+// If it's already a string in YYYY-MM-DD format, return as-is
+// If it's an ISO string or Date, extract local date
 export function formatDateFromDate(dateOrString: string | Date): string {
+  // If it's already in YYYY-MM-DD format, return as-is
+  if (typeof dateOrString === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateOrString)) {
+    return dateOrString;
+  }
+
   const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 // API functions
@@ -183,13 +198,14 @@ async function fetchEvent(id: string): Promise<Event> {
 }
 
 async function createEvent(data: CreateEventData): Promise<Event> {
-  // Convert time strings to ISO format
+  // Send date/time as simple strings (YYYY-MM-DD and HH:MM)
+  // The API will parse them correctly with the local timezone
   const body: Record<string, unknown> = {
     name: data.name,
     type: data.type,
-    date: new Date(data.date).toISOString(),
-    startTime: timeToISO(data.date, data.startTime),
-    endTime: data.endTime ? timeToISO(data.date, data.endTime) : undefined,
+    date: data.date, // YYYY-MM-DD string
+    startTime: data.startTime, // HH:MM string
+    endTime: data.endTime || undefined, // HH:MM string
     status: data.status || "DRAFT",
     templateId: data.templateId,
   };
@@ -219,13 +235,14 @@ async function createEvent(data: CreateEventData): Promise<Event> {
 }
 
 async function updateEvent({ id, ...data }: UpdateEventData): Promise<Event> {
+  // Send date/time as simple strings (YYYY-MM-DD and HH:MM)
   const body: Record<string, unknown> = {};
 
   if (data.name) body.name = data.name;
   if (data.type) body.type = data.type;
-  if (data.date) body.date = new Date(data.date).toISOString();
-  if (data.startTime && data.date) body.startTime = timeToISO(data.date, data.startTime);
-  if (data.endTime && data.date) body.endTime = timeToISO(data.date, data.endTime);
+  if (data.date) body.date = data.date; // YYYY-MM-DD string
+  if (data.startTime) body.startTime = data.startTime; // HH:MM string
+  if (data.endTime) body.endTime = data.endTime; // HH:MM string
   if (data.status) body.status = data.status;
   if (data.templateId) body.templateId = data.templateId;
 

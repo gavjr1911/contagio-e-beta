@@ -41,11 +41,18 @@ enum RecurrencePattern {
 }
 
 enum EventItemType {
-  WORSHIP
-  PREACHING
-  ANNOUNCEMENTS
-  COMMUNION
-  OTHER
+  WELCOME       // Boas-vindas
+  WORSHIP       // Bloco de louvor
+  PRAYER        // Oracao
+  READING       // Leitura Biblica
+  ANNOUNCEMENTS // Avisos
+  OFFERING      // Dizimos e Ofertas
+  PREACHING     // Pregacao/Palavra
+  COMMUNION     // Santa Ceia
+  VIDEO         // Video/Midia
+  SPECIAL       // Participacao Especial
+  TRANSITION    // Transicao/Intervalo
+  OTHER         // Outros
 }
 
 enum ScheduleStatus {
@@ -291,9 +298,18 @@ model EventItem {
   durationMinutes Int?
   responsibleId   String?
 
+  // Campos adicionais
+  bibleReference String?  // Referencia biblica (Ex: "Joao 3:16-21")
+  mediaUrl       String?  // Link para video/midia externa
+  notes          String?  @db.Text // Notas internas para a equipe
+  isPublic       Boolean  @default(true) // Visivel para membros?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
   // Relacionamentos
-  event       Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  responsible User? @relation("EventItemResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  responsible  User?     @relation("EventItemResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  setlistItems Setlist[] // Musicas associadas a este bloco de louvor
 
   @@index([eventId])
   @@index([order])
@@ -461,20 +477,23 @@ model Song {
 }
 
 model Setlist {
-  id        String   @id @default(cuid())
-  eventId   String
-  order     Int
-  songId    String
-  key       String? // Tom especifico para este evento (pode diferir do padrao)
-  notes     String?  @db.Text
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  eventId     String
+  eventItemId String?  // Bloco de louvor especifico (se associado a um EventItem)
+  order       Int
+  songId      String
+  key         String?  // Tom especifico para este evento (pode diferir do padrao)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
 
   // Relacionamentos
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  song  Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  song      Song       @relation(fields: [songId], references: [id], onDelete: Cascade)
+  eventItem EventItem? @relation(fields: [eventItemId], references: [id], onDelete: SetNull)
 
-  @@unique([eventId, order])
+  @@unique([eventId, eventItemId, order])
   @@index([eventId])
+  @@index([eventItemId])
   @@index([songId])
   @@map("setlists")
 }

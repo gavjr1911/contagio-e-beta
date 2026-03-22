@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScheduleStatus } from "@/generated/prisma/enums";
+import { vacancyKeys } from "./use-vacancies";
 
 // Types
 export interface Schedule {
@@ -11,15 +12,15 @@ export interface Schedule {
   userId: string;
   position: string | null;
   status: ScheduleStatus;
-  confirmedAt: Date | null;
+  confirmedAt: Date | string | null;
   declinedReason: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
   event: {
     id: string;
     title: string;
-    date: Date;
-    startTime: string;
-    endTime: string | null;
+    date: string; // YYYY-MM-DD format
+    startTime: string; // HH:MM format
+    endTime: string | null; // HH:MM format
     type: string;
     status: string;
   };
@@ -38,10 +39,18 @@ export interface EventScheduleUser {
   image: string | null;
 }
 
+export interface VacancyInfo {
+  id: string;
+  positionId: string;
+  position: { id: string; name: string };
+}
+
 export interface EventScheduleItem {
   id: string;
   user: EventScheduleUser;
   position: string | null;
+  vacancyId: string | null;
+  vacancy: VacancyInfo | null;
   status: ScheduleStatus;
   confirmedAt: Date | null;
   createdAt: Date;
@@ -62,6 +71,7 @@ export interface CreateScheduleInput {
   eventId: string;
   userId: string;
   ministryId: string;
+  vacancyId?: string;
   position?: string;
 }
 
@@ -258,6 +268,7 @@ export function useCreateSchedule() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.event(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+      queryClient.invalidateQueries({ queryKey: vacancyKeys.list(variables.eventId) });
     },
   });
 }
@@ -271,6 +282,7 @@ export function useDeleteSchedule() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.event(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+      queryClient.invalidateQueries({ queryKey: vacancyKeys.list(variables.eventId) });
     },
   });
 }

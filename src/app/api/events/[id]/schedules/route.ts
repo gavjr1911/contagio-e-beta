@@ -39,6 +39,13 @@ export async function GET(
         ministry: {
           select: { id: true, name: true },
         },
+        vacancy: {
+          select: {
+            id: true,
+            positionId: true,
+            position: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: [{ ministry: { name: "asc" } }, { createdAt: "asc" }],
     })
@@ -57,6 +64,8 @@ export async function GET(
           id: schedule.id,
           user: schedule.user,
           position: schedule.position,
+          vacancyId: schedule.vacancyId,
+          vacancy: schedule.vacancy,
           status: schedule.status,
           confirmedAt: schedule.confirmedAt,
           createdAt: schedule.createdAt,
@@ -116,7 +125,7 @@ export async function POST(
       )
     }
 
-    const { userId, ministryId, position } = parseResult.data
+    const { userId, ministryId, vacancyId, position } = parseResult.data
 
     // Validate user exists
     const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -202,11 +211,29 @@ export async function POST(
       )
     }
 
+    // Validate vacancy if provided
+    if (vacancyId) {
+      const vacancy = await prisma.eventVacancy.findFirst({
+        where: {
+          id: vacancyId,
+          eventId,
+          ministryId,
+        },
+      })
+      if (!vacancy) {
+        return Response.json(
+          { error: "Vaga nao encontrada ou nao pertence a este evento/ministerio" },
+          { status: 400 }
+        )
+      }
+    }
+
     const schedule = await prisma.schedule.create({
       data: {
         eventId,
         userId,
         ministryId,
+        vacancyId,
         position,
         status: "PENDING",
       },

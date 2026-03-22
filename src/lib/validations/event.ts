@@ -1,4 +1,27 @@
 import { z } from "zod"
+import { parseLocalDate, parseLocalTime } from "@/lib/date-utils"
+
+// ============================================
+// Custom Date/Time Transformers
+// ============================================
+
+/**
+ * Schema para data local (YYYY-MM-DD).
+ * Converte a string para Date usando o timezone local, nao UTC.
+ */
+const localDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato YYYY-MM-DD")
+  .transform((val) => parseLocalDate(val))
+
+/**
+ * Schema para hora local (HH:MM).
+ * Converte a string para Date com hora local.
+ */
+const localTimeSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, "Hora deve estar no formato HH:MM")
+  .transform((val) => parseLocalTime(val))
 
 // ============================================
 // Event Type and Status Enums
@@ -15,11 +38,18 @@ export const EventStatusEnum = z.enum(["DRAFT", "PUBLISHED", "COMPLETED"])
 export const RecurrencePatternEnum = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY"])
 
 export const EventItemTypeEnum = z.enum([
-  "WORSHIP",
-  "PREACHING",
-  "ANNOUNCEMENTS",
-  "COMMUNION",
-  "OTHER",
+  "WELCOME",       // Boas-vindas
+  "WORSHIP",       // Bloco de louvor
+  "PRAYER",        // Oracao
+  "READING",       // Leitura Biblica
+  "ANNOUNCEMENTS", // Avisos
+  "OFFERING",      // Dizimos e Ofertas
+  "PREACHING",     // Pregacao/Palavra
+  "COMMUNION",     // Santa Ceia
+  "VIDEO",         // Video/Midia
+  "SPECIAL",       // Participacao Especial
+  "TRANSITION",    // Transicao/Intervalo
+  "OTHER",         // Outros
 ])
 
 // ============================================
@@ -33,9 +63,9 @@ const baseEventSchema = z.object({
     .min(1, "Nome e obrigatorio")
     .max(200, "Nome deve ter no maximo 200 caracteres"),
   type: EventTypeEnum,
-  date: z.coerce.date({ message: "Data invalida" }),
-  startTime: z.coerce.date({ message: "Horario de inicio invalido" }),
-  endTime: z.coerce.date({ message: "Horario de termino invalido" }).optional(),
+  date: localDateSchema,
+  startTime: localTimeSchema,
+  endTime: localTimeSchema.optional(),
   status: EventStatusEnum.optional().default("DRAFT"),
   templateId: z.string().cuid().optional(),
   isRecurring: z.boolean().optional().default(false),
@@ -58,11 +88,27 @@ export const createEventSchema = baseEventSchema.refine(
   }
 )
 
-export const updateEventSchema = baseEventSchema.partial()
+// Update schema precisa aceitar campos opcionais
+export const updateEventSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Nome e obrigatorio")
+    .max(200, "Nome deve ter no maximo 200 caracteres")
+    .optional(),
+  type: EventTypeEnum.optional(),
+  date: localDateSchema.optional(),
+  startTime: localTimeSchema.optional(),
+  endTime: localTimeSchema.optional().nullable(),
+  status: EventStatusEnum.optional(),
+  templateId: z.string().cuid().optional().nullable(),
+  isRecurring: z.boolean().optional(),
+  recurrencePattern: RecurrencePatternEnum.optional().nullable(),
+  recurrenceEndDate: z.string().optional().nullable(),
+})
 
 export const eventFiltersSchema = z.object({
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
+  startDate: localDateSchema.optional(),
+  endDate: localDateSchema.optional(),
   status: EventStatusEnum.optional(),
   type: EventTypeEnum.optional(),
   page: z.coerce.number().int().positive().optional().default(1),
@@ -83,6 +129,11 @@ export const createEventItemSchema = z.object({
   durationMinutes: z.coerce.number().int().positive().optional(),
   responsibleId: z.string().cuid().optional(),
   order: z.coerce.number().int().min(0).optional(),
+  // Campos adicionais
+  bibleReference: z.string().max(100).optional(),
+  mediaUrl: z.string().url().optional().or(z.literal("")),
+  notes: z.string().max(2000).optional(),
+  isPublic: z.boolean().optional().default(true),
 })
 
 export const updateEventItemSchema = createEventItemSchema.partial()

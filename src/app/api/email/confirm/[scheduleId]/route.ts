@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendScheduleConfirmation } from "@/lib/email/send"
 import { createHash } from "crypto"
+import { formatDateToISO, getTodayLocal } from "@/lib/date-utils"
 
 // URL de redirecionamento
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://app.beta.church"
@@ -77,8 +78,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verifica se o evento ja passou
-    const eventDate = new Date(schedule.event.date)
-    if (eventDate < new Date()) {
+    const eventDateStr = formatDateToISO(schedule.event.date)
+    const todayStr = formatDateToISO(getTodayLocal())
+    if (eventDateStr < todayStr) {
       return redirectWithMessage("error", "Este evento ja ocorreu")
     }
 

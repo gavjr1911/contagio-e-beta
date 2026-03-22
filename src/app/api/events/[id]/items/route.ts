@@ -1,90 +1,70 @@
 import { type NextRequest } from "next/server"
 
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import {
+  withAuth,
+  withRole,
+  apiSuccess,
+  apiError,
+  validateBody,
+} from "@/lib/api-utils"
+import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import {
   createEventItemSchema,
   reorderEventItemsSchema,
 } from "@/lib/validations/event"
 
+type RouteParams = {
+  params: Promise<{ id: string }>
+}
+
 // GET /api/events/[id]/items - List event items (ordem do culto)
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth()
-
-    if (!session?.user) {
-      return Response.json({ error: "Nao autorizado" }, { status: 401 })
-    }
-
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  return withAuth(async () => {
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return apiError("Evento nao encontrado", 404)
     }
 
     const items = await prisma.eventItem.findMany({
       where: { eventId },
-      include: {
-        responsible: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: eventItemIncludeFull,
       orderBy: { order: "asc" },
     })
 
-    return Response.json({ data: items })
-  } catch (error) {
-    console.error("Error fetching event items:", error)
-    return Response.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    )
-  }
+    return apiSuccess(items)
+  })
 }
 
 // POST /api/events/[id]/items - Add item to event order
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth()
-
-    if (!session?.user) {
-      return Response.json({ error: "Nao autorizado" }, { status: 401 })
-    }
-
-    const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
-      return Response.json(
-        { error: "Acesso negado." },
-        { status: 403 }
-      )
-    }
-
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return apiError("Evento nao encontrado", 404)
     }
 
-    const body = await request.json()
-    const parseResult = createEventItemSchema.safeParse(body)
-
-    if (!parseResult.success) {
-      return Response.json(
-        { error: "Dados invalidos", details: parseResult.error.flatten() },
-        { status: 400 }
-      )
+    const validation = await validateBody(request, createEventItemSchema)
+    if (!validation.success) {
+      return validation.response
     }
 
-    const { type, title, description, durationMinutes, responsibleId, order } =
-      parseResult.data
+    const {
+      type,
+      title,
+      description,
+      durationMinutes,
+      responsibleId,
+      order,
+      bibleReference,
+      mediaUrl,
+      notes,
+      isPublic,
+    } = validation.data
 
     // Validate responsibleId if provided
     if (responsibleId) {
@@ -92,10 +72,7 @@ export async function POST(
         where: { id: responsibleId },
       })
       if (!userExists) {
-        return Response.json(
-          { error: "Usuario responsavel nao encontrado" },
-          { status: 400 }
-        )
+        return apiError("Usuario responsavel nao encontrado", 400)
       }
     }
 
@@ -119,62 +96,34 @@ export async function POST(
         durationMinutes,
         responsibleId,
         order: finalOrder,
+        bibleReference,
+        mediaUrl: mediaUrl || null,
+        notes,
+        isPublic: isPublic ?? true,
       },
-      include: {
-        responsible: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: eventItemIncludeFull,
     })
 
-    return Response.json({ data: item }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating event item:", error)
-    return Response.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    )
-  }
+    return apiSuccess(item, 201)
+  })
 }
 
 // PATCH /api/events/[id]/items - Reorder event items
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth()
-
-    if (!session?.user) {
-      return Response.json({ error: "Nao autorizado" }, { status: 401 })
-    }
-
-    const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
-      return Response.json(
-        { error: "Acesso negado." },
-        { status: 403 }
-      )
-    }
-
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return apiError("Evento nao encontrado", 404)
     }
 
-    const body = await request.json()
-    const parseResult = reorderEventItemsSchema.safeParse(body)
-
-    if (!parseResult.success) {
-      return Response.json(
-        { error: "Dados invalidos", details: parseResult.error.flatten() },
-        { status: 400 }
-      )
+    const validation = await validateBody(request, reorderEventItemsSchema)
+    if (!validation.success) {
+      return validation.response
     }
 
-    const { itemIds } = parseResult.data
+    const { itemIds } = validation.data
 
     // Verify all items belong to this event
     const existingItems = await prisma.eventItem.findMany({
@@ -185,10 +134,7 @@ export async function PATCH(
 
     for (const itemId of itemIds) {
       if (!existingIds.has(itemId)) {
-        return Response.json(
-          { error: `Item ${itemId} nao pertence a este evento` },
-          { status: 400 }
-        )
+        return apiError(`Item ${itemId} nao pertence a este evento`, 400)
       }
     }
 
@@ -204,20 +150,10 @@ export async function PATCH(
 
     const updatedItems = await prisma.eventItem.findMany({
       where: { eventId },
-      include: {
-        responsible: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: eventItemIncludeFull,
       orderBy: { order: "asc" },
     })
 
-    return Response.json({ data: updatedItems })
-  } catch (error) {
-    console.error("Error reordering event items:", error)
-    return Response.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    )
-  }
+    return apiSuccess(updatedItems)
+  })
 }

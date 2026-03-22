@@ -12,6 +12,7 @@ import {
 import { useEventVacancies } from "@/hooks/use-vacancies";
 
 export interface VacancyConfig {
+  id?: string; // Present for existing vacancies, absent for new ones
   ministryId: string;
   positionId: string;
   quantity: number; // Always 1 for checkbox-based selection
@@ -107,7 +108,12 @@ export function VacancyManager({
       const vacancies: VacancyConfig[] = [];
       for (const position of allPositions) {
         if (selectedPositions.has(position.id)) {
+          // Check if this is an existing vacancy
+          const existingVacancy = existingVacancies?.find(
+            (v) => v.positionId === position.id
+          );
           vacancies.push({
+            id: existingVacancy?.id, // Include id for existing vacancies
             ministryId: position.ministry.id,
             positionId: position.id,
             quantity: 1,
@@ -116,7 +122,7 @@ export function VacancyManager({
       }
       onChange(vacancies);
     }
-  }, [selectedPositions, initialized, onChange, allPositions]);
+  }, [selectedPositions, initialized, onChange, allPositions, existingVacancies]);
 
   const handleToggle = useCallback(
     (position: PositionWithMinistry, selected: boolean) => {

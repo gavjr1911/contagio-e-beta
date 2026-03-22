@@ -18,6 +18,12 @@ import { cn } from "@/lib/utils";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 import type { Schedule } from "@/hooks/use-schedules";
 
+// Parse date string (YYYY-MM-DD) to Date object in local timezone
+function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
 interface ScheduleCardProps {
   schedule: Schedule;
   onConfirm?: () => void;
@@ -53,7 +59,8 @@ export function ScheduleCard({
   isConfirming = false,
   isDeclining = false,
 }: ScheduleCardProps) {
-  const eventDate = new Date(schedule.event.date);
+  // Parse date string to local Date (avoids UTC interpretation issues)
+  const eventDate = parseLocalDate(schedule.event.date);
   const isPending = schedule.status === ScheduleStatus.PENDING;
   const statusInfo = statusConfig[schedule.status];
 
