@@ -54,6 +54,8 @@ export interface EventItem {
   mediaUrl: string | null
   notes: string | null
   isPublic: boolean
+  expectedSongCount: number | null
+  requiresMedia: boolean
   createdAt: string
   updatedAt: string
   responsible: {
@@ -76,6 +78,8 @@ export interface CreateEventItemInput {
   mediaUrl?: string
   notes?: string
   isPublic?: boolean
+  expectedSongCount?: number
+  requiresMedia?: boolean
 }
 
 export interface UpdateEventItemInput {
@@ -88,6 +92,8 @@ export interface UpdateEventItemInput {
   mediaUrl?: string
   notes?: string
   isPublic?: boolean
+  expectedSongCount?: number | null
+  requiresMedia?: boolean
 }
 
 // Labels and icons for each item type

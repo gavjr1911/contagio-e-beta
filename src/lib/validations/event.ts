@@ -134,6 +134,11 @@ export const createEventItemSchema = z.object({
   mediaUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().max(2000).optional(),
   isPublic: z.boolean().optional().default(true),
+  expectedSongCount: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? undefined : val),
+    z.coerce.number().int().min(1).max(20).optional()
+  ),
+  requiresMedia: z.boolean().optional().default(false),
 })
 
 export const updateEventItemSchema = createEventItemSchema.partial()

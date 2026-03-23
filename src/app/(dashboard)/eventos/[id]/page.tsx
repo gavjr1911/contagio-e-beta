@@ -9,8 +9,6 @@ import {
   Calendar,
   Clock,
   Edit,
-  Trash2,
-  MoreHorizontal,
   Users,
   Music,
   Monitor,
@@ -24,10 +22,22 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { VacancySlot } from "@/components/events/vacancy-slot";
 import { ScheduleMemberDialog } from "@/components/events/schedule-member-dialog";
 import { OrderItemCard } from "@/components/events/order-item-card";
+import { SetlistBlocks } from "@/components/events/setlist-blocks";
+import { EventMediaTab } from "@/components/events/event-media-tab";
 import {
   calculateStartTimes,
   calculateTotalDuration,
@@ -36,7 +46,6 @@ import {
 } from "@/hooks/use-event-items";
 import {
   useEvent,
-  useDeleteEvent,
   useUpdateEvent,
   EventStatus,
   EventType,
@@ -133,7 +142,6 @@ export default function EventoDetailPage() {
   const { data: session } = useSession();
 
   const { data: event, isLoading, error } = useEvent(eventId);
-  const deleteEvent = useDeleteEvent();
   const updateEvent = useUpdateEvent();
 
   // Vacancies e Schedules
@@ -151,19 +159,19 @@ export default function EventoDetailPage() {
   const deleteSchedule = useDeleteSchedule();
 
   const [activeTab, setActiveTab] = React.useState<TabType>("ordem");
-  const [showMenu, setShowMenu] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
 
-  // Dialog state
+  // Dialog states
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedVacancy, setSelectedVacancy] = React.useState<EventVacancy | null>(null);
   const [removingScheduleId, setRemovingScheduleId] = React.useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
 
-  // Verificar permissao
+  // Verificar permissao e status do evento
   const isAdmin = session?.user?.role === "ADMIN";
   const isCoordinator = session?.user?.role === "COORDINATOR";
   const isLeader = session?.user?.role === "LEADER";
-  const canEdit = isAdmin || isCoordinator || isLeader;
+  const isCompleted = event?.status === "COMPLETED";
+  const canEdit = (isAdmin || isCoordinator || isLeader) && !isCompleted;
 
   // Flatten schedules from groups
   const allSchedules = React.useMemo(() => {
@@ -205,40 +213,8 @@ export default function EventoDetailPage() {
     return allSchedules.map((s) => s.user.id);
   }, [allSchedules]);
 
-  React.useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    }
-
-    if (showMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showMenu]);
-
-  const handleDelete = async () => {
-    if (!event) return;
-    if (confirm(`Tem certeza que deseja excluir "${event.name}"?`)) {
-      try {
-        await deleteEvent.mutateAsync(event.id);
-        toast({
-          title: "Sucesso",
-          description: "Evento excluido com sucesso!",
-        });
-        router.push("/eventos");
-      } catch (error) {
-        toast({
-          title: "Erro ao excluir evento",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
-          variant: "destructive",
-        });
-      }
-    }
+  const handleGoToEdit = () => {
+    router.push(`/eventos/${eventId}/editar`);
   };
 
   const handleComplete = async () => {
@@ -410,42 +386,15 @@ export default function EventoDetailPage() {
               </Button>
             )}
 
-            <div className="relative" ref={menuRef}>
+            {!isCompleted && (
               <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowMenu(!showMenu)}
+                className="bg-primary hover:bg-primary-hover"
+                onClick={() => setEditDialogOpen(true)}
               >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-
-              {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-card shadow-lg z-10">
-                  <div className="py-1">
-                    <Link href={`/eventos/${event.id}/editar`}>
-                      <button className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2">
-                        <Edit className="h-4 w-4" />
-                        Editar Evento
-                      </button>
-                    </Link>
-                    <button
-                      className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-                      onClick={handleDelete}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir Evento
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Link href={`/eventos/${event.id}/editar`}>
-              <Button className="bg-primary hover:bg-primary-hover">
                 <Edit className="h-4 w-4 mr-2" />
-                Editar
+                Editar Evento
               </Button>
-            </Link>
+            )}
           </div>
         </div>
       </div>
@@ -544,12 +493,14 @@ export default function EventoDetailPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold text-lg">Atividades</h2>
-                  <Link href={`/eventos/${eventId}/ordem`}>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-1" />
-                      Editar Ordem
-                    </Button>
-                  </Link>
+                  {!isCompleted && (
+                    <Link href={`/eventos/${eventId}/ordem`}>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar Ordem
+                      </Button>
+                    </Link>
+                  )}
                 </div>
 
                 {/* Items */}
@@ -579,14 +530,18 @@ export default function EventoDetailPage() {
                       Nenhuma ordem do culto definida
                     </p>
                     <p className="mb-4">
-                      Crie a ordem do culto para organizar as atividades do evento.
+                      {isCompleted
+                        ? "Este evento foi concluido sem ordem do culto."
+                        : "Crie a ordem do culto para organizar as atividades do evento."}
                     </p>
-                    <Link href={`/eventos/${eventId}/ordem`}>
-                      <Button>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Criar Ordem do Culto
-                      </Button>
-                    </Link>
+                    {!isCompleted && (
+                      <Link href={`/eventos/${eventId}/ordem`}>
+                        <Button>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Criar Ordem do Culto
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -715,11 +670,15 @@ export default function EventoDetailPage() {
                     Nenhuma funcao definida
                   </p>
                   <p className="text-muted-foreground mb-4">
-                    Este evento ainda nao possui funcoes definidas. Adicione funcoes ao criar ou editar o evento.
+                    {isCompleted
+                      ? "Este evento foi concluido sem funcoes definidas."
+                      : "Este evento ainda nao possui funcoes definidas. Adicione funcoes ao criar ou editar o evento."}
                   </p>
-                  <Link href={`/eventos/${event.id}/editar`}>
-                    <Button variant="outline">Editar Evento</Button>
-                  </Link>
+                  {!isCompleted && (
+                    <Link href={`/eventos/${event.id}/editar`}>
+                      <Button variant="outline">Editar Evento</Button>
+                    </Link>
+                  )}
                 </div>
               </Card>
             )}
@@ -727,61 +686,11 @@ export default function EventoDetailPage() {
         )}
 
         {activeTab === "midia" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Midia e Recursos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Monitor className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="mb-4">Nenhum recurso de midia adicionado</p>
-                <Button variant="outline">Adicionar Midia</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <EventMediaTab eventId={eventId} readOnly={!canEdit} />
         )}
 
         {activeTab === "setlist" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Setlist</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {event.setlists && event.setlists.length > 0 ? (
-                <div className="space-y-3">
-                  {event.setlists.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-4 p-3 rounded-lg border border-border"
-                    >
-                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-sm font-medium">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{item.song.name}</p>
-                        {item.song.artist && (
-                          <p className="text-sm text-muted-foreground">
-                            {item.song.artist}
-                          </p>
-                        )}
-                      </div>
-                      {(item.key || item.song.defaultKey) && (
-                        <Badge variant="outline">
-                          Tom: {item.key || item.song.defaultKey}
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="mb-4">Nenhuma musica adicionada ao setlist</p>
-                  <Button variant="outline">Criar Setlist</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <SetlistBlocks eventId={eventId} readOnly={!canEdit} />
         )}
       </div>
 
@@ -798,6 +707,25 @@ export default function EventoDetailPage() {
         isLoading={createSchedule.isPending}
         existingUserIds={existingUserIds}
       />
+
+      {/* Edit Confirmation Dialog */}
+      <AlertDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar evento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voce sera redirecionado para a pagina de edicao do evento.
+              Certifique-se de salvar suas alteracoes antes de sair.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleGoToEdit}>
+              Continuar para edicao
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

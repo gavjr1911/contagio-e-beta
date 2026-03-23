@@ -16,11 +16,11 @@ type RouteParams = {
 }
 
 const addSongsSchema = z.object({
-  songIds: z.array(z.string().cuid()).min(1, "Selecione pelo menos uma musica"),
+  songIds: z.array(z.string().min(1)).min(1, "Selecione pelo menos uma musica"),
 })
 
 const reorderSongsSchema = z.object({
-  songIds: z.array(z.string().cuid()).min(1),
+  songIds: z.array(z.string().min(1)).min(1),
 })
 
 const setlistInclude = {
@@ -142,7 +142,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update orders
+    // Update orders in two steps to avoid unique constraint violations
+    // Step 1: Set all orders to negative values (offset by -1000)
+    await prisma.$transaction(
+      songIds.map((songId, index) => {
+        const setlistId = songToSetlistId.get(songId)!
+        return prisma.setlist.update({
+          where: { id: setlistId },
+          data: { order: -(index + 1000) },
+        })
+      })
+    )
+
+    // Step 2: Set correct positive orders
     await prisma.$transaction(
       songIds.map((songId, index) => {
         const setlistId = songToSetlistId.get(songId)!

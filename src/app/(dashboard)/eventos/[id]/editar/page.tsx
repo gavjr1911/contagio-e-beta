@@ -9,14 +9,27 @@ import {
   Clock,
   Loader2,
   Users,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   useEvent,
   useUpdateEvent,
+  useDeleteEvent,
   getEventTypeLabel,
   EventType,
   EventStatus,
@@ -64,8 +77,11 @@ export default function EditarEventoPage() {
   const { data: event, isLoading: eventLoading } = useEvent(eventId);
   const { data: existingVacancies, isLoading: vacanciesLoading } = useEventVacancies(eventId);
   const updateEvent = useUpdateEvent();
+  const deleteEvent = useDeleteEvent();
   const createBulkVacancies = useCreateBulkVacancies();
   const deleteVacancy = useDeleteVacancy();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
   const [formData, setFormData] = React.useState({
     name: "",
@@ -179,6 +195,24 @@ export default function EditarEventoPage() {
   const handleVacanciesChange = React.useCallback((newVacancies: VacancyConfig[]) => {
     setVacancies(newVacancies);
   }, []);
+
+  const handleDelete = async () => {
+    if (!event) return;
+    try {
+      await deleteEvent.mutateAsync(event.id);
+      toast({
+        title: "Sucesso",
+        description: "Evento excluido com sucesso!",
+      });
+      router.push("/eventos");
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir evento",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
 
   const isSubmitting = updateEvent.isPending || createBulkVacancies.isPending || deleteVacancy.isPending;
   const isLoading = eventLoading || vacanciesLoading;
@@ -396,7 +430,66 @@ export default function EditarEventoPage() {
             )}
           </Button>
         </div>
+
+        {/* Danger Zone */}
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Zona de Perigo
+            </CardTitle>
+            <CardDescription>
+              Acoes irreversiveis para este evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+              <div>
+                <p className="font-medium text-foreground">Excluir este evento</p>
+                <p className="text-sm text-muted-foreground">
+                  Esta acao e permanente e nao pode ser desfeita. Todas as escalas e atividades associadas serao removidas.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleteEvent.isPending}
+              >
+                {deleteEvent.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Excluir Evento
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Voce tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acao nao pode ser desfeita. Isso ira excluir permanentemente o evento
+              <strong className="text-foreground"> "{event?.name}"</strong> e remover todas as escalas
+              e atividades associadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, excluir evento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

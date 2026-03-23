@@ -61,6 +61,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       mediaUrl,
       notes,
       isPublic,
+      expectedSongCount,
     } = validation.data
 
     // Validate responsibleId if provided
@@ -72,6 +73,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Usuario responsavel nao encontrado", 400)
       }
     }
+
+    // Determina o tipo final (novo ou existente)
+    const finalType = type ?? existingItem.type
 
     const item = await prisma.eventItem.update({
       where: { id: itemId },
@@ -85,6 +89,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         mediaUrl: mediaUrl || null,
         notes,
         isPublic,
+        expectedSongCount: finalType === "WORSHIP" ? expectedSongCount : null,
       },
       include: eventItemIncludeFull,
     })

@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import { updateEventSchema } from "@/lib/validations/event"
 import { transformEventForResponse } from "@/lib/date-utils"
 import { EventStatus } from "@/generated/prisma/enums"
@@ -25,11 +26,7 @@ export async function GET(
       include: {
         template: { select: { id: true, name: true } },
         items: {
-          include: {
-            responsible: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+          include: eventItemIncludeFull,
           orderBy: { order: "asc" },
         },
         schedules: {

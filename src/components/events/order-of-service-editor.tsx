@@ -32,7 +32,6 @@ import {
   ExternalLink,
   Music,
   X,
-  Search,
   Check,
 } from "lucide-react"
 
@@ -41,6 +40,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -82,6 +82,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useQueryClient } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -90,8 +91,6 @@ import {
   useUpdateEventItem,
   useDeleteEventItem,
   useReorderEventItems,
-  useAddSongsToItem,
-  useRemoveSongFromItem,
   eventItemTypeConfig,
   calculateStartTimes,
   calculateTotalDuration,
@@ -101,7 +100,6 @@ import {
   type CreateEventItemInput,
   type SetlistItem,
 } from "@/hooks/use-event-items"
-import { useSongs, type Song } from "@/hooks/use-songs"
 import { useUsers, type User as UserType } from "@/hooks/use-users"
 
 interface OrderOfServiceEditorProps {
@@ -109,6 +107,73 @@ interface OrderOfServiceEditorProps {
   eventStartTime: string
   readOnly?: boolean
 }
+
+// Sortable Setlist Song (for inline reordering)
+const SortableSetlistSong = React.memo(function SortableSetlistSong({
+  setlistItem,
+  index,
+}: {
+  setlistItem: SetlistItem
+  index: number
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: setlistItem.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 p-2 rounded bg-background border border-border",
+        isDragging && "z-50 opacity-90 shadow-lg ring-2 ring-primary"
+      )}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="touch-none cursor-grab p-0.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        type="button"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="text-xs text-muted-foreground w-5">{index + 1}.</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{setlistItem.song.name}</p>
+        {setlistItem.song.artist && (
+          <p className="text-xs text-muted-foreground truncate">
+            {setlistItem.song.artist}
+          </p>
+        )}
+      </div>
+      {setlistItem.key && (
+        <Badge variant="secondary" className="text-xs">
+          Tom: {setlistItem.key}
+        </Badge>
+      )}
+      {setlistItem.song.chordLink && (
+        <a
+          href={setlistItem.song.chordLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:text-primary/80"
+        >
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+    </div>
+  )
+})
 
 // Sortable Item Component
 const SortableItem = React.memo(function SortableItem({
@@ -119,6 +184,7 @@ const SortableItem = React.memo(function SortableItem({
   readOnly,
   isExpanded,
   onToggleExpand,
+  onReorderSongs,
 }: {
   item: EventItem
   startTime: string
@@ -127,6 +193,7 @@ const SortableItem = React.memo(function SortableItem({
   readOnly: boolean
   isExpanded: boolean
   onToggleExpand: () => void
+  onReorderSongs?: (itemId: string, songIds: string[]) => void
 }) {
   const {
     attributes,
@@ -137,6 +204,40 @@ const SortableItem = React.memo(function SortableItem({
     isDragging,
   } = useSortable({ id: item.id, disabled: readOnly })
 
+  // Local state for setlist items (to enable drag and drop reordering)
+  const [localSetlistItems, setLocalSetlistItems] = React.useState(item.setlistItems || [])
+
+  // Sync with parent data
+  React.useEffect(() => {
+    setLocalSetlistItems(item.setlistItems || [])
+  }, [item.setlistItems])
+
+  // Sensors for song drag and drop
+  const songSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handle song reorder
+  const handleSongDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = localSetlistItems.findIndex((s) => s.id === active.id)
+      const newIndex = localSetlistItems.findIndex((s) => s.id === over.id)
+      const newItems = arrayMove(localSetlistItems, oldIndex, newIndex)
+      setLocalSetlistItems(newItems)
+
+      // Call parent to persist the reorder
+      if (onReorderSongs) {
+        onReorderSongs(item.id, newItems.map((s) => s.songId))
+      }
+    }
+  }
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -145,6 +246,10 @@ const SortableItem = React.memo(function SortableItem({
   const config = eventItemTypeConfig[item.type]
   const hasDetails = item.description || item.bibleReference || item.notes || item.mediaUrl
   const hasSongs = item.type === "WORSHIP" && item.setlistItems && item.setlistItems.length > 0
+  const hasExpectedSongs = item.type === "WORSHIP" && item.expectedSongCount && item.expectedSongCount > 0
+  const currentSongCount = item.setlistItems?.length || 0
+  const expectedSongCount = item.expectedSongCount || 0
+  const isSongCountComplete = hasExpectedSongs && currentSongCount >= expectedSongCount
 
   return (
     <div
@@ -204,10 +309,20 @@ const SortableItem = React.memo(function SortableItem({
                     {item.durationMinutes}min
                   </Badge>
                 )}
-                {hasSongs && (
-                  <Badge variant="secondary" className="shrink-0 text-xs">
+                {/* Badge de músicas para blocos WORSHIP */}
+                {item.type === "WORSHIP" && (hasExpectedSongs || hasSongs) && (
+                  <Badge
+                    variant={isSongCountComplete ? "default" : "secondary"}
+                    className={cn(
+                      "shrink-0 text-xs",
+                      hasExpectedSongs && !isSongCountComplete && "bg-amber-500/20 text-amber-600 border-amber-500/30"
+                    )}
+                  >
                     <Music className="h-3 w-3 mr-1" />
-                    {item.setlistItems.length} {item.setlistItems.length === 1 ? "musica" : "musicas"}
+                    {hasExpectedSongs
+                      ? `${currentSongCount}/${expectedSongCount} musicas`
+                      : `${currentSongCount} ${currentSongCount === 1 ? "musica" : "musicas"}`
+                    }
                   </Badge>
                 )}
               </div>
@@ -310,46 +425,74 @@ const SortableItem = React.memo(function SortableItem({
                   Abrir midia
                 </a>
               )}
-              {/* Songs list for WORSHIP type */}
+              {/* Songs list for WORSHIP type - with drag and drop if not readOnly */}
               {hasSongs && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Music className="h-3 w-3" />
                     Musicas deste bloco:
+                    {!readOnly && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        (arraste para reordenar)
+                      </span>
+                    )}
                   </p>
-                  <div className="space-y-1">
-                    {item.setlistItems.map((setlistItem, index) => (
-                      <div
-                        key={setlistItem.id}
-                        className="flex items-center gap-2 p-2 rounded bg-background border border-border"
+                  {!readOnly && onReorderSongs ? (
+                    <DndContext
+                      sensors={songSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleSongDragEnd}
+                    >
+                      <SortableContext
+                        items={localSetlistItems.map((s) => s.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <span className="text-xs text-muted-foreground w-5">{index + 1}.</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{setlistItem.song.name}</p>
-                          {setlistItem.song.artist && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {setlistItem.song.artist}
-                            </p>
+                        <div className="space-y-1">
+                          {localSetlistItems.map((setlistItem, index) => (
+                            <SortableSetlistSong
+                              key={setlistItem.id}
+                              setlistItem={setlistItem}
+                              index={index}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  ) : (
+                    <div className="space-y-1">
+                      {item.setlistItems.map((setlistItem, index) => (
+                        <div
+                          key={setlistItem.id}
+                          className="flex items-center gap-2 p-2 rounded bg-background border border-border"
+                        >
+                          <span className="text-xs text-muted-foreground w-5">{index + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{setlistItem.song.name}</p>
+                            {setlistItem.song.artist && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {setlistItem.song.artist}
+                              </p>
+                            )}
+                          </div>
+                          {setlistItem.key && (
+                            <Badge variant="secondary" className="text-xs">
+                              Tom: {setlistItem.key}
+                            </Badge>
+                          )}
+                          {setlistItem.song.chordLink && (
+                            <a
+                              href={setlistItem.song.chordLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary/80"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
                           )}
                         </div>
-                        {setlistItem.key && (
-                          <Badge variant="secondary" className="text-xs">
-                            Tom: {setlistItem.key}
-                          </Badge>
-                        )}
-                        {setlistItem.song.chordLink && (
-                          <a
-                            href={setlistItem.song.chordLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {item.notes && !item.isPublic && (
@@ -368,144 +511,6 @@ const SortableItem = React.memo(function SortableItem({
   )
 })
 
-// Song Selector Component
-function SongSelector({
-  selectedSongIds,
-  onAdd,
-  onRemove,
-  isLoading,
-}: {
-  selectedSongIds: string[]
-  onAdd: (songId: string) => void
-  onRemove: (songId: string) => void
-  isLoading: boolean
-}) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [isOpen, setIsOpen] = React.useState(false)
-  const [cachedSongs, setCachedSongs] = React.useState<Map<string, Song>>(new Map())
-
-  // Only fetch when popover is open
-  const { data: songsData, isLoading: isLoadingSongs } = useSongs(
-    isOpen ? { search: searchQuery } : null
-  )
-
-  const songs: Song[] = songsData?.songs || []
-  const selectedSet = new Set(selectedSongIds)
-
-  // Cache selected songs when found
-  React.useEffect(() => {
-    if (songs.length > 0) {
-      setCachedSongs((prev) => {
-        const next = new Map(prev)
-        songs.forEach((song) => {
-          if (selectedSet.has(song.id)) {
-            next.set(song.id, song)
-          }
-        })
-        return next
-      })
-    }
-  }, [songs, selectedSongIds])
-
-  // Get selected songs from cache or current results
-  const selectedSongs = selectedSongIds
-    .map((id) => songs.find((s) => s.id === id) || cachedSongs.get(id))
-    .filter((s): s is Song => s !== undefined)
-
-  return (
-    <div className="space-y-3">
-      <Label className="flex items-center gap-2">
-        <Music className="h-4 w-4" />
-        Musicas do bloco
-      </Label>
-
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full justify-start text-muted-foreground"
-            disabled={isLoading}
-          >
-            <Search className="h-4 w-4 mr-2" />
-            Buscar e adicionar musicas...
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Buscar musica..."
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-            />
-            <CommandList>
-              <CommandEmpty>
-                {isLoadingSongs ? "Carregando..." : "Nenhuma musica encontrada."}
-              </CommandEmpty>
-              <CommandGroup heading="Musicas">
-                {songs.map((song) => (
-                  <CommandItem
-                    key={song.id}
-                    value={song.name}
-                    onSelect={() => {
-                      if (selectedSet.has(song.id)) {
-                        onRemove(song.id)
-                      } else {
-                        onAdd(song.id)
-                      }
-                    }}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{song.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {song.artist || "Artista desconhecido"}
-                        {song.defaultKey && ` • Tom: ${song.defaultKey}`}
-                      </p>
-                    </div>
-                    {selectedSet.has(song.id) && (
-                      <Check className="h-4 w-4 text-primary shrink-0 ml-2" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-
-      {/* Selected Songs */}
-      {selectedSongIds.length > 0 && (
-        <div className="space-y-1">
-          {selectedSongs.map((song) => (
-              <div
-                key={song.id}
-                className="flex items-center gap-2 p-2 rounded bg-secondary border border-border"
-              >
-                <Music className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{song.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {song.artist} {song.defaultKey && `• ${song.defaultKey}`}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0"
-                  onClick={() => onRemove(song.id)}
-                  disabled={isLoading}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // User Selector Component
 function UserSelector({
   value,
@@ -523,8 +528,9 @@ function UserSelector({
     isOpen ? { search: searchQuery } : null
   )
 
-  const users: UserType[] = usersData?.data || []
-  const selectedUser = users.find((u) => u.id === value) || cachedUser
+  // Garantir que users seja sempre um array
+  const users: UserType[] = Array.isArray(usersData?.data) ? usersData.data : []
+  const selectedUser = (users.length > 0 ? users.find((u) => u.id === value) : null) || cachedUser
 
   // Cache the selected user when found
   React.useEffect(() => {
@@ -631,15 +637,13 @@ function ItemFormModal({
   open,
   onClose,
   item,
-  eventId,
   onSave,
   isLoading,
 }: {
   open: boolean
   onClose: () => void
   item: EventItem | null
-  eventId: string
-  onSave: (data: CreateEventItemInput) => void
+  onSave: (data: CreateEventItemInput) => Promise<void>
   isLoading: boolean
 }) {
   const [formData, setFormData] = React.useState<CreateEventItemInput>({
@@ -652,11 +656,10 @@ function ItemFormModal({
     mediaUrl: "",
     notes: "",
     isPublic: true,
+    expectedSongCount: undefined,
+    requiresMedia: false,
   })
-  const [selectedSongIds, setSelectedSongIds] = React.useState<string[]>([])
-
-  const addSongsToItem = useAddSongsToItem()
-  const removeSongFromItem = useRemoveSongFromItem()
+  const [isSaving, setIsSaving] = React.useState(false)
 
   // Reset form when item changes
   React.useEffect(() => {
@@ -671,9 +674,9 @@ function ItemFormModal({
         mediaUrl: item.mediaUrl || "",
         notes: item.notes || "",
         isPublic: item.isPublic,
+        expectedSongCount: item.expectedSongCount || undefined,
+        requiresMedia: item.requiresMedia || false,
       })
-      // Set selected songs from item
-      setSelectedSongIds(item.setlistItems?.map((s) => s.songId) || [])
     } else {
       setFormData({
         type: "OTHER",
@@ -685,8 +688,9 @@ function ItemFormModal({
         mediaUrl: "",
         notes: "",
         isPublic: true,
+        expectedSongCount: undefined,
+        requiresMedia: false,
       })
-      setSelectedSongIds([])
     }
   }, [item, open])
 
@@ -700,57 +704,13 @@ function ItemFormModal({
       })
       return
     }
-    onSave(formData)
 
-    // If editing and type is WORSHIP, handle songs
-    if (item && formData.type === "WORSHIP") {
-      const currentSongIds = new Set(item.setlistItems?.map((s) => s.songId) || [])
-      const newSongIds = new Set(selectedSongIds)
-
-      // Add new songs
-      const toAdd = selectedSongIds.filter((id) => !currentSongIds.has(id))
-      if (toAdd.length > 0) {
-        try {
-          await addSongsToItem.mutateAsync({
-            eventId,
-            itemId: item.id,
-            songIds: toAdd,
-          })
-        } catch {
-          toast({
-            title: "Erro",
-            description: "Erro ao adicionar musicas",
-            variant: "destructive",
-          })
-        }
-      }
-
-      // Remove songs that were deselected
-      const toRemove = Array.from(currentSongIds).filter((id) => !newSongIds.has(id))
-      for (const songId of toRemove) {
-        try {
-          await removeSongFromItem.mutateAsync({
-            eventId,
-            itemId: item.id,
-            songId,
-          })
-        } catch {
-          toast({
-            title: "Erro",
-            description: "Erro ao remover musica",
-            variant: "destructive",
-          })
-        }
-      }
+    setIsSaving(true)
+    try {
+      await onSave(formData)
+    } finally {
+      setIsSaving(false)
     }
-  }
-
-  const handleAddSong = (songId: string) => {
-    setSelectedSongIds((prev) => [...prev, songId])
-  }
-
-  const handleRemoveSong = (songId: string) => {
-    setSelectedSongIds((prev) => prev.filter((id) => id !== songId))
   }
 
   const itemTypes = Object.entries(eventItemTypeConfig) as [
@@ -835,14 +795,34 @@ function ItemFormModal({
             />
           </div>
 
-          {/* Songs selector for WORSHIP type */}
+          {/* Expected song count for WORSHIP type */}
           {formData.type === "WORSHIP" && (
-            <SongSelector
-              selectedSongIds={selectedSongIds}
-              onAdd={handleAddSong}
-              onRemove={handleRemoveSong}
-              isLoading={addSongsToItem.isPending || removeSongFromItem.isPending}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="expectedSongCount" className="flex items-center gap-2">
+                <Music className="h-4 w-4" />
+                Quantidade de Musicas
+              </Label>
+              <Input
+                id="expectedSongCount"
+                type="number"
+                min={1}
+                max={20}
+                value={formData.expectedSongCount || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    expectedSongCount: e.target.value
+                      ? parseInt(e.target.value)
+                      : undefined,
+                  })
+                }
+                placeholder="Ex: 3"
+              />
+              <p className="text-xs text-muted-foreground">
+                Defina quantas musicas este bloco de louvor deve ter.
+                A equipe de louvor ira associar as musicas especificas na aba Setlist.
+              </p>
+            </div>
           )}
 
           {/* Bible Reference (only for READING type) */}
@@ -904,12 +884,29 @@ function ItemFormModal({
             />
           </div>
 
+          {/* Requires Media */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="requiresMedia">Requer Midia</Label>
+              <p className="text-xs text-muted-foreground">
+                A equipe de midia vera que precisa adicionar arquivos
+              </p>
+            </div>
+            <Switch
+              id="requiresMedia"
+              checked={formData.requiresMedia || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, requiresMedia: checked })
+              }
+            />
+          </div>
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button type="submit" disabled={isLoading || isSaving}>
+              {(isLoading || isSaving) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {item ? "Salvar" : "Adicionar"}
             </Button>
           </DialogFooter>
@@ -917,6 +914,24 @@ function ItemFormModal({
       </DialogContent>
     </Dialog>
   )
+}
+
+// API function to reorder setlist songs
+async function reorderSetlistSongs(
+  eventId: string,
+  itemId: string,
+  songIds: string[]
+): Promise<void> {
+  const response = await fetch(`/api/events/${eventId}/items/${itemId}/songs`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ songIds }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Erro ao reordenar musicas")
+  }
 }
 
 // Main Editor Component
@@ -930,6 +945,7 @@ export function OrderOfServiceEditor({
   const updateItem = useUpdateEventItem()
   const deleteItem = useDeleteEventItem()
   const reorderItems = useReorderEventItems()
+  const queryClient = useQueryClient()
 
   const [localItems, setLocalItems] = React.useState<EventItem[]>([])
   const [expandedItems, setExpandedItems] = React.useState<Set<string>>(new Set())
@@ -966,6 +982,22 @@ export function OrderOfServiceEditor({
     return calculateTotalDuration(localItems)
   }, [localItems])
 
+  // Handle reorder setlist songs
+  const handleReorderSetlistSongs = async (itemId: string, songIds: string[]) => {
+    try {
+      await reorderSetlistSongs(eventId, itemId, songIds)
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["eventItems", eventId] })
+    } catch (error) {
+      console.error("Error reordering songs:", error)
+      toast({
+        title: "Erro",
+        description: "Erro ao reordenar musicas",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Handle drag end
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
@@ -998,6 +1030,7 @@ export function OrderOfServiceEditor({
   const handleSaveItem = async (data: CreateEventItemInput) => {
     try {
       if (editingItem) {
+        // Update existing item
         await updateItem.mutateAsync({
           eventId,
           itemId: editingItem.id,
@@ -1005,12 +1038,15 @@ export function OrderOfServiceEditor({
         })
         toast({ title: "Sucesso", description: "Item atualizado" })
       } else {
+        // Create new item
         await createItem.mutateAsync({ eventId, data })
         toast({ title: "Sucesso", description: "Item adicionado" })
       }
+
       setIsFormOpen(false)
       setEditingItem(null)
-    } catch {
+    } catch (error) {
+      console.error("Error saving item:", error)
       toast({
         title: "Erro",
         description: "Erro ao salvar item",
@@ -1126,6 +1162,7 @@ export function OrderOfServiceEditor({
                   readOnly={readOnly}
                   isExpanded={expandedItems.has(item.id)}
                   onToggleExpand={() => toggleExpand(item.id)}
+                  onReorderSongs={handleReorderSetlistSongs}
                 />
               ))}
             </div>
@@ -1141,7 +1178,6 @@ export function OrderOfServiceEditor({
           setEditingItem(null)
         }}
         item={editingItem}
-        eventId={eventId}
         onSave={handleSaveItem}
         isLoading={createItem.isPending || updateItem.isPending}
       />

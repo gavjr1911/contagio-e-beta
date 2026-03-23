@@ -64,6 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       mediaUrl,
       notes,
       isPublic,
+      expectedSongCount,
     } = validation.data
 
     // Validate responsibleId if provided
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         mediaUrl: mediaUrl || null,
         notes,
         isPublic: isPublic ?? true,
+        expectedSongCount: type === "WORSHIP" ? expectedSongCount : null,
       },
       include: eventItemIncludeFull,
     })

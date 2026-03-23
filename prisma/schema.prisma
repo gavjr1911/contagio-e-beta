@@ -298,10 +298,12 @@ model EventItem {
   responsibleId   String?
 
   // Campos adicionais
-  bibleReference String?  // Referencia biblica (Ex: "Joao 3:16-21")
-  mediaUrl       String?  // Link para video/midia externa
-  notes          String?  @db.Text // Notas internas para a equipe
-  isPublic       Boolean  @default(true) // Visivel para membros?
+  bibleReference    String?  // Referencia biblica (Ex: "Joao 3:16-21")
+  mediaUrl          String?  // Link para video/midia externa
+  notes             String?  @db.Text // Notas internas para a equipe
+  isPublic          Boolean  @default(true) // Visivel para membros?
+  expectedSongCount Int?     // Quantidade de musicas esperadas (para blocos WORSHIP)
+  requiresMedia     Boolean  @default(false) // Requer upload de midia pela equipe
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -309,6 +311,7 @@ model EventItem {
   event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   responsible  User?     @relation("EventItemResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
   setlistItems Setlist[] // Musicas associadas a este bloco de louvor
+  mediaFiles   Media[]   @relation("EventItemMedia") // Arquivos de midia vinculados
 
   @@index([eventId])
   @@index([order])
@@ -504,18 +507,24 @@ model Setlist {
 model Media {
   id           String        @id @default(cuid())
   eventId      String?
+  eventItemId  String?       // FK para EventItem (midia vinculada a item especifico)
   type         MediaType
   url          String
-  filename     String?
+  filename     String?       // Key no R2
+  originalName String?       // Nome original do arquivo
+  fileSize     Int?          // Tamanho em bytes
+  mimeType     String?       // Tipo MIME do arquivo
   category     MediaCategory @default(OTHER)
   uploadedById String?
   createdAt    DateTime      @default(now())
 
   // Relacionamentos
-  event      Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  uploadedBy User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  event      Event?     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventItem  EventItem? @relation("EventItemMedia", fields: [eventItemId], references: [id], onDelete: SetNull)
+  uploadedBy User?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([eventId])
+  @@index([eventItemId])
   @@index([type])
   @@index([category])
   @@index([uploadedById])
