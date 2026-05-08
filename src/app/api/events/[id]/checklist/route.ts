@@ -9,13 +9,18 @@ import {
 } from "@/lib/api-utils"
 import { withCerimonial, canEditChecklist } from "@/lib/permissions"
 import { createEventChecklistItemSchema } from "@/lib/validations/checklist"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
 // GET /api/events/[id]/checklist - Listar itens do checklist do evento
 export async function GET(request: NextRequest, { params }: RouteParams) {
   return withAuth(async (session) => {
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -75,7 +80,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // POST /api/events/[id]/checklist - Adicionar item extra (apenas Cerimonial)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   return withCerimonial(async (session) => {
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },

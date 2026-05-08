@@ -4,13 +4,18 @@ import { prisma } from "@/lib/prisma"
 import { apiError, apiSuccess, validateBody } from "@/lib/api-utils"
 import { withCerimonial } from "@/lib/permissions"
 import { initEventChecklistSchema } from "@/lib/validations/checklist"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
 // POST /api/events/[id]/checklist/init - Instanciar checklist do template
 export async function POST(request: NextRequest, { params }: RouteParams) {
   return withCerimonial(async () => {
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },

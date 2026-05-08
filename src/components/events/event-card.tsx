@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Calendar, Clock, MoreHorizontal } from "lucide-react";
+import { Calendar, Clock, MoreHorizontal, Users, UserPlus, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,13 +110,13 @@ export function EventCard({
             </div>
 
             <Link
-              href={`/eventos/${event.id}`}
+              href={`/eventos/${event.slug ?? event.id}`}
               className="block group-hover:text-primary transition-colors duration-150"
             >
               <h3 className="font-semibold text-base truncate">{event.name}</h3>
             </Link>
 
-            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4" />
                 <span>{formatDate(event.date)}</span>
@@ -130,6 +130,23 @@ export function EventCard({
               </div>
             </div>
           </div>
+
+          {event.attendance && (event.attendance.attendees > 0 || event.attendance.visitors > 0 || event.attendance.conversions > 0) && (
+            <div className="flex flex-col items-end gap-1 text-xs tabular-nums shrink-0 self-center pr-1">
+              <span className="flex items-center gap-1.5 text-foreground" title="Presentes">
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span className="font-semibold w-6 text-right">{event.attendance.attendees}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-foreground" title="Visitantes">
+                <UserPlus className="h-3.5 w-3.5 text-sky-500" />
+                <span className="font-semibold w-6 text-right">{event.attendance.visitors}</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-foreground" title="Conversões">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="font-semibold w-6 text-right">{event.attendance.conversions}</span>
+              </span>
+            </div>
+          )}
 
           <div className="relative" ref={menuRef}>
             <Button

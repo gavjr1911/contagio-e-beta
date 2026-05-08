@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/prisma"
 import { RecurrencePattern } from "@/generated/prisma/client"
+import { buildEventSlug } from "@/lib/slug"
+
+async function generateUniqueEventSlug(base: string): Promise<string> {
+  let candidate = base
+  let counter = 2
+  while (true) {
+    const existing = await prisma.event.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    })
+    if (!existing) return candidate
+    candidate = `${base}-${counter}`
+    counter += 1
+  }
+}
 
 // ============================================
 // TYPES & INTERFACES
@@ -193,10 +208,19 @@ export async function createRecurringEvents(
 
   // Create each child event
   for (const date of dates) {
+    // Gerar slug unico para o evento filho
+    const baseSlug = buildEventSlug({
+      name: parentEvent.name,
+      date,
+      startTime: parentEvent.startTime,
+    })
+    const slug = await generateUniqueEventSlug(baseSlug)
+
     // Create the child event
     const childEvent = await prisma.event.create({
       data: {
         name: parentEvent.name,
+        slug,
         type: parentEvent.type as "CULTO" | "SPECIAL",
         date: date,
         startTime: parentEvent.startTime,

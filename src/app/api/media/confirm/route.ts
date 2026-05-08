@@ -9,6 +9,7 @@ import {
   getMediaTypeFromMime,
   type AllowedMimeType,
 } from "@/lib/storage/r2"
+import { resolveEventId } from "@/lib/events"
 
 // POST /api/media/confirm - Confirmar upload e criar registro no banco
 export async function POST(request: NextRequest) {
@@ -29,8 +30,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { key, eventId, eventItemId, originalName, fileSize, mimeType, category } =
+    const { key, eventId: eventIdOrSlug, eventItemId, originalName, fileSize, mimeType, category } =
       parseResult.data
+
+    // Resolver eventId (aceita cuid ou slug)
+    const eventId = await resolveEventId(eventIdOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Verificar se evento existe e nao esta concluido
     const event = await prisma.event.findUnique({

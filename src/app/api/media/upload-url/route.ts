@@ -8,6 +8,7 @@ import {
   generateFileKey,
   isR2Configured,
 } from "@/lib/storage/r2"
+import { resolveEventId } from "@/lib/events"
 
 // POST /api/media/upload-url - Solicitar URL presigned para upload
 export async function POST(request: NextRequest) {
@@ -38,9 +39,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { filename, contentType, fileSize, eventId, eventItemId } = parseResult.data
+    const { filename, contentType, fileSize, eventId: eventIdOrSlug, eventItemId } = parseResult.data
 
-    // Verificar se evento existe
+    // Resolver eventId (aceita cuid ou slug)
+    const eventId = await resolveEventId(eventIdOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
+
+    // Verificar status do evento
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: { id: true, status: true },

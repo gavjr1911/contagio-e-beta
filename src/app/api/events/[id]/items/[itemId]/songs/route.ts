@@ -10,6 +10,7 @@ import {
   validateBody,
 } from "@/lib/api-utils"
 import { songSelectWithChord } from "@/lib/prisma-includes"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string; itemId: string }>
@@ -30,7 +31,11 @@ const setlistInclude = {
 // GET /api/events/[id]/items/[itemId]/songs - Get songs for this worship block
 export async function GET(request: NextRequest, { params }: RouteParams) {
   return withAuth(async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     // Verify item exists and is a worship block
     const item = await prisma.eventItem.findFirst({
@@ -54,7 +59,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // POST /api/events/[id]/items/[itemId]/songs - Add songs to this worship block
 export async function POST(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     // Verify item exists
     const item = await prisma.eventItem.findFirst({
@@ -115,7 +124,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 // PATCH /api/events/[id]/items/[itemId]/songs - Reorder songs in this worship block
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const validation = await validateBody(request, reorderSongsSchema)
     if (!validation.success) {
@@ -178,7 +191,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/events/[id]/items/[itemId]/songs - Remove a song from this worship block
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
     const { searchParams } = new URL(request.url)
     const songId = searchParams.get("songId")
 

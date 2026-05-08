@@ -5,6 +5,21 @@ import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileSidebar } from "./sidebar";
+import { looksLikeCuid } from "@/lib/slug";
+
+/**
+ * Formata um slug de evento (ex.: "culto-de-domingo-2026-04-19-10-00")
+ * removendo o sufixo de data/hora e capitalizando palavras.
+ */
+function formatEventSlugForBreadcrumb(slug: string): string {
+  // Remove o sufixo "-YYYY-MM-DD-HH-mm" se presente
+  const withoutDate = slug.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/, "");
+  return withoutDate
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
@@ -24,9 +39,26 @@ function getBreadcrumbs(pathname: string) {
   const breadcrumbs = [{ name: "Início", href: "/" }];
 
   let currentPath = "";
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
     currentPath += `/${segment}`;
-    const name = pageTitles[currentPath] || segment.charAt(0).toUpperCase() + segment.slice(1);
+    let name = pageTitles[currentPath];
+
+    if (!name) {
+      // Se o segmento anterior for "eventos", esse e o id/slug do evento
+      const isEventIdentifier = i > 0 && segments[i - 1] === "eventos";
+
+      if (isEventIdentifier) {
+        if (looksLikeCuid(segment)) {
+          name = "Evento";
+        } else {
+          name = formatEventSlugForBreadcrumb(segment);
+        }
+      } else {
+        name = segment.charAt(0).toUpperCase() + segment.slice(1);
+      }
+    }
+
     breadcrumbs.push({ name, href: currentPath });
   }
 

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { setlistItemCreateSchema, setlistReorderSchema } from "@/lib/validations/music"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string }>
@@ -14,7 +15,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
@@ -64,7 +69,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
     const body = await request.json()
     const validationResult = setlistItemCreateSchema.safeParse(body)
 
@@ -140,7 +149,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
     const body = await request.json()
     const validationResult = setlistReorderSchema.safeParse(body)
 

@@ -6,6 +6,7 @@ import { formatDateToISO } from "@/lib/date-utils"
 import { createScheduleSchema } from "@/lib/validations/schedule"
 import { sendScheduleInvite } from "@/lib/email"
 import { logAuditAsync, getAuditContext, getRequestMetadata } from "@/lib/audit"
+import { resolveEventId } from "@/lib/events"
 
 // Helper function to check for time conflicts
 interface TimeConflict {
@@ -136,14 +137,13 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
-    const searchParams = request.nextUrl.searchParams
-    const ministryId = searchParams.get("ministryId")
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
+    const searchParams = request.nextUrl.searchParams
+    const ministryId = searchParams.get("ministryId")
 
     const where = {
       eventId,
@@ -227,7 +227,11 @@ export async function POST(
       )
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {

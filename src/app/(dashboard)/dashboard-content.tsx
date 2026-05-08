@@ -128,7 +128,7 @@ function EventCard({ event }: { event: DashboardEvent }) {
 
   return (
     <Link
-      href={`/eventos/${event.id}`}
+      href={`/eventos/${event.slug ?? event.id}`}
       className="block bg-card/50 rounded-xl p-4 border border-border hover:border-primary/30 transition-colors"
     >
       <div className="flex items-start justify-between">

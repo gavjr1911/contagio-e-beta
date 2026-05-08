@@ -13,6 +13,7 @@ import {
   createEventItemSchema,
   reorderEventItemsSchema,
 } from "@/lib/validations/event"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string }>
@@ -21,10 +22,9 @@ type RouteParams = {
 // GET /api/events/[id]/items - List event items (ordem do culto)
 export async function GET(request: NextRequest, { params }: RouteParams) {
   return withAuth(async () => {
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return apiError("Evento nao encontrado", 404)
     }
 
@@ -41,10 +41,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // POST /api/events/[id]/items - Add item to event order
 export async function POST(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return apiError("Evento nao encontrado", 404)
     }
 
@@ -124,10 +123,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 // PATCH /api/events/[id]/items - Reorder event items
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return apiError("Evento nao encontrado", 404)
     }
 

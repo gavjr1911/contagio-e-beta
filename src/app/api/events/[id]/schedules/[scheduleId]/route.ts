@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { updateScheduleSchema } from "@/lib/validations/schedule"
 import { logAuditAsync, getAuditContext, getRequestMetadata, calculateDiff } from "@/lib/audit"
+import { resolveEventId } from "@/lib/events"
 
 // PATCH /api/events/[id]/schedules/[scheduleId] - Update schedule
 export async function PATCH(
@@ -17,11 +18,9 @@ export async function PATCH(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId, scheduleId } = await params
-
-    // Verify event exists
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug, scheduleId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
@@ -148,11 +147,9 @@ export async function DELETE(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId, scheduleId } = await params
-
-    // Verify event exists
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug, scheduleId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 

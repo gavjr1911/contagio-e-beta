@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { formatDateToISO } from "@/lib/date-utils"
 import { z } from "zod"
 import { sendScheduleInvite } from "@/lib/email/send"
+import { resolveEventId } from "@/lib/events"
 
 // Schema for bulk schedule item
 const bulkScheduleItemSchema = z.object({
@@ -170,7 +171,11 @@ export async function POST(
       )
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     const body = await request.json()
     const parseResult = bulkScheduleSchema.safeParse(body)
@@ -491,7 +496,11 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
     const searchParams = request.nextUrl.searchParams
     const userIdsParam = searchParams.get("userIds")
 

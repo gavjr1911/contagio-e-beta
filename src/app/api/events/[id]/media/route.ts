@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { resolveEventId } from "@/lib/events"
 import type { EventMediaResponse, MediaResponse, EventItemMediaStatus } from "@/lib/validations/media"
 
 // GET /api/events/[id]/media - Listar midia do evento
@@ -16,15 +17,9 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
-
-    // Verificar se evento existe
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true },
-    })
-
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 

@@ -6,6 +6,7 @@ import {
   createVacancySchema,
   createBulkVacanciesSchema,
 } from "@/lib/validations/vacancy"
+import { resolveEventId } from "@/lib/events"
 
 // GET /api/events/[id]/vacancies - List event vacancies with filled count
 export async function GET(
@@ -19,10 +20,9 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
@@ -86,10 +86,9 @@ export async function POST(
       )
     }
 
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 

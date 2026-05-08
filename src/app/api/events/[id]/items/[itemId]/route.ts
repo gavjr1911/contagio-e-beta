@@ -10,6 +10,7 @@ import {
 } from "@/lib/api-utils"
 import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import { updateEventItemSchema } from "@/lib/validations/event"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string; itemId: string }>
@@ -18,7 +19,11 @@ type RouteParams = {
 // GET /api/events/[id]/items/[itemId] - Get single event item
 export async function GET(request: NextRequest, { params }: RouteParams) {
   return withAuth(async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const item = await prisma.eventItem.findFirst({
       where: { id: itemId, eventId },
@@ -36,7 +41,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PATCH /api/events/[id]/items/[itemId] - Update event item
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const existingItem = await prisma.eventItem.findFirst({
       where: { id: itemId, eventId },
@@ -132,7 +141,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/events/[id]/items/[itemId] - Delete event item
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   return withRole(["ADMIN", "LEADER"], async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const existingItem = await prisma.eventItem.findFirst({
       where: { id: itemId, eventId },

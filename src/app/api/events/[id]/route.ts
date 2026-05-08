@@ -6,6 +6,27 @@ import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import { updateEventSchema } from "@/lib/validations/event"
 import { transformEventForResponse } from "@/lib/date-utils"
 import { EventStatus } from "@/generated/prisma/enums"
+import { resolveEventId } from "@/lib/events"
+import { buildEventSlug } from "@/lib/slug"
+
+async function generateUniqueSlug(
+  base: string,
+  excludeEventId?: string
+): Promise<string> {
+  let candidate = base
+  let counter = 2
+  while (true) {
+    const existing = await prisma.event.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    })
+    if (!existing || existing.id === excludeEventId) {
+      return candidate
+    }
+    candidate = `${base}-${counter}`
+    counter += 1
+  }
+}
 
 // GET /api/events/[id] - Get event details with schedules and items
 export async function GET(
@@ -19,10 +40,14 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     const event = await prisma.event.findUnique({
-      where: { id },
+      where: { id: eventId },
       include: {
         template: { select: { id: true, name: true } },
         checklistTemplate: { select: { id: true, name: true } },
@@ -78,9 +103,13 @@ export async function PATCH(
       )
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
-    const existingEvent = await prisma.event.findUnique({ where: { id } })
+    const existingEvent = await prisma.event.findUnique({ where: { id: eventId } })
     if (!existingEvent) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
@@ -128,9 +157,28 @@ export async function PATCH(
       updateData.status === EventStatus.COMPLETED &&
       existingEvent.status !== EventStatus.COMPLETED
 
+    // Regenerar slug se nome, data ou hora de inicio mudaram
+    const finalUpdateData: typeof updateData & { slug?: string } = { ...updateData }
+    const nameChanged = updateData.name !== undefined && updateData.name !== existingEvent.name
+    const dateChanged = updateData.date !== undefined && String(updateData.date) !== String(existingEvent.date)
+    const startTimeChanged =
+      updateData.startTime !== undefined &&
+      String(updateData.startTime) !== String(existingEvent.startTime)
+
+    if (nameChanged || dateChanged || startTimeChanged) {
+      const baseSlug = buildEventSlug({
+        name: updateData.name ?? existingEvent.name,
+        date: updateData.date ?? existingEvent.date,
+        startTime: updateData.startTime ?? existingEvent.startTime,
+      })
+      if (baseSlug !== existingEvent.slug) {
+        finalUpdateData.slug = await generateUniqueSlug(baseSlug, eventId)
+      }
+    }
+
     const event = await prisma.event.update({
-      where: { id },
-      data: updateData,
+      where: { id: eventId },
+      data: finalUpdateData,
       include: {
         template: { select: { id: true, name: true } },
         checklistTemplate: { select: { id: true, name: true } },
@@ -187,14 +235,18 @@ export async function DELETE(
       )
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
-    const existingEvent = await prisma.event.findUnique({ where: { id } })
+    const existingEvent = await prisma.event.findUnique({ where: { id: eventId } })
     if (!existingEvent) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
-    await prisma.event.delete({ where: { id } })
+    await prisma.event.delete({ where: { id: eventId } })
 
     return Response.json({ message: "Evento removido com sucesso" })
   } catch (error) {

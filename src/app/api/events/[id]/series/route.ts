@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getTodayLocal } from "@/lib/date-utils"
+import { resolveEventId } from "@/lib/events"
 
 // ============================================
 // GET /api/events/[id]/series
@@ -20,11 +21,15 @@ export async function GET(
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Get the requested event
     const event = await prisma.event.findUnique({
-      where: { id },
+      where: { id: eventId },
       select: {
         id: true,
         parentEventId: true,
@@ -138,7 +143,11 @@ export async function PATCH(
       )
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
     const body = await request.json()
 
     const { updateScope = "all", ...updateData } = body
@@ -152,7 +161,7 @@ export async function PATCH(
 
     // Get the requested event
     const event = await prisma.event.findUnique({
-      where: { id },
+      where: { id: eventId },
       select: {
         id: true,
         parentEventId: true,
@@ -246,11 +255,15 @@ export async function DELETE(
       )
     }
 
-    const { id } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Get the requested event
     const event = await prisma.event.findUnique({
-      where: { id },
+      where: { id: eventId },
       select: {
         id: true,
         parentEventId: true,

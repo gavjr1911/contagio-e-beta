@@ -13,6 +13,7 @@ export { EventType, EventStatus, RecurrencePattern } from "@/generated/prisma/en
 // Types matching API response
 export interface Event {
   id: string;
+  slug?: string | null;
   name: string;
   type: EventType;
   date: string | Date;
@@ -35,6 +36,11 @@ export interface Event {
   checklistTemplate?: {
     id: string;
     name: string;
+  } | null;
+  attendance?: {
+    attendees: number;
+    visitors: number;
+    conversions: number;
   } | null;
   _count?: {
     schedules: number;

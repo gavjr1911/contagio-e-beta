@@ -14,6 +14,23 @@ import { transformEventForResponse, parseLocalDate } from "@/lib/date-utils"
 import type { RecurrencePattern } from "@/generated/prisma/client"
 import { resolveUserPermissions } from "@/lib/permissions/resolver"
 import { hasPermission } from "@/lib/permissions/check"
+import { buildEventSlug } from "@/lib/slug"
+
+async function generateUniqueSlug(base: string): Promise<string> {
+  let candidate = base
+  let counter = 2
+  while (true) {
+    const existing = await prisma.event.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    })
+    if (!existing) {
+      return candidate
+    }
+    candidate = `${base}-${counter}`
+    counter += 1
+  }
+}
 
 // GET /api/events - List events with filters
 export async function GET(request: NextRequest) {
@@ -74,6 +91,9 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           template: { select: { id: true, name: true } },
+          attendance: {
+            select: { attendees: true, visitors: true, conversions: true },
+          },
           _count: {
             select: { schedules: true, items: true },
           },
@@ -173,10 +193,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Gerar slug unico para o evento
+    const baseSlug = buildEventSlug({ name, date, startTime })
+    const slug = await generateUniqueSlug(baseSlug)
+
     // Create the parent event
     const event = await prisma.event.create({
       data: {
         name,
+        slug,
         type,
         date,
         startTime,

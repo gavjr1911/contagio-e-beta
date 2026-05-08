@@ -6,6 +6,7 @@ import { formatDateToISO } from "@/lib/date-utils";
 // Types
 export interface DashboardEvent {
   id: string;
+  slug?: string | null;
   name: string;
   type: string;
   date: string;

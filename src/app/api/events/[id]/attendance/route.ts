@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { resolveEventId } from "@/lib/events"
 
 const updateAttendanceSchema = z.object({
   attendees: z.number().int().min(0).max(100000).optional(),
@@ -22,10 +23,9 @@ export async function GET(
       return Response.json({ error: "Não autorizado" }, { status: 401 })
     }
 
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento não encontrado" }, { status: 404 })
     }
 
@@ -76,10 +76,9 @@ export async function PUT(
       )
     }
 
-    const { id: eventId } = await params
-
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento não encontrado" }, { status: 404 })
     }
 
@@ -113,6 +112,18 @@ export async function PUT(
       },
       include: {
         updatedBy: { select: { id: true, name: true } },
+      },
+    })
+
+    await prisma.eventAttendanceLog.create({
+      data: {
+        attendanceId: attendance.id,
+        eventId,
+        attendees: attendance.attendees,
+        visitors: attendance.visitors,
+        conversions: attendance.conversions,
+        notes: attendance.notes,
+        updatedById: session.user.id,
       },
     })
 

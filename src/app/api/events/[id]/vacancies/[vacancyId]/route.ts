@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { updateVacancySchema } from "@/lib/validations/vacancy"
+import { resolveEventId } from "@/lib/events"
 
 // PATCH /api/events/[id]/vacancies/[vacancyId] - Update vacancy quantity
 export async function PATCH(
@@ -24,11 +25,9 @@ export async function PATCH(
       )
     }
 
-    const { id: eventId, vacancyId } = await params
-
-    // Validate event exists
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug, vacancyId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
@@ -126,11 +125,9 @@ export async function DELETE(
       )
     }
 
-    const { id: eventId, vacancyId } = await params
-
-    // Validate event exists
-    const event = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!event) {
+    const { id: idOrSlug, vacancyId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 

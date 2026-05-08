@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { setlistItemUpdateSchema } from "@/lib/validations/music"
 import { EventStatus } from "@/generated/prisma/enums"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string; itemId: string }>
@@ -15,7 +16,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
     const body = await request.json()
     const validationResult = setlistItemUpdateSchema.safeParse(body)
 
@@ -76,7 +81,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Verificar se o item existe e pertence ao evento
     const existingItem = await prisma.setlist.findUnique({

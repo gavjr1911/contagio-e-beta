@@ -86,7 +86,7 @@ export default function EventosPage() {
   }, []);
 
   const handleEdit = (event: Event) => {
-    router.push(`/eventos/${event.id}`);
+    router.push(`/eventos/${event.slug ?? event.id}`);
   };
 
   const handleDelete = (event: Event) => {
@@ -139,7 +139,7 @@ export default function EventosPage() {
       {/* Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Tab Toggle */}
-        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-1">
+        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-1">
           <button
             onClick={() => setActiveTab("lista")}
             className={cn(

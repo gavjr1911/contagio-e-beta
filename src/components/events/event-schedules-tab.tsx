@@ -36,7 +36,7 @@ export interface VacancyGroup {
 }
 
 interface EventSchedulesTabProps {
-  event: { id: string; status: string };
+  event: { id: string; slug?: string | null; status: string };
   eventId: string;
   canEditSchedules: boolean;
   isAdmin: boolean;
@@ -226,7 +226,7 @@ export function EventSchedulesTab({
                 : "Este evento ainda não possui funções definidas. Adicione funções ao criar ou editar o evento."}
             </p>
             {!isCompleted && (
-              <Link href={`/eventos/${event.id}/editar`}>
+              <Link href={`/eventos/${event.slug ?? event.id}/editar`}>
                 <Button variant="outline">Editar Evento</Button>
               </Link>
             )}

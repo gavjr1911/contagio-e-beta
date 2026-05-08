@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Minus, Plus, Save, Users, UserPlus, Sparkles, Pencil, Loader2 } from "lucide-react"
+import { Minus, Plus, Save, Users, UserPlus, Sparkles, Loader2, History } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import {
   useEventAttendance,
+  useEventAttendanceHistory,
   useUpdateEventAttendance,
 } from "@/hooks/use-event-attendance"
 import { cn } from "@/lib/utils"
@@ -69,6 +70,7 @@ const counterMeta: Record<
 export function EventAttendanceTab({ eventId, canEdit }: EventAttendanceTabProps) {
   const { toast } = useToast()
   const { data, isLoading } = useEventAttendance(eventId)
+  const { data: history } = useEventAttendanceHistory(eventId)
   const update = useUpdateEventAttendance(eventId)
 
   const [values, setValues] = React.useState<Record<CounterKey, number>>({
@@ -160,64 +162,52 @@ export function EventAttendanceTab({ eventId, canEdit }: EventAttendanceTabProps
               )}
             >
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-sm font-medium text-foreground">
-                  <span className="flex items-center gap-2">
-                    <Icon className={cn("h-4 w-4", meta.iconColor)} />
-                    {meta.label}
-                  </span>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => openEdit(key)}
-                      className="p-1 rounded hover:bg-background/50 transition"
-                      aria-label={`Editar ${meta.label}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                    </button>
-                  )}
+                <CardTitle className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Icon className={cn("h-4 w-4", meta.iconColor)} />
+                  {meta.label}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <button
-                  type="button"
-                  onClick={() => bump(key, 1)}
-                  disabled={!canEdit}
-                  className={cn(
-                    "w-full text-left tabular-nums font-display text-5xl sm:text-6xl font-bold leading-none py-3 select-none transition-transform",
-                    canEdit && "active:scale-95 cursor-pointer",
-                    !canEdit && "cursor-default",
-                  )}
-                  aria-label={`Adicionar 1 em ${meta.label}`}
-                >
-                  {value}
-                </button>
-                <p className="text-xs text-muted-foreground mb-3">{meta.description}</p>
-                {canEdit && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-11 w-11 shrink-0"
-                      onClick={() => bump(key, -1)}
-                      aria-label={`Remover 1 de ${meta.label}`}
-                    >
-                      <Minus className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="lg"
-                      className={cn(
-                        "h-11 flex-1 font-semibold ring-1",
-                        meta.ring,
-                      )}
-                      onClick={() => bump(key, 1)}
-                      aria-label={`Adicionar 1 em ${meta.label}`}
-                    >
-                      <Plus className="h-5 w-5 mr-1" /> +1
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 shrink-0 rounded-full"
+                    onClick={() => bump(key, -1)}
+                    disabled={!canEdit || value === 0}
+                    aria-label={`Remover 1 de ${meta.label}`}
+                  >
+                    <Minus className="h-5 w-5" />
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => openEdit(key)}
+                    disabled={!canEdit}
+                    className={cn(
+                      "flex-1 text-center tabular-nums font-display text-5xl sm:text-6xl font-bold leading-none py-2 select-none transition-transform",
+                      canEdit && "active:scale-95 cursor-pointer hover:text-primary",
+                      !canEdit && "cursor-default",
+                    )}
+                    aria-label={`Editar ${meta.label}`}
+                  >
+                    {value}
+                  </button>
+
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="icon"
+                    className={cn("h-12 w-12 shrink-0 rounded-full ring-1", meta.ring)}
+                    onClick={() => bump(key, 1)}
+                    disabled={!canEdit}
+                    aria-label={`Adicionar 1 em ${meta.label}`}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-3">{meta.description}</p>
               </CardContent>
             </Card>
           )
@@ -261,11 +251,57 @@ export function EventAttendanceTab({ eventId, canEdit }: EventAttendanceTabProps
         </div>
       )}
 
-      {data?.updatedAt && (
-        <p className="text-xs text-muted-foreground text-center">
-          Última atualização em {new Date(data.updatedAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-          {data.updatedBy?.name ? ` por ${data.updatedBy.name}` : ""}
-        </p>
+      {history && history.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <History className="h-4 w-4 text-muted-foreground" />
+              Histórico de alterações
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ol className="divide-y divide-border">
+              {history.map((log) => (
+                <li key={log.id} className="py-3 first:pt-0 last:pb-0 space-y-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      {log.updatedBy?.name ?? "Usuário removido"}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(log.createdAt).toLocaleString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground tabular-nums">
+                    <span>
+                      <Users className="inline h-3 w-3 mr-1" />
+                      {log.attendees}
+                    </span>
+                    <span>
+                      <UserPlus className="inline h-3 w-3 mr-1" />
+                      {log.visitors}
+                    </span>
+                    <span>
+                      <Sparkles className="inline h-3 w-3 mr-1" />
+                      {log.conversions}
+                    </span>
+                  </div>
+                  {log.notes && (
+                    <p className="text-xs text-muted-foreground italic line-clamp-2">
+                      &ldquo;{log.notes}&rdquo;
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
       )}
 
       <Dialog open={editingKey !== null} onOpenChange={(open) => !open && setEditingKey(null)}>

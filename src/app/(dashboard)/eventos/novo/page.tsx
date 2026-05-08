@@ -215,7 +215,7 @@ export default function NovoEventoPage() {
           ? `Evento criado com ${parts.join(" e ")}!`
           : "Evento criado!",
       });
-      router.push(`/eventos/${newEvent.id}`);
+      router.push(`/eventos/${newEvent.slug ?? newEvent.id}`);
     } catch (error) {
       console.error("Erro ao criar evento:", error);
       toast({

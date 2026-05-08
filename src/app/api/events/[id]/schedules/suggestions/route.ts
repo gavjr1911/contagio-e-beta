@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getVolunteerSuggestions } from "@/lib/scheduling/suggestions"
 import { suggestionsQuerySchema } from "@/lib/validations/auto-assign"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = {
   params: Promise<{ id: string }>
@@ -57,7 +58,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Validate query params
     const searchParams = request.nextUrl.searchParams

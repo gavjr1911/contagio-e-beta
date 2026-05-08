@@ -116,7 +116,7 @@ export default function RelatoriosPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full sm:w-auto overflow-x-auto justify-start">
+        <TabsList className="w-full sm:w-auto overflow-x-auto no-scrollbar justify-start">
           <TabsTrigger value="geral" className="whitespace-nowrap">
             <span className="hidden sm:inline">Visão Geral</span>
             <span className="sm:hidden">Geral</span>

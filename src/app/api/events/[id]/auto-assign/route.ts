@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { resolveEventId } from "@/lib/events"
 import {
   previewAutoAssign,
   executeAutoAssign,
@@ -63,7 +64,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Validate query params
     const searchParams = request.nextUrl.searchParams
@@ -81,16 +86,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { ministryId } = queryResult.data
-
-    // Check if event exists
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true },
-    })
-
-    if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
-    }
 
     // If specific ministry requested, check permission
     if (ministryId) {
@@ -212,7 +207,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const { id: eventId } = await params
+    const { id: idOrSlug } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
 
     // Parse body
     let body = {}
@@ -231,16 +230,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { ministryId } = parseResult.data
-
-    // Check if event exists
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true },
-    })
-
-    if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
-    }
 
     // If specific ministry, execute only for that ministry
     if (ministryId) {

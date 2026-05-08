@@ -216,7 +216,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
       {/* Tabs */}
       <Tabs defaultValue="members" className="space-y-6" onValueChange={setActiveTab}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="overflow-x-auto max-w-full justify-start">
+          <TabsList className="overflow-x-auto no-scrollbar max-w-full justify-start">
             <TabsTrigger value="members" className="gap-2 whitespace-nowrap">
               <Users className="h-4 w-4" />
               Membros

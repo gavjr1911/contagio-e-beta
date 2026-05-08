@@ -63,6 +63,38 @@ export function useUpdateEventAttendance(eventId: string) {
       updateAttendance(eventId, input),
     onSuccess: (data) => {
       queryClient.setQueryData(attendanceKey(eventId), data)
+      queryClient.invalidateQueries({ queryKey: historyKey(eventId) })
     },
+  })
+}
+
+export interface AttendanceLog {
+  id: string
+  attendees: number
+  visitors: number
+  conversions: number
+  notes: string | null
+  createdAt: string
+  updatedBy: { id: string; name: string | null } | null
+}
+
+const historyKey = (eventId: string) =>
+  ["events", eventId, "attendance", "history"] as const
+
+async function fetchHistory(eventId: string): Promise<AttendanceLog[]> {
+  const response = await fetch(`/api/events/${eventId}/attendance/history`)
+  if (!response.ok) {
+    throw new Error("Erro ao carregar histórico de presença")
+  }
+  const json = await response.json()
+  return json.data
+}
+
+export function useEventAttendanceHistory(eventId: string) {
+  return useQuery({
+    queryKey: historyKey(eventId),
+    queryFn: () => fetchHistory(eventId),
+    enabled: !!eventId,
+    staleTime: 30 * 1000,
   })
 }

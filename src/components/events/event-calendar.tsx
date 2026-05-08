@@ -141,7 +141,7 @@ export function EventCalendar({
             return (
               <Link
                 key={event.id}
-                href={`/eventos/${event.id}`}
+                href={`/eventos/${event.slug ?? event.id}`}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors group"
               >
                 <div

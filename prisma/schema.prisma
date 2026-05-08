@@ -110,6 +110,7 @@ model User {
   createdChecklistTemplates ChecklistTemplate[]    @relation("ChecklistTemplateCreator")
   completedChecklistItems   EventChecklistItem[]   @relation("ChecklistItemCompletedBy")
   updatedAttendance         EventAttendance[]      @relation("AttendanceUpdatedBy")
+  attendanceLogs            EventAttendanceLog[]   @relation("AttendanceLogBy")
 
   @@index([email])
   @@index([role])
@@ -272,6 +273,7 @@ model EventTemplate {
 
 model Event {
   id         String      @id @default(cuid())
+  slug       String?     @unique
   name       String
   type       EventType
   date       DateTime    @db.Date
@@ -692,11 +694,31 @@ model EventAttendance {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  updatedBy User? @relation("AttendanceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  event     Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updatedBy User?                  @relation("AttendanceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  logs      EventAttendanceLog[]
 
   @@index([updatedById])
   @@map("event_attendance")
+}
+
+model EventAttendanceLog {
+  id           String   @id @default(cuid())
+  attendanceId String
+  eventId      String
+  attendees    Int
+  visitors     Int
+  conversions  Int
+  notes        String?
+  updatedById  String?
+  createdAt    DateTime @default(now())
+
+  attendance EventAttendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  updatedBy  User?           @relation("AttendanceLogBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([attendanceId, createdAt])
+  @@index([eventId])
+  @@map("event_attendance_logs")
 }
 
 // ============================================

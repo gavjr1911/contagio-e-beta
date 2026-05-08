@@ -412,7 +412,7 @@ export default function EventoDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto">
+      <div className="border-b border-border -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-scrollbar">
         <nav className="flex gap-1 sm:gap-4 -mb-px min-w-max" aria-label="Seções do evento">
           {tabs.map((tab) => (
             <button

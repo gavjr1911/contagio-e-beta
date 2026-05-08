@@ -4,13 +4,18 @@ import { prisma } from "@/lib/prisma"
 import { apiError, apiSuccess, validateBody } from "@/lib/api-utils"
 import { withCerimonial } from "@/lib/permissions"
 import { updateEventChecklistItemSchema } from "@/lib/validations/checklist"
+import { resolveEventId } from "@/lib/events"
 
 type RouteParams = { params: Promise<{ id: string; itemId: string }> }
 
 // PATCH /api/events/[id]/checklist/[itemId] - Atualizar item (marcar/desmarcar)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return withCerimonial(async (session) => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -79,7 +84,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/events/[id]/checklist/[itemId] - Remover item extra
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   return withCerimonial(async () => {
-    const { id: eventId, itemId } = await params
+    const { id: idOrSlug, itemId } = await params
+    const eventId = await resolveEventId(idOrSlug)
+    if (!eventId) {
+      return apiError("Evento nao encontrado", 404)
+    }
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
