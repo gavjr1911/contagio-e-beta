@@ -98,7 +98,7 @@ export function AvatarUpload({
 
       const result = await response.json()
 
-      if (!result.success) {
+      if (!response.ok) {
         throw new Error(result.error || "Erro ao fazer upload")
       }
 

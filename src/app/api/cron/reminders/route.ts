@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { sendAllReminders } from "@/lib/email/send"
 
 // Chave de autenticacao para cron jobs
-const CRON_SECRET = process.env.CRON_SECRET
+const CRON_SECRET = process.env.CRON_SECRET;
+if (!CRON_SECRET) {
+  throw new Error("CRON_SECRET não configurado — defina a variável de ambiente");
+}
 
 /**
  * Endpoint para envio automatico de lembretes de escala

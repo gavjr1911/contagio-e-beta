@@ -18,11 +18,7 @@ import { cn } from "@/lib/utils";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 import type { Schedule } from "@/hooks/use-schedules";
 
-// Parse date string (YYYY-MM-DD) to Date object in local timezone
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
-}
+import { parseLocalDate } from "@/lib/date-utils";
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -82,9 +78,9 @@ export function ScheduleCard({
             </h3>
             <p className="text-muted-foreground text-sm mt-0.5">
               {schedule.ministry.name}
-              {schedule.position && (
+              {(schedule.vacancy?.position?.name ?? schedule.position) && (
                 <span className="text-primary ml-1">
-                  - {schedule.position}
+                  - {schedule.vacancy?.position?.name ?? schedule.position}
                 </span>
               )}
             </p>

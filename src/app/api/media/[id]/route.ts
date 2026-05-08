@@ -40,10 +40,10 @@ export async function DELETE(
       )
     }
 
-    // Verificar permissao (quem fez upload ou admin/coordinator)
+    // Verificar permissao (quem fez upload ou admin)
     const userRole = session.user.role
     const isOwner = media.uploadedById === session.user.id
-    const canDelete = isOwner || userRole === "ADMIN" || userRole === "COORDINATOR"
+    const canDelete = isOwner || userRole === "ADMIN"
 
     if (!canDelete) {
       return Response.json(

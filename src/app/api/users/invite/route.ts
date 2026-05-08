@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server"
 import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma/client"
 import { apiSuccess, apiError, validateBody, withRole } from "@/lib/api-utils"
 import { inviteUserSchema } from "@/lib/validations/user"
 import { sendUserInvite } from "@/lib/email/send"
 
 export async function POST(request: NextRequest) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     // Validar body
     const validation = await validateBody(request, inviteUserSchema)
     if (!validation.success) {
@@ -46,8 +47,7 @@ export async function POST(request: NextRequest) {
       inviteExpires.setDate(inviteExpires.getDate() + 7) // 7 dias
 
       // Criar usuario e membro em transacao
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await prisma.$transaction(async (tx: any) => {
+      const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Criar usuario
         const user = await tx.user.create({
           data: {

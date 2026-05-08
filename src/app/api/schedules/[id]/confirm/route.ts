@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { logAuditAsync, getAuditContext, getRequestMetadata } from "@/lib/audit"
 
 // POST /api/schedules/[id]/confirm - Confirm schedule participation
 export async function POST(
@@ -29,13 +30,12 @@ export async function POST(
       return Response.json({ error: "Escala nao encontrada" }, { status: 404 })
     }
 
-    // Only the scheduled user or admin/coordinator can confirm
+    // Only the scheduled user or admin can confirm
     const userRole = session.user.role
     const isOwner = schedule.user.id === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR"].includes(userRole)
+    const isAdmin = userRole === "ADMIN"
 
-    if (!isOwner && !isAdminOrCoordinator) {
+    if (!isOwner && !isAdmin) {
       return Response.json(
         { error: "Acesso negado. Apenas o usuario escalado pode confirmar." },
         { status: 403 }
@@ -58,6 +58,8 @@ export async function POST(
       )
     }
 
+    const previousStatus = schedule.status
+
     const updatedSchedule = await prisma.schedule.update({
       where: { id: scheduleId },
       data: {
@@ -76,6 +78,22 @@ export async function POST(
           select: { id: true, name: true, date: true },
         },
       },
+    })
+
+    // Registrar auditoria
+    const auditContext = getAuditContext(session)
+    logAuditAsync({
+      entityType: "Schedule",
+      entityId: scheduleId,
+      action: "confirmed",
+      ...auditContext,
+      changes: {
+        status: { old: previousStatus, new: "CONFIRMED" },
+        userName: { old: null, new: updatedSchedule.user.name },
+        eventName: { old: null, new: updatedSchedule.event.name },
+        ministryName: { old: null, new: updatedSchedule.ministry.name },
+      },
+      metadata: getRequestMetadata(request),
     })
 
     return Response.json({

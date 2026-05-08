@@ -41,6 +41,14 @@ export interface SetlistItem {
   song: SetlistItemSong
 }
 
+export interface MediaFile {
+  id: string
+  originalName: string | null
+  mimeType: string | null
+  url: string
+  fileSize: number | null
+}
+
 export interface EventItem {
   id: string
   eventId: string
@@ -50,6 +58,7 @@ export interface EventItem {
   description: string | null
   durationMinutes: number | null
   responsibleId: string | null
+  responsibleName: string | null // Nome livre do responsavel
   bibleReference: string | null
   mediaUrl: string | null
   notes: string | null
@@ -65,6 +74,7 @@ export interface EventItem {
     image?: string | null
   } | null
   setlistItems: SetlistItem[]
+  mediaFiles: MediaFile[]
 }
 
 export interface CreateEventItemInput {
@@ -73,6 +83,7 @@ export interface CreateEventItemInput {
   description?: string
   durationMinutes?: number
   responsibleId?: string
+  responsibleName?: string // Nome livre do responsavel
   order?: number
   bibleReference?: string
   mediaUrl?: string
@@ -87,7 +98,8 @@ export interface UpdateEventItemInput {
   title?: string
   description?: string
   durationMinutes?: number
-  responsibleId?: string
+  responsibleId?: string | null
+  responsibleName?: string | null // Nome livre do responsavel
   bibleReference?: string
   mediaUrl?: string
   notes?: string
@@ -103,15 +115,15 @@ export const eventItemTypeConfig: Record<
 > = {
   WELCOME: { label: "Boas-vindas", emoji: "👋", color: "bg-blue-500" },
   WORSHIP: { label: "Louvor", emoji: "🎵", color: "bg-primary" },
-  PRAYER: { label: "Oracao", emoji: "🙏", color: "bg-purple-500" },
-  READING: { label: "Leitura Biblica", emoji: "📖", color: "bg-amber-500" },
+  PRAYER: { label: "Oração", emoji: "🙏", color: "bg-purple-500" },
+  READING: { label: "Leitura Bíblica", emoji: "📖", color: "bg-amber-500" },
   ANNOUNCEMENTS: { label: "Avisos", emoji: "📢", color: "bg-cyan-500" },
-  OFFERING: { label: "Dizimos e Ofertas", emoji: "💰", color: "bg-emerald-500" },
-  PREACHING: { label: "Pregacao", emoji: "🎤", color: "bg-red-500" },
+  OFFERING: { label: "Dízimos e Ofertas", emoji: "💰", color: "bg-emerald-500" },
+  PREACHING: { label: "Pregação", emoji: "🎤", color: "bg-red-500" },
   COMMUNION: { label: "Santa Ceia", emoji: "🍞", color: "bg-orange-500" },
-  VIDEO: { label: "Video", emoji: "🎬", color: "bg-pink-500" },
-  SPECIAL: { label: "Participacao Especial", emoji: "⭐", color: "bg-yellow-500" },
-  TRANSITION: { label: "Transicao", emoji: "⏸️", color: "bg-gray-500" },
+  VIDEO: { label: "Vídeo", emoji: "🎬", color: "bg-pink-500" },
+  SPECIAL: { label: "Participação Especial", emoji: "⭐", color: "bg-yellow-500" },
+  TRANSITION: { label: "Transição", emoji: "⏸️", color: "bg-gray-500" },
   OTHER: { label: "Outros", emoji: "📋", color: "bg-slate-500" },
 }
 
@@ -215,7 +227,7 @@ export function useEventItems(eventId: string) {
     queryKey: eventItemKeys.list(eventId),
     queryFn: () => fetchEventItems(eventId),
     enabled: !!eventId,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 1000 * 60 * 2, // 2 minutos
   })
 }
 
@@ -335,7 +347,7 @@ async function removeSongFromItem(
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao remover musica")
+    throw new Error(error.error || "Erro ao remover música")
   }
 }
 

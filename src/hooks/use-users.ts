@@ -8,7 +8,7 @@ export interface User {
   name: string | null
   email: string
   image: string | null
-  role: "ADMIN" | "COORDINATOR" | "LEADER" | "COMMUNICATION" | "VOLUNTEER"
+  role: "ADMIN" | "LEADER" | "VOLUNTEER"
   createdAt: string
   ministryMemberships?: {
     ministry: {
@@ -58,7 +58,7 @@ async function fetchUsers(filters?: UserFilters): Promise<PaginatedUsersResponse
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao carregar usuarios")
+    throw new Error(error.error || "Erro ao carregar usuários")
   }
 
   return response.json()

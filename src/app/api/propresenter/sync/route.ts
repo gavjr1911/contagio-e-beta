@@ -5,6 +5,8 @@ import {
   getSyncPreview,
   autoMapSongs,
 } from "@/lib/propresenter"
+import { getProPresenterConfig } from "@/lib/settings"
+import { auth } from "@/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -23,10 +25,17 @@ export const dynamic = "force-dynamic"
  *   - 500: Erro interno
  */
 export async function GET(request: Request) {
+  const session = await auth();
+  if (!session?.user) return Response.json({ error: "Não autorizado" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return Response.json({ error: "Acesso negado" }, { status: 403 });
+
   try {
+    // Obter configuracoes do banco de dados
+    const dbConfig = await getProPresenterConfig()
+
     const { searchParams } = new URL(request.url)
-    const host = searchParams.get("host") || process.env.PROPRESENTER_HOST || "localhost"
-    const port = parseInt(searchParams.get("port") || process.env.PROPRESENTER_PORT || "1025", 10)
+    const host = searchParams.get("host") || dbConfig.host || process.env.PROPRESENTER_HOST || "localhost"
+    const port = parseInt(searchParams.get("port") || "", 10) || dbConfig.port || parseInt(process.env.PROPRESENTER_PORT || "1025", 10)
 
     const client = getProPresenterClient({ host, port })
     const preview = await getSyncPreview(client)
@@ -34,19 +43,19 @@ export async function GET(request: Request) {
     return NextResponse.json({
       preview: {
         toCreate: preview.toCreate.map((p) => ({
-          id: p.id.uuid,
-          name: p.id.name,
+          id: p.uuid,
+          name: p.name,
         })),
         toUpdate: preview.toUpdate.map((item) => ({
           song: item.song,
           presentation: {
-            id: item.presentation.id.uuid,
-            name: item.presentation.id.name,
+            id: item.presentation.uuid,
+            name: item.presentation.name,
           },
         })),
         toSkip: preview.toSkip.map((p) => ({
-          id: p.id.uuid,
-          name: p.id.name,
+          id: p.uuid,
+          name: p.name,
         })),
       },
       summary: {
@@ -100,10 +109,17 @@ export async function GET(request: Request) {
  *   - 500: Erro interno
  */
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user) return Response.json({ error: "Não autorizado" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return Response.json({ error: "Acesso negado" }, { status: 403 });
+
   try {
+    // Obter configuracoes do banco de dados
+    const dbConfig = await getProPresenterConfig()
+
     const { searchParams } = new URL(request.url)
-    const host = searchParams.get("host") || process.env.PROPRESENTER_HOST || "localhost"
-    const port = parseInt(searchParams.get("port") || process.env.PROPRESENTER_PORT || "1025", 10)
+    const host = searchParams.get("host") || dbConfig.host || process.env.PROPRESENTER_HOST || "localhost"
+    const port = parseInt(searchParams.get("port") || "", 10) || dbConfig.port || parseInt(process.env.PROPRESENTER_PORT || "1025", 10)
 
     const body = await request.json().catch(() => ({}))
     const {

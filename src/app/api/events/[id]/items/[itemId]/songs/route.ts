@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/events/[id]/items/[itemId]/songs - Add songs to this worship block
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId, itemId } = await params
 
     // Verify item exists
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/events/[id]/items/[itemId]/songs - Reorder songs in this worship block
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId, itemId } = await params
 
     const validation = await validateBody(request, reorderSongsSchema)
@@ -177,7 +177,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/events/[id]/items/[itemId]/songs - Remove a song from this worship block
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId, itemId } = await params
     const { searchParams } = new URL(request.url)
     const songId = searchParams.get("songId")

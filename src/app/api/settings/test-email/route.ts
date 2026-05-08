@@ -111,7 +111,6 @@ export async function POST(request: NextRequest) {
         return apiError(`Erro ao enviar email: ${error.message}`, 400)
       }
 
-      console.log("[Settings] Email de teste enviado:", data?.id)
       return apiSuccess({
         message: "Email de teste enviado com sucesso",
         emailId: data?.id,

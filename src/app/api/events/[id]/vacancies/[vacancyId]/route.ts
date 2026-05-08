@@ -17,9 +17,9 @@ export async function PATCH(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem gerenciar vagas." },
+        { error: "Acesso negado. Apenas ADMIN pode gerenciar vagas." },
         { status: 403 }
       )
     }
@@ -119,9 +119,9 @@ export async function DELETE(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem gerenciar vagas." },
+        { error: "Acesso negado. Apenas ADMIN pode gerenciar vagas." },
         { status: 403 }
       )
     }

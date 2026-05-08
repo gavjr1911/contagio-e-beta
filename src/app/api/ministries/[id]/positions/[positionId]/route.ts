@@ -4,10 +4,8 @@ import { z } from "zod"
 import {
   apiError,
   apiSuccess,
-  AuthSession,
-  isAdmin,
+  requireMinistryAccess,
   validateBody,
-  withAuth,
 } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
 
@@ -27,34 +25,27 @@ const updatePositionSchema = z.object({
     .max(500, "Descricao deve ter no maximo 500 caracteres")
     .optional()
     .nullable(),
+  icon: z
+    .string()
+    .max(50, "Nome do icone deve ter no maximo 50 caracteres")
+    .optional()
+    .nullable(),
 })
 
 // PATCH /api/ministries/[id]/positions/[positionId] - Atualizar funcao
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id, positionId } = await params
+  const { id, positionId } = await params
 
-    const bodyResult = await validateBody(request, updatePositionSchema)
+  const access = await requireMinistryAccess(id)
+  if ("error" in access) return access.error
 
-    if (!bodyResult.success) {
-      return bodyResult.response
-    }
+  const bodyResult = await validateBody(request, updatePositionSchema)
 
-    try {
-      // Verificar se o ministerio existe
-      const ministry = await prisma.ministry.findUnique({
-        where: { id },
-      })
+  if (!bodyResult.success) {
+    return bodyResult.response
+  }
 
-      if (!ministry) {
-        return apiError("Ministerio nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
-
+  try {
       // Verificar se a funcao existe
       const position = await prisma.ministryPosition.findFirst({
         where: {
@@ -67,7 +58,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Funcao nao encontrada", 404)
       }
 
-      const { name, description } = bodyResult.data
+      const { name, description, icon } = bodyResult.data
 
       // Se name foi fornecido, verificar se ja existe outra funcao com esse nome
       if (name && name !== position.name) {
@@ -89,37 +80,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         data: {
           ...(name !== undefined && { name }),
           ...(description !== undefined && { description }),
+          ...(icon !== undefined && { icon }),
         },
       })
 
       return apiSuccess(updatedPosition)
-    } catch (error) {
-      console.error("Erro ao atualizar funcao:", error)
-      return apiError("Erro ao atualizar funcao", 500)
-    }
-  })
+  } catch (error) {
+    console.error("Erro ao atualizar funcao:", error)
+    return apiError("Erro ao atualizar funcao", 500)
+  }
 }
 
 // DELETE /api/ministries/[id]/positions/[positionId] - Remover funcao
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id, positionId } = await params
+  const { id, positionId } = await params
 
-    try {
-      // Verificar se o ministerio existe
-      const ministry = await prisma.ministry.findUnique({
-        where: { id },
-      })
+  const access = await requireMinistryAccess(id)
+  if ("error" in access) return access.error
 
-      if (!ministry) {
-        return apiError("Ministerio nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
-
+  try {
       // Verificar se a funcao existe
       const position = await prisma.ministryPosition.findFirst({
         where: {
@@ -149,9 +128,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       })
 
       return apiSuccess({ message: "Funcao removida com sucesso" })
-    } catch (error) {
-      console.error("Erro ao remover funcao:", error)
-      return apiError("Erro ao remover funcao", 500)
-    }
-  })
+  } catch (error) {
+    console.error("Erro ao remover funcao:", error)
+    return apiError("Erro ao remover funcao", 500)
+  }
 }

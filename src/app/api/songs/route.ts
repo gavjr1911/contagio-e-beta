@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { songCreateSchema, songQuerySchema } from "@/lib/validations/music"
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!queryResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Parametros invalidos", details: queryResult.error.flatten() },
         { status: 400 }
       )
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       prisma.song.count({ where }),
     ])
 
-    return NextResponse.json({
+    return Response.json({
       data: songs,
       pagination: {
         page,
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Erro ao listar musicas:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -75,14 +75,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const body = await request.json()
     const validationResult = songCreateSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
       data: validationResult.data,
     })
 
-    return NextResponse.json(song, { status: 201 })
+    return Response.json({ data: song }, { status: 201 })
   } catch (error) {
     console.error("Erro ao criar musica:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

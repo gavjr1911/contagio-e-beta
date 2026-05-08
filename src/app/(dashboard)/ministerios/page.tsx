@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Plus, Church } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   MinistryCard,
   MinistryCardSkeleton,
@@ -18,27 +19,22 @@ export default function MinisteriosPage() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Ministerios</h1>
-          <p className="mt-1 text-muted-foreground">
-            Gerencie os ministerios e seus membros
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {/* New Ministry Button (Admin only) */}
-          {isAdmin && (
+      <PageHeader
+        title="Ministérios"
+        description="Gerencie os ministérios e seus membros"
+        actions={
+          isAdmin && (
             <Button asChild>
               <Link href="/ministerios/novo">
                 <Plus className="mr-2 h-4 w-4" />
-                Novo Ministerio
+                Novo Ministério
               </Link>
             </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {/* Content */}
       {error ? (
@@ -47,20 +43,20 @@ export default function MinisteriosPage() {
             <Church className="h-8 w-8 text-destructive" />
           </div>
           <h3 className="mt-4 text-lg font-medium text-foreground">
-            Erro ao carregar ministerios
+            Erro ao carregar ministérios
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ocorreu um erro ao carregar a lista de ministerios. Tente novamente.
+            Ocorreu um erro ao carregar a lista de ministérios. Tente novamente.
           </p>
         </div>
       ) : isLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <MinistryCardSkeleton key={i} />
           ))}
         </div>
       ) : ministries && ministries.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {ministries.map((ministry, index) => (
             <div
               key={ministry.id}
@@ -77,16 +73,16 @@ export default function MinisteriosPage() {
             <Church className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="mt-4 text-lg font-medium text-foreground">
-            Nenhum ministerio encontrado
+            Nenhum ministério encontrado
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ainda nao ha ministerios cadastrados.
+            Ainda não há ministérios cadastrados.
           </p>
           {isAdmin && (
             <Button asChild className="mt-4">
               <Link href="/ministerios/novo">
                 <Plus className="mr-2 h-4 w-4" />
-                Criar primeiro ministerio
+                Criar primeiro ministério
               </Link>
             </Button>
           )}

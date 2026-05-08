@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { songSearchSchema } from "@/lib/validations/music"
@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!queryResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Parametros invalidos", details: queryResult.error.flatten() },
         { status: 400 }
       )
@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
       take: limit,
     })
 
-    return NextResponse.json(songs)
+    return Response.json({ data: songs })
   } catch (error) {
     console.error("Erro ao buscar musicas:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

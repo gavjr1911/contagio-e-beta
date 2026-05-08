@@ -34,7 +34,7 @@ const mockBands: Band[] = [
   {
     id: "b2",
     name: "Banda Jovem",
-    description: "Banda do ministerio de jovens",
+    description: "Banda do ministério de jovens",
     members: [mockMembers[1], mockMembers[5], mockMembers[6]],
     createdAt: new Date("2023-06-20"),
     updatedAt: new Date("2024-03-10"),
@@ -104,7 +104,7 @@ async function createBand(input: CreateBandInput): Promise<Band> {
 async function updateBand(input: UpdateBandInput): Promise<Band> {
   await new Promise((resolve) => setTimeout(resolve, 500));
   const index = mockBands.findIndex((b) => b.id === input.id);
-  if (index === -1) throw new Error("Banda nao encontrada");
+  if (index === -1) throw new Error("Banda não encontrada");
 
   const members = input.memberIds
     ? mockMembers.filter((m) => input.memberIds!.includes(m.id))
@@ -128,10 +128,10 @@ async function deleteBand(id: string): Promise<void> {
 async function addMemberToBand(bandId: string, memberId: string): Promise<Band> {
   await new Promise((resolve) => setTimeout(resolve, 300));
   const bandIndex = mockBands.findIndex((b) => b.id === bandId);
-  if (bandIndex === -1) throw new Error("Banda nao encontrada");
+  if (bandIndex === -1) throw new Error("Banda não encontrada");
 
   const member = mockMembers.find((m) => m.id === memberId);
-  if (!member) throw new Error("Membro nao encontrado");
+  if (!member) throw new Error("Membro não encontrado");
 
   if (!mockBands[bandIndex].members.find((m) => m.id === memberId)) {
     mockBands[bandIndex].members.push(member);
@@ -144,7 +144,7 @@ async function addMemberToBand(bandId: string, memberId: string): Promise<Band> 
 async function removeMemberFromBand(bandId: string, memberId: string): Promise<Band> {
   await new Promise((resolve) => setTimeout(resolve, 300));
   const bandIndex = mockBands.findIndex((b) => b.id === bandId);
-  if (bandIndex === -1) throw new Error("Banda nao encontrada");
+  if (bandIndex === -1) throw new Error("Banda não encontrada");
 
   mockBands[bandIndex].members = mockBands[bandIndex].members.filter(
     (m) => m.id !== memberId

@@ -40,7 +40,7 @@ async function fetchSettings(): Promise<Setting[]> {
   const response = await fetch("/api/settings");
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao carregar configuracoes");
+    throw new Error(error.error || "Erro ao carregar configurações");
   }
   const result = await response.json();
   return result.data;
@@ -56,7 +56,7 @@ async function updateSettings(data: UpdateSettingsData): Promise<SettingResponse
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao atualizar configuracoes");
+    throw new Error(error.error || "Erro ao atualizar configurações");
   }
   const result = await response.json();
   return result.data;
@@ -131,6 +131,47 @@ export function useTestEmail() {
   });
 }
 
+// ========================================
+// R2 Storage Test
+// ========================================
+
+export interface TestR2Response {
+  success: boolean;
+  message: string;
+  details?: {
+    configured: boolean;
+    readAccess?: boolean;
+    writeAccess?: boolean;
+    bucketName?: string;
+    publicUrl?: string;
+    missingFields?: string[];
+  };
+}
+
+async function testR2(): Promise<TestR2Response> {
+  const response = await fetch("/api/settings/test-r2", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao testar conexão R2");
+  }
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Hook para testar conexão com R2
+ */
+export function useTestR2() {
+  return useMutation({
+    mutationFn: testR2,
+  });
+}
+
 /**
  * Retorna o valor de uma configuracao especifica da lista
  */
@@ -138,4 +179,54 @@ export function getSettingValue(settings: Setting[] | undefined, key: SettingKey
   if (!settings) return "";
   const setting = settings.find((s) => s.key === key);
   return setting?.value || "";
+}
+
+// ========================================
+// ProPresenter Connection Test
+// ========================================
+
+export interface TestProPresenterResponse {
+  success: boolean;
+  connected: boolean;
+  message: string;
+  version?: {
+    name: string;
+    version: string;
+  };
+  config: {
+    host: string;
+    port: number;
+  };
+}
+
+async function testProPresenter(host?: string, port?: string): Promise<TestProPresenterResponse> {
+  const params = new URLSearchParams();
+  if (host) params.set("host", host);
+  if (port) params.set("port", port);
+
+  const response = await fetch(`/api/propresenter/status?${params}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao testar conexão com ProPresenter");
+  }
+  const result = await response.json();
+  return {
+    success: result.connected,
+    connected: result.connected,
+    message: result.connected
+      ? `Conectado ao ProPresenter ${result.version?.version || ""}`
+      : result.state?.lastError || "Nao foi possivel conectar ao ProPresenter",
+    version: result.version,
+    config: result.config,
+  };
+}
+
+/**
+ * Hook para testar conexão com ProPresenter
+ */
+export function useTestProPresenter() {
+  return useMutation({
+    mutationFn: ({ host, port }: { host?: string; port?: string }) =>
+      testProPresenter(host, port),
+  });
 }

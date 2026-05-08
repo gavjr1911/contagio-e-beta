@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// Hook para gerenciar ministerios e posicoes
 
 // Types
 export interface User {
@@ -34,6 +35,7 @@ export interface MinistryPosition {
   ministryId: string;
   name: string;
   description: string | null;
+  icon: string | null;
   createdAt: Date;
 }
 
@@ -42,6 +44,7 @@ export interface Ministry {
   name: string;
   description: string | null;
   leaderId: string | null;
+  permissions: PermissionsJson | null;
   createdAt: Date;
   updatedAt: Date;
   leader: User | null;
@@ -52,10 +55,14 @@ export interface Ministry {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PermissionsJson = Record<string, any>;
+
 export interface CreateMinistryInput {
   name: string;
   description?: string;
   leaderId?: string;
+  permissions?: PermissionsJson;
 }
 
 export interface UpdateMinistryInput {
@@ -63,6 +70,7 @@ export interface UpdateMinistryInput {
   name?: string;
   description?: string;
   leaderId?: string;
+  permissions?: PermissionsJson | null;
 }
 
 export interface AddMemberInput {
@@ -100,6 +108,15 @@ export interface CreatePositionInput {
   ministryId: string;
   name: string;
   description?: string;
+  icon?: string;
+}
+
+export interface UpdatePositionInput {
+  ministryId: string;
+  positionId: string;
+  name?: string;
+  description?: string;
+  icon?: string;
 }
 
 export interface SetLeaderInput {
@@ -128,14 +145,14 @@ async function fetchMinistries(): Promise<Ministry[]> {
     throw new Error("Erro ao carregar ministerios");
   }
   const result = await response.json();
-  // A API retorna { success: true, data: { items: [...], pagination: {...} } }
-  return result.data?.items || [];
+  // A API retorna { data: [...], pagination: {...} }
+  return result.data || [];
 }
 
 async function fetchMinistry(id: string): Promise<Ministry> {
   const response = await fetch(`/api/ministries/${id}`);
   if (!response.ok) {
-    throw new Error("Erro ao carregar ministerio");
+    throw new Error("Erro ao carregar ministério");
   }
   const result = await response.json();
   return result.data;
@@ -151,7 +168,7 @@ async function createMinistry(data: CreateMinistryInput): Promise<Ministry> {
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao criar ministerio");
+    throw new Error(error.error || "Erro ao criar ministério");
   }
   const result = await response.json();
   return result.data;
@@ -168,7 +185,7 @@ async function updateMinistry(data: UpdateMinistryInput): Promise<Ministry> {
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || error.message || "Erro ao atualizar ministerio");
+    throw new Error(error.error || error.message || "Erro ao atualizar ministério");
   }
   const result = await response.json();
   return result.data;
@@ -180,7 +197,7 @@ async function deleteMinistry(id: string): Promise<void> {
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || "Erro ao excluir ministerio");
+    throw new Error(error.message || "Erro ao excluir ministério");
   }
 }
 
@@ -247,17 +264,17 @@ async function fetchUsers(): Promise<User[]> {
   params.set("limit", "100"); // Get more users for selection
   const response = await fetch(`/api/users?${params.toString()}`);
   if (!response.ok) {
-    throw new Error("Erro ao carregar usuarios");
+    throw new Error("Erro ao carregar usuários");
   }
   const result = await response.json();
-  // A API retorna { success: true, data: { items: [...], pagination: {...} } }
-  return result.data?.items || [];
+  // A API retorna { data: [...], pagination: {...} }
+  return result.data || [];
 }
 
 async function fetchMinistryPositions(ministryId: string): Promise<MinistryPosition[]> {
   const response = await fetch(`/api/ministries/${ministryId}/positions`);
   if (!response.ok) {
-    throw new Error("Erro ao carregar posicoes");
+    throw new Error("Erro ao carregar funções");
   }
   const result = await response.json();
   return result.data || [];
@@ -274,7 +291,24 @@ async function createPosition(data: CreatePositionInput): Promise<MinistryPositi
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao criar posicao");
+    throw new Error(error.error || "Erro ao criar função");
+  }
+  const result = await response.json();
+  return result.data;
+}
+
+async function updatePosition(data: UpdatePositionInput): Promise<MinistryPosition> {
+  const { ministryId, positionId, ...body } = data;
+  const response = await fetch(`/api/ministries/${ministryId}/positions/${positionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Erro ao atualizar função");
   }
   const result = await response.json();
   return result.data;
@@ -286,7 +320,7 @@ async function deletePosition({ ministryId, positionId }: { ministryId: string; 
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao remover posicao");
+    throw new Error(error.error || "Erro ao remover função");
   }
 }
 
@@ -312,6 +346,7 @@ export function useMinistries() {
   return useQuery({
     queryKey: ["ministries"],
     queryFn: () => fetchMinistries(),
+    staleTime: 1000 * 60 * 2, // 2 minutos
   });
 }
 
@@ -320,6 +355,7 @@ export function useMinistry(id: string) {
     queryKey: ["ministry", id],
     queryFn: () => fetchMinistry(id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 2, // 2 minutos
   });
 }
 
@@ -433,10 +469,10 @@ export interface PositionWithMinistry extends MinistryPosition {
 async function fetchAllPositions(): Promise<PositionWithMinistry[]> {
   const response = await fetch("/api/ministries?includePositions=true");
   if (!response.ok) {
-    throw new Error("Erro ao carregar posicoes");
+    throw new Error("Erro ao carregar funções");
   }
   const result = await response.json();
-  const ministries = result.data?.items || [];
+  const ministries = result.data || [];
 
   // Flatten positions from all ministries
   const allPositions: PositionWithMinistry[] = [];
@@ -476,6 +512,18 @@ export function useCreatePosition() {
 
   return useMutation({
     mutationFn: createPosition,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["ministry-positions", data.ministryId] });
+      queryClient.invalidateQueries({ queryKey: ["ministry", data.ministryId] });
+    },
+  });
+}
+
+export function useUpdatePosition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updatePosition,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["ministry-positions", data.ministryId] });
       queryClient.invalidateQueries({ queryKey: ["ministry", data.ministryId] });

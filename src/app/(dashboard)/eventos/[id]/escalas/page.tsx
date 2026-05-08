@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  ArrowLeft,
   Calendar,
   Clock,
   Loader2,
@@ -13,14 +12,28 @@ import {
   Users,
   CheckCircle2,
   AlertTriangle,
-  UserMinus,
   Briefcase,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/layout/page-header";
+import { parseLocalDate } from "@/lib/date-utils";
 import { VacancySlot } from "@/components/events/vacancy-slot";
 import { ScheduleMemberDialog } from "@/components/events/schedule-member-dialog";
+import { BulkMemberSelector } from "@/components/events/bulk-member-selector";
+import { BulkScheduleDialog, type SelectedMember } from "@/components/events/bulk-schedule-dialog";
 import {
   useEventSchedules,
   useCreateSchedule,
@@ -28,58 +41,16 @@ import {
   type EventScheduleItem,
 } from "@/hooks/use-schedules";
 import { useEventVacancies, type EventVacancy } from "@/hooks/use-vacancies";
+import { useMinistries } from "@/hooks/use-ministries";
+import { useEvent } from "@/hooks/use-events";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-// Types for event data
-interface Event {
-  id: string;
-  name: string;
-  type: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: string;
-}
-
-// Fetch event hook
-function useEvent(eventId: string) {
-  const [event, setEvent] = React.useState<Event | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(null);
-
-  React.useEffect(() => {
-    if (!eventId) return;
-
-    setIsLoading(true);
-    fetch(`/api/events/${eventId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao carregar evento");
-        return res.json();
-      })
-      .then((data) => {
-        setEvent(data.data);
-        setError(null);
-      })
-      .catch((err) => {
-        setError(err);
-        setEvent(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [eventId]);
-
-  return { data: event, isLoading, error };
-}
-
 function getTypeColor(type: string): string {
   switch (type) {
-    case "SUNDAY_MORNING":
+    case "CULTO":
       return "bg-primary/10 text-primary border-primary/20";
-    case "SUNDAY_EVENING":
-      return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
     default:
@@ -89,19 +60,19 @@ function getTypeColor(type: string): string {
 
 function getTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    SUNDAY_MORNING: "Culto Manha",
-    SUNDAY_EVENING: "Culto Noite",
+    CULTO: "Culto",
     SPECIAL: "Evento Especial",
   };
   return labels[type] || type;
 }
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString + "T00:00:00");
+  const date = parseLocalDate(dateString);
   return date.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
@@ -163,16 +134,22 @@ export default function EventoEscalasPage() {
 
   const createSchedule = useCreateSchedule();
   const deleteSchedule = useDeleteSchedule();
+  const { data: ministries } = useMinistries();
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedVacancy, setSelectedVacancy] = React.useState<EventVacancy | null>(null);
   const [removingScheduleId, setRemovingScheduleId] = React.useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = React.useState<string | null>(null);
+
+  // Bulk scheduling state
+  const [bulkDialogOpen, setBulkDialogOpen] = React.useState(false);
+  const [selectedMembers, setSelectedMembers] = React.useState<SelectedMember[]>([]);
+  const [showBulkSelector, setShowBulkSelector] = React.useState(false);
 
   // Verificar permissao
   const isAdmin = session?.user?.role === "ADMIN";
-  const isCoordinator = session?.user?.role === "COORDINATOR";
   const isLeader = session?.user?.role === "LEADER";
-  const canEdit = isAdmin || isCoordinator || isLeader;
+  const canEdit = isAdmin || isLeader;
 
   // Flatten schedules from groups
   const allSchedules = React.useMemo(() => {
@@ -199,7 +176,7 @@ export default function EventoEscalasPage() {
     if (!selectedVacancy) return;
 
     try {
-      await createSchedule.mutateAsync({
+      const result = await createSchedule.mutateAsync({
         eventId,
         userId,
         ministryId: selectedVacancy.ministryId,
@@ -210,10 +187,20 @@ export default function EventoEscalasPage() {
       setSelectedVacancy(null);
       refetchVacancies();
       refetchSchedules();
-      toast({
-        title: "Membro escalado",
-        description: "O membro foi adicionado a escala com sucesso.",
-      });
+
+      // Show warnings if any
+      if (result.warnings && result.warnings.length > 0) {
+        toast({
+          title: "Membro escalado com avisos",
+          description: result.warnings.join(". "),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Membro escalado",
+          description: "O membro foi adicionado a escala com sucesso.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Erro ao escalar",
@@ -223,10 +210,14 @@ export default function EventoEscalasPage() {
     }
   };
 
-  const handleRemoveMember = async (scheduleId: string) => {
-    if (!confirm("Tem certeza que deseja remover este membro da escala?")) {
-      return;
-    }
+  const handleRemoveMember = (scheduleId: string) => {
+    setConfirmRemoveId(scheduleId);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!confirmRemoveId) return;
+    const scheduleId = confirmRemoveId;
+    setConfirmRemoveId(null);
 
     setRemovingScheduleId(scheduleId);
     try {
@@ -252,6 +243,21 @@ export default function EventoEscalasPage() {
     refetchVacancies();
     refetchSchedules();
   };
+
+  // Bulk scheduling handlers
+  const handleBulkComplete = () => {
+    setSelectedMembers([]);
+    setBulkDialogOpen(false);
+    setShowBulkSelector(false);
+    refetchVacancies();
+    refetchSchedules();
+  };
+
+  // Get all positions from all ministries for the bulk dialog
+  const allPositions = React.useMemo(() => {
+    if (!ministries) return [];
+    return ministries.flatMap((m) => m.positions || []);
+  }, [ministries]);
 
   // Compute stats
   const stats = React.useMemo(() => {
@@ -295,9 +301,9 @@ export default function EventoEscalasPage() {
 
   if (!event) {
     return (
-      <div className="flex-1 p-6">
+      <div>
         <Card className="p-8 text-center">
-          <p className="text-destructive mb-4">Evento nao encontrado</p>
+          <p className="text-destructive mb-4">Evento não encontrado</p>
           <Link href="/eventos">
             <Button variant="outline">Voltar para eventos</Button>
           </Link>
@@ -307,54 +313,69 @@ export default function EventoEscalasPage() {
   }
 
   return (
-    <div className="flex-1 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <Link href={`/eventos/${eventId}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold font-display">
-                Escalas - {event.name}
-              </h1>
-              <Badge
-                variant="outline"
-                className={cn("text-xs", getTypeColor(event.type))}
-              >
-                {getTypeLabel(event.type)}
-              </Badge>
+      <PageHeader
+        backHref={`/eventos/${eventId}`}
+        backLabel="Voltar para o evento"
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="truncate">Escalas - {event.name}</span>
+            <Badge
+              variant="outline"
+              className={cn("text-xs shrink-0", getTypeColor(event.type))}
+            >
+              {getTypeLabel(event.type)}
+            </Badge>
+          </span>
+        }
+        meta={
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              <span className="capitalize">{formatDate(event.date as string)}</span>
             </div>
-            <div className="flex items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                <span className="capitalize">{formatDate(event.date)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {formatTime(event.startTime)}
-                  {event.endTime && ` - ${formatTime(event.endTime)}`}
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4" />
+              <span>
+                {formatTime(event.startTime as string)}
+                {event.endTime && ` - ${formatTime(event.endTime as string)}`}
+              </span>
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2">
+        }
+        actions={
+          <>
+            {canEdit && (
+              <Button
+                variant={showBulkSelector ? "secondary" : "outline"}
+                onClick={() => setShowBulkSelector(!showBulkSelector)}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {showBulkSelector ? "Fechar Lote" : "Escalar em Lote"}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon"
               onClick={handleRefresh}
+              aria-label="Atualizar escalas"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
+
+      {/* Bulk Member Selector */}
+      {showBulkSelector && canEdit && (
+        <BulkMemberSelector
+          selectedMembers={selectedMembers}
+          onSelectionChange={setSelectedMembers}
+          existingUserIds={existingUserIds}
+          onOpenBulkDialog={() => setBulkDialogOpen(true)}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -364,7 +385,7 @@ export default function EventoEscalasPage() {
               <Briefcase className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Funcoes</p>
+              <p className="text-sm text-muted-foreground">Funções</p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </div>
           </div>
@@ -430,6 +451,10 @@ export default function EventoEscalasPage() {
                   return (
                     <VacancySlot
                       key={vacancy.id}
+                      eventId={eventId}
+                      ministryId={group.ministry.id}
+                      vacancyId={vacancy.id}
+                      positionId={vacancy.position.id}
                       positionName={vacancy.position.name}
                       schedule={schedule ? {
                         id: schedule.id,
@@ -438,8 +463,13 @@ export default function EventoEscalasPage() {
                       } : null}
                       onAssign={() => handleAssignClick(vacancy)}
                       onRemove={handleRemoveMember}
+                      onScheduleSuccess={() => {
+                        refetchVacancies();
+                        refetchSchedules();
+                      }}
                       isRemoving={removingScheduleId === schedule?.id}
                       canEdit={canEdit}
+                      showSuggestions={canEdit}
                     />
                   );
                 })}
@@ -452,10 +482,10 @@ export default function EventoEscalasPage() {
           <div className="text-center">
             <Briefcase className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-foreground font-medium text-lg mb-2">
-              Nenhuma funcao definida
+              Nenhuma função definida
             </p>
             <p className="text-muted-foreground mb-4">
-              Este evento ainda nao possui funcoes definidas. Adicione funcoes ao criar ou editar o evento.
+              Este evento ainda não possui funções definidas. Adicione funções ao criar ou editar o evento.
             </p>
             <Link href={`/eventos/${eventId}`}>
               <Button variant="outline">Ver detalhes do evento</Button>
@@ -477,6 +507,43 @@ export default function EventoEscalasPage() {
         isLoading={createSchedule.isPending}
         existingUserIds={existingUserIds}
       />
+
+      {/* Bulk Schedule Dialog */}
+      <BulkScheduleDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        eventId={eventId}
+        selectedMembers={selectedMembers}
+        positions={allPositions}
+        onComplete={handleBulkComplete}
+        existingUserIds={existingUserIds}
+      />
+
+      {/* Confirmacao de remocao de membro */}
+      <AlertDialog
+        open={!!confirmRemoveId}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRemoveId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover membro da escala</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este membro da escala? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRemove}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

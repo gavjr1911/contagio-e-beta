@@ -3,15 +3,16 @@ import { ZodError, ZodSchema } from "zod"
 
 import { auth } from "@/auth"
 import type { UserRole } from "@/lib/validations/user"
+import type { PermissionFeature, PermissionLevel } from "@/lib/permissions/types"
+import { resolveUserPermissions } from "@/lib/permissions/resolver"
+import { hasPermission } from "@/lib/permissions/check"
 
 // Tipos para respostas padronizadas
 export interface ApiSuccessResponse<T> {
-  success: true
   data: T
 }
 
 export interface ApiErrorResponse {
-  success: false
   error: string
   details?: Record<string, string[]>
 }
@@ -30,7 +31,7 @@ export interface AuthSession {
 
 // Funcao para criar resposta de sucesso
 export function apiSuccess<T>(data: T, status: number = 200): NextResponse<ApiSuccessResponse<T>> {
-  return NextResponse.json({ success: true, data }, { status })
+  return NextResponse.json({ data }, { status })
 }
 
 // Funcao para criar resposta de erro
@@ -39,7 +40,8 @@ export function apiError(
   status: number = 400,
   details?: Record<string, string[]>
 ): NextResponse<ApiErrorResponse> {
-  return NextResponse.json({ success: false, error, details }, { status })
+  const body: ApiErrorResponse = details ? { error, details } : { error }
+  return NextResponse.json(body, { status })
 }
 
 // Funcao para formatar erros do Zod
@@ -150,14 +152,56 @@ export function isAdmin(session: AuthSession): boolean {
   return session.user.role === "ADMIN"
 }
 
-// Funcao auxiliar para verificar se usuario e lider
+// Funcao auxiliar para verificar se usuario e lider (ou admin)
 export function isLeader(session: AuthSession): boolean {
   return session.user.role === "LEADER" || session.user.role === "ADMIN"
 }
 
-// Funcao auxiliar para verificar se usuario e coordenador
-export function isCoordinator(session: AuthSession): boolean {
-  return session.user.role === "COORDINATOR" || session.user.role === "ADMIN"
+// Wrapper para verificar permissao por feature (baseado na matriz do ministerio)
+export async function withPermission(
+  feature: PermissionFeature,
+  level: PermissionLevel,
+  handler: (session: AuthSession) => Promise<NextResponse>
+): Promise<NextResponse> {
+  const session = await auth()
+
+  if (!session?.user) {
+    return apiError("Nao autenticado", 401)
+  }
+
+  // ADMIN sempre tem acesso
+  if (session.user.role === "ADMIN") {
+    return handler(session as AuthSession)
+  }
+
+  const permissions = await resolveUserPermissions(
+    session.user.id!,
+    session.user.role as string
+  )
+
+  if (!hasPermission(permissions, feature, level)) {
+    return apiError("Permissao negada", 403)
+  }
+
+  return handler(session as AuthSession)
+}
+
+// Helper para verificar acesso a um ministerio (admin ou lider)
+export async function requireMinistryAccess(ministryId: string) {
+  const session = await auth()
+  if (!session?.user) {
+    return { error: Response.json({ error: "Não autorizado" }, { status: 401 }) } as const
+  }
+  if (session.user.role === "ADMIN") {
+    return { session: session as AuthSession, ministry: null } as const
+  }
+  const ministry = await (await import("@/lib/prisma")).prisma.ministry.findFirst({
+    where: { id: ministryId, leaderId: session.user.id },
+  })
+  if (!ministry) {
+    return { error: Response.json({ error: "Acesso negado a este ministério" }, { status: 403 }) } as const
+  }
+  return { session: session as AuthSession, ministry } as const
 }
 
 // Funcao para extrair ID dos parametros da rota
@@ -171,7 +215,41 @@ export function getPaginationParams(page: number = 1, limit: number = 20) {
   return { skip, take: limit }
 }
 
-// Tipo para resposta paginada
+// Tipo para resposta paginada (formato padrao: { data, pagination })
+export interface PaginatedApiResponse<T> {
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+// Funcao para criar resposta paginada padronizada
+export function apiSuccessPaginated<T>(
+  items: T[],
+  total: number,
+  page: number,
+  limit: number,
+  status: number = 200
+): NextResponse<PaginatedApiResponse<T>> {
+  return NextResponse.json(
+    {
+      data: items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    },
+    { status }
+  )
+}
+
+// Mantido para compatibilidade (deprecated): retorna formato legado { items, pagination }
+// Prefira `apiSuccessPaginated` para novas rotas.
 export interface PaginatedResponse<T> {
   items: T[]
   pagination: {
@@ -182,7 +260,6 @@ export interface PaginatedResponse<T> {
   }
 }
 
-// Funcao para criar resposta paginada
 export function createPaginatedResponse<T>(
   items: T[],
   total: number,

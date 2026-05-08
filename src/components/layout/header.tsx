@@ -4,21 +4,24 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileSidebar } from "./sidebar";
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
   "/eventos": "Eventos",
   "/escalas": "Escalas",
-  "/ministerios": "Ministerios",
-  "/musicas": "Musicas",
-  "/relatorios": "Relatorios",
+  "/ministerios": "Ministérios",
+  "/musicas": "Músicas",
+  "/relatorios": "Relatórios",
   "/perfil": "Meu Perfil",
-  "/configuracoes": "Configuracoes",
+  "/configuracoes": "Configurações",
+  "/checklists": "Checklists",
+  "/usuarios": "Usuários",
 };
 
 function getBreadcrumbs(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
-  const breadcrumbs = [{ name: "Inicio", href: "/" }];
+  const breadcrumbs = [{ name: "Início", href: "/" }];
 
   let currentPath = "";
   for (const segment of segments) {
@@ -61,41 +64,50 @@ export function Header({ className }: HeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex flex-col gap-1 bg-background/80 backdrop-blur-sm border-b border-border px-6 py-4",
+        "sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border",
+        "px-4 md:px-6 py-3 md:py-4",
         className
       )}
     >
-      {/* Breadcrumbs */}
-      <nav className="flex items-center text-sm">
-        {breadcrumbs.map((crumb, index) => (
-          <div key={crumb.href} className="flex items-center">
-            {index > 0 && (
-              <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground/50" />
-            )}
-            {index === 0 ? (
-              <Link
-                href={crumb.href}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Home className="h-3.5 w-3.5" />
-                <span className="sr-only">{crumb.name}</span>
-              </Link>
-            ) : index === breadcrumbs.length - 1 ? (
-              <span className="text-foreground font-medium">{crumb.name}</span>
-            ) : (
-              <Link
-                href={crumb.href}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {crumb.name}
-              </Link>
-            )}
-          </div>
-        ))}
-      </nav>
+      <div className="flex items-center gap-3">
+        <MobileSidebar />
 
-      {/* Page Title */}
-      <h1 className="text-2xl font-semibold text-foreground">{pageTitle}</h1>
+        <div className="flex-1 min-w-0">
+          {/* Breadcrumbs (apenas em desktop) */}
+          <nav className="hidden md:flex items-center text-sm" aria-label="Trilha de navegação">
+            {breadcrumbs.map((crumb, index) => (
+              <div key={crumb.href} className="flex items-center">
+                {index > 0 && (
+                  <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground/50" />
+                )}
+                {index === 0 ? (
+                  <Link
+                    href={crumb.href}
+                    className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Home className="h-3.5 w-3.5" />
+                    <span className="sr-only">{crumb.name}</span>
+                  </Link>
+                ) : index === breadcrumbs.length - 1 ? (
+                  <span className="text-foreground font-medium truncate">{crumb.name}</span>
+                ) : (
+                  <Link
+                    href={crumb.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {crumb.name}
+                  </Link>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          {/* Page Title */}
+          <h1 className="text-lg md:text-2xl font-semibold text-foreground truncate md:mt-0.5">
+            {pageTitle}
+          </h1>
+        </div>
+      </div>
     </header>
   );
 }

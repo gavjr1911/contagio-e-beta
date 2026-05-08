@@ -10,12 +10,12 @@ import {
   XCircle,
   AlertCircle,
   History,
-  Filter,
   RefreshCw,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { ScheduleCard } from "@/components/schedules/schedule-card";
 import { ConfirmDialog } from "@/components/schedules/confirm-dialog";
 import { DeclineDialog } from "@/components/schedules/decline-dialog";
@@ -48,8 +48,8 @@ export default function MinhasEscalasPage() {
         setConfirmDialogOpen(false);
         setSelectedSchedule(null);
         toast({
-          title: "Presenca confirmada!",
-          description: "Sua participacao foi confirmada com sucesso.",
+          title: "Presença confirmada!",
+          description: "Sua participação foi confirmada com sucesso.",
         });
       },
       onError: (error) => {
@@ -103,25 +103,19 @@ export default function MinhasEscalasPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground font-display">
-                Minhas Escalas
-              </h1>
-              <p className="text-muted-foreground text-sm mt-0.5">
-                Gerencie suas participacoes nos eventos
-              </p>
-            </div>
-            <div className="flex gap-2">
+      <div className="space-y-4">
+        <PageHeader
+          title="Minhas Escalas"
+          description="Gerencie suas participações nos eventos"
+          actions={
+            <>
               <Button
                 size="icon"
                 variant="outline"
-                className="border-border text-muted-foreground hover:bg-muted"
                 onClick={() => refetch()}
+                aria-label="Atualizar escalas"
               >
                 <RefreshCw className="h-5 w-5" />
               </Button>
@@ -129,7 +123,7 @@ export default function MinhasEscalasPage() {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-border text-muted-foreground hover:bg-muted"
+                  aria-label="Ver calendário de escalas"
                 >
                   <CalendarDays className="h-5 w-5" />
                 </Button>
@@ -138,69 +132,65 @@ export default function MinhasEscalasPage() {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-border text-muted-foreground hover:bg-muted"
+                  aria-label="Configurar disponibilidade"
                 >
                   <Clock className="h-5 w-5" />
                 </Button>
               </Link>
+            </>
+          }
+        />
+
+        {/* Quick stats */}
+        {pendingCount !== undefined && pendingCount > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-amber-600 dark:text-amber-400 font-medium text-sm">
+                {pendingCount} escala{pendingCount > 1 ? "s" : ""} pendente
+                {pendingCount > 1 ? "s" : ""}
+              </p>
+              <p className="text-amber-600/70 dark:text-amber-400/70 text-xs">
+                Confirme ou recuse sua participação
+              </p>
             </div>
           </div>
-
-          {/* Quick stats */}
-          {pendingCount !== undefined && pendingCount > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-amber-400 font-medium text-sm">
-                  {pendingCount} escala{pendingCount > 1 ? "s" : ""} pendente
-                  {pendingCount > 1 ? "s" : ""}
-                </p>
-                <p className="text-amber-400/70 text-xs">
-                  Confirme ou recuse sua participacao
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="px-4 pt-4">
+      <div>
         <Tabs
           value={filter}
           onValueChange={(v) => setFilter(v as ScheduleFilter)}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-4 w-full bg-secondary p-1 h-auto">
+          <TabsList className="grid grid-cols-3 w-full bg-secondary p-1 h-auto">
             <TabsTrigger
               value="pending"
-              className="text-xs py-2.5 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400"
+              className="text-xs sm:text-sm py-2.5 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400"
             >
-              <AlertCircle className="h-4 w-4 mr-1.5" />
-              Pendentes
+              <AlertCircle className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Pendentes</span>
+              <span className="sm:hidden ml-1">Pend.</span>
             </TabsTrigger>
             <TabsTrigger
               value="confirmed"
-              className="text-xs py-2.5 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+              className="text-xs sm:text-sm py-2.5 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400"
             >
-              <CheckCircle2 className="h-4 w-4 mr-1.5" />
-              Confirmadas
-            </TabsTrigger>
-            <TabsTrigger
-              value="all"
-              className="text-xs py-2.5 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-            >
-              <Filter className="h-4 w-4 mr-1.5" />
-              Todas
+              <CheckCircle2 className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Confirmadas</span>
+              <span className="sm:hidden ml-1">Conf.</span>
             </TabsTrigger>
             <TabsTrigger
               value="history"
-              className="text-xs py-2.5 data-[state=active]:bg-muted data-[state=active]:text-muted-foreground"
+              className="text-xs sm:text-sm py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground"
             >
-              <History className="h-4 w-4 mr-1.5" />
-              Historico
+              <History className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden ml-1">Hist.</span>
             </TabsTrigger>
           </TabsList>
 
@@ -262,17 +252,17 @@ export default function MinhasEscalasPage() {
                     : filter === "confirmed"
                     ? "Nenhuma escala confirmada"
                     : filter === "history"
-                    ? "Nenhum historico ainda"
+                    ? "Nenhum histórico ainda"
                     : "Nenhuma escala encontrada"}
                 </p>
                 <p className="text-muted-foreground text-sm mt-1">
                   {filter === "pending"
-                    ? "Voce esta em dia com suas confirmacoes!"
+                    ? "Você está em dia com suas confirmações!"
                     : filter === "confirmed"
-                    ? "Suas escalas confirmadas aparecerao aqui"
+                    ? "Suas escalas confirmadas aparecerão aqui"
                     : filter === "history"
-                    ? "Eventos passados aparecerao aqui"
-                    : "Voce ainda nao foi escalado para nenhum evento"}
+                    ? "Eventos passados aparecerão aqui"
+                    : "Você ainda não foi escalado para nenhum evento"}
                 </p>
               </div>
             )}

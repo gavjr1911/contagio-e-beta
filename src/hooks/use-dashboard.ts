@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { formatDateToISO } from "@/lib/date-utils";
 
 // Types
 export interface DashboardEvent {
@@ -26,7 +27,13 @@ export interface DashboardSchedule {
   eventId: string;
   ministryId: string;
   userId: string;
+  /** @deprecated — usar `vacancy.position.name`. */
   position: string | null;
+  vacancy?: {
+    id: string;
+    positionId: string;
+    position: { id: string; name: string };
+  } | null;
   status: string;
   confirmedAt: Date | null;
   declinedReason: string | null;
@@ -81,8 +88,8 @@ async function fetchUpcomingEvents(): Promise<DashboardEvent[]> {
   thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
 
   const params = new URLSearchParams();
-  params.set("startDate", now.toISOString().split("T")[0]);
-  params.set("endDate", thirtyDaysLater.toISOString().split("T")[0]);
+  params.set("startDate", formatDateToISO(now));
+  params.set("endDate", formatDateToISO(thirtyDaysLater));
   params.set("limit", "10");
 
   const response = await fetch(`/api/events?${params.toString()}`);
@@ -114,7 +121,7 @@ async function fetchUserMinistries(userId: string): Promise<DashboardMinistry[]>
     throw new Error("Erro ao carregar ministerios");
   }
   const result = await response.json();
-  const allMinistries: DashboardMinistry[] = result.data?.items || [];
+  const allMinistries: DashboardMinistry[] = result.data || [];
 
   // Filter ministries where user is a member
   return allMinistries.filter(

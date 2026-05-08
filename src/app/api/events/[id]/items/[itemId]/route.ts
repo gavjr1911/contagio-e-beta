@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/events/[id]/items/[itemId] - Update event item
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId, itemId } = await params
 
     const existingItem = await prisma.eventItem.findFirst({
@@ -57,14 +57,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       description,
       durationMinutes,
       responsibleId,
+      responsibleName,
       bibleReference,
       mediaUrl,
       notes,
       isPublic,
       expectedSongCount,
+      requiresMedia,
     } = validation.data
 
-    // Validate responsibleId if provided
+    // Validate responsibleId if provided and not null
     if (responsibleId) {
       const userExists = await prisma.user.findUnique({
         where: { id: responsibleId },
@@ -77,20 +79,49 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Determina o tipo final (novo ou existente)
     const finalType = type ?? existingItem.type
 
+    // Determina responsibleId e responsibleName
+    // Se responsibleId foi fornecido, limpa responsibleName e vice-versa
+    let finalResponsibleId = existingItem.responsibleId
+    let finalResponsibleName = existingItem.responsibleName
+
+    if (responsibleId !== undefined) {
+      finalResponsibleId = responsibleId || null
+      if (responsibleId) {
+        finalResponsibleName = null // Se tem ID, limpa nome livre
+      }
+    }
+    if (responsibleName !== undefined) {
+      finalResponsibleName = responsibleName || null
+      if (responsibleName) {
+        finalResponsibleId = null // Se tem nome livre, limpa ID
+      }
+    }
+
+    // Monta os dados para update
+    const updateData: Parameters<typeof prisma.eventItem.update>[0]["data"] = {
+      type,
+      title,
+      description,
+      durationMinutes,
+      bibleReference,
+      mediaUrl: mediaUrl || null,
+      notes,
+      isPublic,
+      expectedSongCount: finalType === "WORSHIP" ? expectedSongCount : null,
+      requiresMedia,
+      responsibleName: finalResponsibleName,
+    }
+
+    // Usa a relacao para conectar/desconectar o responsavel
+    if (finalResponsibleId) {
+      updateData.responsible = { connect: { id: finalResponsibleId } }
+    } else if (existingItem.responsibleId && !finalResponsibleId) {
+      updateData.responsible = { disconnect: true }
+    }
+
     const item = await prisma.eventItem.update({
       where: { id: itemId },
-      data: {
-        type,
-        title,
-        description,
-        durationMinutes,
-        responsibleId,
-        bibleReference,
-        mediaUrl: mediaUrl || null,
-        notes,
-        isPublic,
-        expectedSongCount: finalType === "WORSHIP" ? expectedSongCount : null,
-      },
+      data: updateData,
       include: eventItemIncludeFull,
     })
 
@@ -100,7 +131,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/events/[id]/items/[itemId] - Delete event item
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId, itemId } = await params
 
     const existingItem = await prisma.eventItem.findFirst({

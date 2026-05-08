@@ -20,6 +20,7 @@ export interface Event {
   endTime: string | Date | null;
   status: EventStatus;
   templateId: string | null;
+  checklistTemplateId: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
   // Recurrence fields
@@ -28,6 +29,10 @@ export interface Event {
   recurrenceEndDate?: string | Date | null;
   parentEventId?: string | null;
   template?: {
+    id: string;
+    name: string;
+  } | null;
+  checklistTemplate?: {
     id: string;
     name: string;
   } | null;
@@ -100,6 +105,7 @@ export interface CreateEventData {
   endTime?: string;
   status?: EventStatus;
   templateId?: string;
+  checklistTemplateId?: string;
   // Recurrence fields
   isRecurring?: boolean;
   recurrencePattern?: RecurrencePattern;
@@ -245,6 +251,7 @@ async function updateEvent({ id, ...data }: UpdateEventData): Promise<Event> {
   if (data.endTime) body.endTime = data.endTime; // HH:MM string
   if (data.status) body.status = data.status;
   if (data.templateId) body.templateId = data.templateId;
+  if (data.checklistTemplateId) body.checklistTemplateId = data.checklistTemplateId;
 
   const response = await fetch(`/api/events/${id}`, {
     method: "PATCH",
@@ -279,6 +286,7 @@ export function useEvents(filters?: EventFilters) {
   return useQuery({
     queryKey: eventKeys.list(filters),
     queryFn: () => fetchEvents(filters),
+    staleTime: 1000 * 60 * 2, // 2 minutos
   });
 }
 
@@ -287,6 +295,7 @@ export function useEvent(id: string) {
     queryKey: eventKeys.detail(id),
     queryFn: () => fetchEvent(id),
     enabled: !!id,
+    staleTime: 1000 * 60 * 2, // 2 minutos
   });
 }
 
@@ -294,8 +303,8 @@ export function useEventsForMonth(month: number, year: number) {
   return useQuery({
     queryKey: eventKeys.calendar(month, year),
     queryFn: async () => {
-      const startDate = new Date(year, month, 1).toISOString().split("T")[0];
-      const endDate = new Date(year, month + 1, 0).toISOString().split("T")[0];
+      const startDate = formatDateFromDate(new Date(year, month, 1));
+      const endDate = formatDateFromDate(new Date(year, month + 1, 0));
       return fetchEvents({ startDate, endDate });
     },
   });
@@ -338,8 +347,7 @@ export function useDeleteEvent() {
 // Utility functions for labels
 export function getEventTypeLabel(type: EventType): string {
   const labels: Record<EventType, string> = {
-    SUNDAY_MORNING: "Culto Matutino",
-    SUNDAY_EVENING: "Culto Noturno",
+    CULTO: "Culto",
     SPECIAL: "Evento Especial",
   };
   return labels[type] || type;
@@ -348,7 +356,7 @@ export function getEventTypeLabel(type: EventType): string {
 export function getEventStatusLabel(status: EventStatus): string {
   const labels: Record<EventStatus, string> = {
     PUBLISHED: "Ativo",
-    COMPLETED: "Concluido",
+    COMPLETED: "Concluído",
   };
   return labels[status] || status;
 }

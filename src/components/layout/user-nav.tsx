@@ -39,7 +39,7 @@ export function UserNav({ isCollapsed = false }: UserNavProps) {
           )}
         >
           <Avatar className="h-9 w-9 shrink-0">
-            <AvatarImage src={user?.image || undefined} alt={user?.name || "Usuario"} />
+            <AvatarImage src={user?.image || undefined} alt={user?.name || "Usuário"} />
             <AvatarFallback className="bg-primary text-foreground text-xs font-semibold">
               {initials}
             </AvatarFallback>
@@ -47,7 +47,7 @@ export function UserNav({ isCollapsed = false }: UserNavProps) {
           {!isCollapsed && (
             <div className="flex-1 text-left">
               <p className="font-medium text-foreground truncate">
-                {user?.name || "Usuario"}
+                {user?.name || "Usuário"}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 {user?.email || ""}
@@ -64,7 +64,7 @@ export function UserNav({ isCollapsed = false }: UserNavProps) {
       >
         <DropdownMenuLabel className="text-foreground">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user?.name || "Usuario"}</p>
+            <p className="text-sm font-medium">{user?.name || "Usuário"}</p>
             <p className="text-xs text-muted-foreground truncate">
               {user?.email || ""}
             </p>
@@ -86,7 +86,7 @@ export function UserNav({ isCollapsed = false }: UserNavProps) {
             className="flex items-center gap-2 text-foreground cursor-pointer hover:bg-muted focus:bg-muted"
           >
             <Settings className="h-4 w-4" />
-            Configuracoes
+            Configurações
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-muted" />

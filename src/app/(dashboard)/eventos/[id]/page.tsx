@@ -15,13 +15,12 @@ import {
   FileText,
   Loader2,
   CheckCircle,
-  Briefcase,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
+  Save,
+  ClipboardCheck,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,17 +32,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { VacancySlot } from "@/components/events/vacancy-slot";
 import { ScheduleMemberDialog } from "@/components/events/schedule-member-dialog";
-import { OrderItemCard } from "@/components/events/order-item-card";
 import { SetlistBlocks } from "@/components/events/setlist-blocks";
 import { EventMediaTab } from "@/components/events/event-media-tab";
-import {
-  calculateStartTimes,
-  calculateTotalDuration,
-  formatDuration,
-  type EventItem as EventItemType,
-} from "@/hooks/use-event-items";
+import { SaveAsTemplateDialog } from "@/components/events/save-as-template-dialog";
+import { EventChecklistTab } from "@/components/events/event-checklist-tab";
+import { EventAttendanceTab } from "@/components/events/event-attendance-tab";
+import { EventOrderTab } from "@/components/events/event-order-tab";
+import { EventSchedulesTab } from "@/components/events/event-schedules-tab";
+import { ExportPDFButton } from "@/components/events/export-pdf-button";
+import { type EventItem as EventItemType } from "@/hooks/use-event-items";
 import {
   useEvent,
   useUpdateEvent,
@@ -57,14 +55,15 @@ import {
   useEventSchedules,
   useCreateSchedule,
   useDeleteSchedule,
-  type EventScheduleItem,
 } from "@/hooks/use-schedules";
 import { useEventVacancies, type EventVacancy } from "@/hooks/use-vacancies";
-import { ScheduleStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/use-permissions";
+import { meetsLevel } from "@/lib/permissions/check";
+import { toLocalDate } from "@/lib/date-utils";
 
-type TabType = "ordem" | "escalas" | "midia" | "setlist";
+type TabType = "ordem" | "escalas" | "midia" | "setlist" | "checklist" | "presenca";
 
 function getStatusVariant(
   status: EventStatus
@@ -81,10 +80,8 @@ function getStatusVariant(
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "SUNDAY_MORNING":
+    case "CULTO":
       return "bg-primary/10 text-primary border-primary/20";
-    case "SUNDAY_EVENING":
-      return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
     default:
@@ -93,16 +90,16 @@ function getTypeColor(type: EventType): string {
 }
 
 function formatDate(dateOrString: string | Date): string {
-  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
+  const date = toLocalDate(dateOrString);
   return date.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
-// Agrupar vagas por ministerio
 interface VacancyGroup {
   ministry: { id: string; name: string };
   vacancies: EventVacancy[];
@@ -127,14 +124,6 @@ function groupVacanciesByMinistry(vacancies: EventVacancy[]): VacancyGroup[] {
   );
 }
 
-// Encontrar o schedule associado a uma vacancy
-function findScheduleForVacancy(
-  vacancyId: string,
-  schedules: EventScheduleItem[]
-): EventScheduleItem | null {
-  return schedules.find((s) => s.vacancyId === vacancyId) || null;
-}
-
 export default function EventoDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -144,7 +133,6 @@ export default function EventoDetailPage() {
   const { data: event, isLoading, error } = useEvent(eventId);
   const updateEvent = useUpdateEvent();
 
-  // Vacancies e Schedules
   const {
     data: vacancies,
     isLoading: vacanciesLoading,
@@ -165,50 +153,45 @@ export default function EventoDetailPage() {
   const [selectedVacancy, setSelectedVacancy] = React.useState<EventVacancy | null>(null);
   const [removingScheduleId, setRemovingScheduleId] = React.useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [saveAsTemplateOpen, setSaveAsTemplateOpen] = React.useState(false);
 
-  // Verificar permissao e status do evento
-  const isAdmin = session?.user?.role === "ADMIN";
-  const isCoordinator = session?.user?.role === "COORDINATOR";
-  const isLeader = session?.user?.role === "LEADER";
+  const { permissions, isAdmin } = usePermissions();
   const isCompleted = event?.status === "COMPLETED";
-  const canEdit = (isAdmin || isCoordinator || isLeader) && !isCompleted;
 
-  // Flatten schedules from groups
   const allSchedules = React.useMemo(() => {
     if (!scheduleGroups) return [];
     return scheduleGroups.flatMap((group) => group.schedules);
   }, [scheduleGroups]);
 
-  // Agrupar vagas por ministerio
+  const isScheduledForEvent = React.useMemo(() => {
+    if (!session?.user?.id || !allSchedules) return false;
+    return allSchedules.some((s) => s.user.id === session.user.id);
+  }, [allSchedules, session?.user?.id]);
+
+  const canEditEvent = (isAdmin || meetsLevel(permissions.events, "edit")) && !isCompleted;
+  const canEditOrder = (isAdmin || meetsLevel(permissions.orderOfService, "edit")) && !isCompleted;
+  const canViewOrder = isAdmin || meetsLevel(permissions.orderOfService, "view") || isScheduledForEvent;
+  const canEditSchedules = (isAdmin || meetsLevel(permissions.schedules, "edit")) && !isCompleted;
+  const canViewSchedules = isAdmin || meetsLevel(permissions.schedules, "view") || isScheduledForEvent;
+  const canEditMedia = (isAdmin || meetsLevel(permissions.media, "edit")) && !isCompleted;
+  const canViewMedia = isAdmin || meetsLevel(permissions.media, "view") || isScheduledForEvent;
+  const canViewSongs = isAdmin || meetsLevel(permissions.songs, "view") || isScheduledForEvent;
+  const canEditSongs = (isAdmin || meetsLevel(permissions.songs, "edit")) && !isCompleted;
+  const canViewChecklist = isAdmin || meetsLevel(permissions.checklists, "view") || isScheduledForEvent;
+
   const vacancyGroups = React.useMemo(() => {
     if (!vacancies) return [];
     return groupVacanciesByMinistry(vacancies);
   }, [vacancies]);
 
-  // Stats
-  const stats = React.useMemo(() => {
-    if (!vacancies || !allSchedules) {
-      return { total: 0, filled: 0, pending: 0, confirmed: 0 };
-    }
-
-    const total = vacancies.length;
-    let filled = 0;
-    let pending = 0;
-    let confirmed = 0;
-
-    vacancies.forEach((vacancy) => {
-      const schedule = findScheduleForVacancy(vacancy.id, allSchedules);
-      if (schedule) {
-        filled++;
-        if (schedule.status === ScheduleStatus.CONFIRMED) confirmed++;
-        if (schedule.status === ScheduleStatus.PENDING) pending++;
-      }
-    });
-
-    return { total, filled, pending, confirmed };
+  const totalVacancies = vacancies?.length ?? 0;
+  const filledVacancies = React.useMemo(() => {
+    if (!vacancies) return 0;
+    return vacancies.filter((v) =>
+      allSchedules.some((s) => s.vacancyId === v.id)
+    ).length;
   }, [vacancies, allSchedules]);
 
-  // Get existing user IDs for conflict checking
   const existingUserIds = React.useMemo(() => {
     return allSchedules.map((s) => s.user.id);
   }, [allSchedules]);
@@ -244,8 +227,8 @@ export default function EventoDetailPage() {
 
   const handleScheduleMember = async (
     userId: string,
-    ministryId: string,
-    position: string | null
+    _ministryId: string,
+    _position: string | null
   ) => {
     if (!selectedVacancy) return;
 
@@ -275,10 +258,6 @@ export default function EventoDetailPage() {
   };
 
   const handleRemoveMember = async (scheduleId: string) => {
-    if (!confirm("Tem certeza que deseja remover este membro da escala?")) {
-      return;
-    }
-
     setRemovingScheduleId(scheduleId);
     try {
       await deleteSchedule.mutateAsync({ eventId, scheduleId });
@@ -314,9 +293,9 @@ export default function EventoDetailPage() {
 
   if (error || !event) {
     return (
-      <div className="flex-1 p-6">
+      <div>
         <Card className="p-8 text-center">
-          <p className="text-destructive mb-4">Evento nao encontrado</p>
+          <p className="text-destructive mb-4">Evento não encontrado</p>
           <Link href="/eventos">
             <Button variant="outline">Voltar para eventos</Button>
           </Link>
@@ -325,29 +304,85 @@ export default function EventoDetailPage() {
     );
   }
 
-  const tabs = [
-    { id: "ordem" as TabType, label: "Ordem do Culto", icon: FileText },
-    { id: "escalas" as TabType, label: "Escalas", icon: Users },
-    { id: "midia" as TabType, label: "Midia", icon: Monitor },
-    { id: "setlist" as TabType, label: "Setlist", icon: Music },
+  const allTabs: { id: TabType; label: string; icon: typeof FileText; visible: boolean }[] = [
+    { id: "ordem", label: "Ordem do Culto", icon: FileText, visible: canViewOrder },
+    { id: "escalas", label: "Escalas", icon: Users, visible: canViewSchedules },
+    { id: "midia", label: "Mídia", icon: Monitor, visible: canViewMedia },
+    { id: "setlist", label: "Setlist", icon: Music, visible: canViewSongs },
+    { id: "checklist", label: "Checklist", icon: ClipboardCheck, visible: canViewChecklist },
+    { id: "presenca", label: "Presença", icon: ClipboardList, visible: canEditEvent || isAdmin },
   ];
+  const tabs = allTabs.filter((t) => t.visible);
 
   const startTimeFormatted = formatTimeFromDate(event.startTime);
   const endTimeFormatted = event.endTime ? formatTimeFromDate(event.endTime) : null;
 
   return (
-    <div className="flex-1 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/eventos">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+      <div className="space-y-4">
+        {/* Back + Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href="/eventos"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Eventos</span>
           </Link>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold font-display">{event.name}</h1>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {canViewOrder && event.items && event.items.length > 0 && (
+              <ExportPDFButton
+                event={event}
+                items={event.items as EventItemType[]}
+                schedules={scheduleGroups || []}
+                size="sm"
+                variant="outline"
+              />
+            )}
+
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSaveAsTemplateOpen(true)}
+              >
+                <Save className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Salvar como Template</span>
+                <span className="sm:hidden">Template</span>
+              </Button>
+            )}
+
+            {canEditEvent && event.status === "PUBLISHED" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleComplete}
+                disabled={updateEvent.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-1.5" />
+                Concluir
+              </Button>
+            )}
+
+            {canEditEvent && (
+              <Button
+                size="sm"
+                onClick={() => setEditDialogOpen(true)}
+              >
+                <Edit className="h-4 w-4 mr-1.5" />
+                Editar
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Title + Info */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold font-display tracking-tight">{event.name}</h1>
+            <div className="flex items-center gap-1.5">
               <Badge
                 variant="outline"
                 className={cn("text-xs", getTypeColor(event.type))}
@@ -358,66 +393,44 @@ export default function EventoDetailPage() {
                 {getEventStatusLabel(event.status)}
               </Badge>
             </div>
-            <div className="flex items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                <span className="capitalize">{formatDate(event.date)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
-                <span>
-                  {startTimeFormatted}
-                  {endTimeFormatted && ` - ${endTimeFormatted}`}
-                </span>
-              </div>
-            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            {event.status === "PUBLISHED" && (
-              <Button
-                variant="outline"
-                onClick={handleComplete}
-                disabled={updateEvent.isPending}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Concluir
-              </Button>
-            )}
-
-            {!isCompleted && (
-              <Button
-                className="bg-primary hover:bg-primary-hover"
-                onClick={() => setEditDialogOpen(true)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Editar Evento
-              </Button>
-            )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <span className="capitalize">{formatDate(event.date)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {startTimeFormatted}
+                {endTimeFormatted && ` - ${endTimeFormatted}`}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border">
-        <nav className="flex gap-4 -mb-px">
+      <div className="border-b border-border -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto">
+        <nav className="flex gap-1 sm:gap-4 -mb-px min-w-max" aria-label="Seções do evento">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                "flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
               )}
+              aria-current={activeTab === tab.id ? "page" : undefined}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
-              {tab.id === "escalas" && stats.total > 0 && (
+              {tab.id === "escalas" && totalVacancies > 0 && (
                 <Badge variant="secondary" className="ml-1 text-xs">
-                  {stats.filled}/{stats.total}
+                  {filledVacancies}/{totalVacancies}
                 </Badge>
               )}
             </button>
@@ -428,269 +441,45 @@ export default function EventoDetailPage() {
       {/* Tab Content */}
       <div className="mt-6">
         {activeTab === "ordem" && (
-          <div className="space-y-4">
-            {event.items && event.items.length > 0 ? (
-              <>
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Atividades</p>
-                        <p className="text-2xl font-bold">{event.items.length}</p>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Duracao Total</p>
-                        <p className="text-2xl font-bold text-emerald-500">
-                          {formatDuration(calculateTotalDuration(event.items as EventItemType[]))}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Inicio</p>
-                        <p className="text-2xl font-bold text-blue-500">{startTimeFormatted}</p>
-                      </div>
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-amber-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Termino Previsto</p>
-                        <p className="text-2xl font-bold text-amber-500">
-                          {(() => {
-                            const totalMinutes = calculateTotalDuration(event.items as EventItemType[]);
-                            const [h, m] = startTimeFormatted.split(":").map(Number);
-                            const endMinutes = h * 60 + m + totalMinutes;
-                            const endH = Math.floor(endMinutes / 60) % 24;
-                            const endM = endMinutes % 60;
-                            return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <h2 className="font-semibold text-lg">Atividades</h2>
-                  {!isCompleted && (
-                    <Link href={`/eventos/${eventId}/ordem`}>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar Ordem
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-
-                {/* Items */}
-                <div className="space-y-3">
-                  {(() => {
-                    const startTimes = calculateStartTimes(
-                      event.items as EventItemType[],
-                      startTimeFormatted
-                    );
-                    return event.items.map((item, index) => (
-                      <OrderItemCard
-                        key={item.id}
-                        item={item as EventItemType}
-                        startTime={startTimes.get(item.id) || startTimeFormatted}
-                        index={index}
-                      />
-                    ));
-                  })()}
-                </div>
-              </>
-            ) : (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium text-foreground mb-2">
-                      Nenhuma ordem do culto definida
-                    </p>
-                    <p className="mb-4">
-                      {isCompleted
-                        ? "Este evento foi concluido sem ordem do culto."
-                        : "Crie a ordem do culto para organizar as atividades do evento."}
-                    </p>
-                    {!isCompleted && (
-                      <Link href={`/eventos/${eventId}/ordem`}>
-                        <Button>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Criar Ordem do Culto
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <EventOrderTab
+            event={event}
+            eventId={eventId}
+            canEditOrder={canEditOrder}
+            startTimeFormatted={startTimeFormatted}
+          />
         )}
 
         {activeTab === "escalas" && (
-          <div className="space-y-6">
-            {/* Stats */}
-            {stats.total > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Briefcase className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Funcoes</p>
-                      <p className="text-2xl font-bold">{stats.total}</p>
-                    </div>
-                  </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Confirmados</p>
-                      <p className="text-2xl font-bold text-emerald-500">{stats.confirmed}</p>
-                    </div>
-                  </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pendentes</p>
-                      <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
-                    </div>
-                  </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Preenchidas</p>
-                      <p className="text-2xl font-bold">
-                        {stats.filled}/{stats.total}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Funcoes do Evento</h2>
-              {stats.total > 0 && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleRefreshSchedules}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-
-            {/* Vacancy boards by ministry */}
-            {vacanciesLoading || schedulesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : vacancyGroups.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2">
-                {vacancyGroups.map((group) => (
-                  <Card key={group.ministry.id} className="overflow-hidden">
-                    <CardHeader className="pb-3 bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base font-semibold">
-                          {group.ministry.name}
-                        </CardTitle>
-                        <Badge variant="secondary" className="text-xs">
-                          {group.vacancies.filter((v) =>
-                            findScheduleForVacancy(v.id, allSchedules)
-                          ).length}
-                          /{group.vacancies.length}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3">
-                      {group.vacancies.map((vacancy) => {
-                        const schedule = findScheduleForVacancy(vacancy.id, allSchedules);
-                        return (
-                          <VacancySlot
-                            key={vacancy.id}
-                            positionName={vacancy.position.name}
-                            schedule={schedule ? {
-                              id: schedule.id,
-                              user: schedule.user,
-                              status: schedule.status,
-                            } : null}
-                            onAssign={() => handleAssignClick(vacancy)}
-                            onRemove={handleRemoveMember}
-                            isRemoving={removingScheduleId === schedule?.id}
-                            canEdit={canEdit}
-                          />
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-8">
-                <div className="text-center">
-                  <Briefcase className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-foreground font-medium text-lg mb-2">
-                    Nenhuma funcao definida
-                  </p>
-                  <p className="text-muted-foreground mb-4">
-                    {isCompleted
-                      ? "Este evento foi concluido sem funcoes definidas."
-                      : "Este evento ainda nao possui funcoes definidas. Adicione funcoes ao criar ou editar o evento."}
-                  </p>
-                  {!isCompleted && (
-                    <Link href={`/eventos/${event.id}/editar`}>
-                      <Button variant="outline">Editar Evento</Button>
-                    </Link>
-                  )}
-                </div>
-              </Card>
-            )}
-          </div>
+          <EventSchedulesTab
+            event={event}
+            eventId={eventId}
+            canEditSchedules={canEditSchedules}
+            isAdmin={isAdmin}
+            vacancyGroups={vacancyGroups}
+            allSchedules={allSchedules}
+            vacanciesLoading={vacanciesLoading}
+            schedulesLoading={schedulesLoading}
+            removingScheduleId={removingScheduleId}
+            onAssignClick={handleAssignClick}
+            onRemoveSchedule={handleRemoveMember}
+            onRefresh={handleRefreshSchedules}
+          />
         )}
 
         {activeTab === "midia" && (
-          <EventMediaTab eventId={eventId} readOnly={!canEdit} />
+          <EventMediaTab eventId={event.id} readOnly={!canEditMedia} />
         )}
 
         {activeTab === "setlist" && (
-          <SetlistBlocks eventId={eventId} readOnly={!canEdit} />
+          <SetlistBlocks eventId={eventId} readOnly={!canEditSongs} />
+        )}
+
+        {activeTab === "checklist" && (
+          <EventChecklistTab eventId={eventId} />
+        )}
+
+        {activeTab === "presenca" && (
+          <EventAttendanceTab eventId={eventId} canEdit={canEditEvent || isAdmin} />
         )}
       </div>
 
@@ -726,6 +515,31 @@ export default function EventoDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Save as Template Dialog */}
+      <SaveAsTemplateDialog
+        open={saveAsTemplateOpen}
+        onOpenChange={setSaveAsTemplateOpen}
+        eventName={event.name}
+        eventType={event.type}
+        items={event.items as Array<{
+          id: string;
+          type: string;
+          title: string;
+          description?: string | null;
+          durationMinutes?: number | null;
+          requiresMedia?: boolean;
+          bibleReference?: string | null;
+          notes?: string | null;
+          isPublic?: boolean;
+          expectedSongCount?: number | null;
+        }>}
+        vacancies={vacancies?.map((v) => ({
+          ministryId: v.ministryId,
+          positionId: v.positionId,
+          quantity: v.quantity,
+        })) || []}
+      />
     </div>
   );
 }

@@ -17,8 +17,8 @@ async function hasMinistryPermission(
   userRole: string,
   ministryId: string
 ): Promise<boolean> {
-  // ADMIN and COORDINATOR have access to all ministries
-  if (userRole === "ADMIN" || userRole === "COORDINATOR") {
+  // ADMIN has access to all ministries
+  if (userRole === "ADMIN") {
     return true
   }
 
@@ -49,9 +49,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
+    if (!userRole || !["ADMIN", "LEADER"].includes(userRole)) {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN, COORDINATOR ou LEADER podem visualizar configuracao." },
+        { error: "Acesso negado. Apenas ADMIN ou LEADER podem visualizar configuracao." },
         { status: 403 }
       )
     }
@@ -133,9 +133,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
+    if (!userRole || !["ADMIN", "LEADER"].includes(userRole)) {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN, COORDINATOR ou LEADER podem atualizar configuracao." },
+        { error: "Acesso negado. Apenas ADMIN ou LEADER podem atualizar configuracao." },
         { status: 403 }
       )
     }

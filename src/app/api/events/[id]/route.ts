@@ -25,6 +25,7 @@ export async function GET(
       where: { id },
       include: {
         template: { select: { id: true, name: true } },
+        checklistTemplate: { select: { id: true, name: true } },
         items: {
           include: eventItemIncludeFull,
           orderBy: { order: "asc" },
@@ -39,14 +40,6 @@ export async function GET(
             },
           },
           orderBy: [{ ministry: { name: "asc" } }, { createdAt: "asc" }],
-        },
-        setlists: {
-          include: {
-            song: {
-              select: { id: true, name: true, artist: true, defaultKey: true },
-            },
-          },
-          orderBy: { order: "asc" },
         },
       },
     })
@@ -65,7 +58,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/events/[id] - Update event (ADMIN, COORDINATOR only)
+// PATCH /api/events/[id] - Update event (ADMIN only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -78,9 +71,9 @@ export async function PATCH(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem editar eventos." },
+        { error: "Acesso negado. Apenas ADMIN pode editar eventos." },
         { status: 403 }
       )
     }
@@ -117,6 +110,19 @@ export async function PATCH(
       }
     }
 
+    // Validate checklistTemplateId if provided
+    if (updateData.checklistTemplateId) {
+      const checklistTemplateExists = await prisma.checklistTemplate.findUnique({
+        where: { id: updateData.checklistTemplateId },
+      })
+      if (!checklistTemplateExists) {
+        return Response.json(
+          { error: "Template de checklist nao encontrado" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Verificar se o evento esta sendo marcado como COMPLETED
     const isCompletingEvent =
       updateData.status === EventStatus.COMPLETED &&
@@ -127,6 +133,7 @@ export async function PATCH(
       data: updateData,
       include: {
         template: { select: { id: true, name: true } },
+        checklistTemplate: { select: { id: true, name: true } },
         setlists: isCompletingEvent ? { select: { songId: true } } : false,
       },
     })

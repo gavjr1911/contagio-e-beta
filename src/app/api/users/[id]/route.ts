@@ -27,8 +27,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           id: true,
           name: true,
           email: true,
+          phone: true,
           image: true,
           role: true,
+          active: true,
           createdAt: true,
           updatedAt: true,
           ministryMemberships: {
@@ -57,10 +59,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
 
       // Usuarios normais so podem ver seus proprios dados
-      // Admins e coordenadores podem ver qualquer usuario
+      // Admins podem ver qualquer usuario
       if (
         !isAdmin(session) &&
-        session.user.role !== "COORDINATOR" &&
         session.user.id !== id
       ) {
         return apiError("Permissao negada", 403)
@@ -90,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return bodyResult.response
     }
 
-    const { name, email, role, image } = bodyResult.data
+    const { name, email, phone, role, active, image } = bodyResult.data
 
     try {
       const user = await prisma.user.findUnique({
@@ -101,10 +102,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return apiError("Usuario nao encontrado", 404)
       }
 
-      // Apenas admins podem alterar role
+      // Apenas admins podem alterar role e status active
       if (!isAdmin(session)) {
         if (role !== undefined) {
           return apiError("Apenas administradores podem alterar role", 403)
+        }
+        if (active !== undefined) {
+          return apiError("Apenas administradores podem ativar/desativar usuarios", 403)
         }
       }
 
@@ -124,15 +128,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         data: {
           ...(name !== undefined && { name }),
           ...(email !== undefined && { email }),
+          ...(phone !== undefined && { phone }),
           ...(role !== undefined && { role }),
+          ...(active !== undefined && { active }),
           ...(image !== undefined && { image }),
         },
         select: {
           id: true,
           name: true,
           email: true,
+          phone: true,
           image: true,
           role: true,
+          active: true,
           createdAt: true,
           updatedAt: true,
         },

@@ -16,15 +16,12 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  COORDINATOR
   LEADER
-  COMMUNICATION
   VOLUNTEER
 }
 
 enum EventType {
-  SUNDAY_MORNING
-  SUNDAY_EVENING
+  CULTO
   SPECIAL
 }
 
@@ -85,6 +82,7 @@ model User {
   image         String?
   password      String? // Hash da senha para login com credenciais
   role          UserRole  @default(VOLUNTEER)
+  active        Boolean   @default(true)
   cpf           String?   @unique
   phone         String?
   birthDate     DateTime?
@@ -98,15 +96,20 @@ model User {
   sessions Session[]
 
   // Relacionamentos do Sistema
-  ministryMemberships MinistryMember[]
-  leaderOfMinistries  Ministry[]       @relation("MinistryLeader")
-  schedules           Schedule[]
-  bandMemberships     BandMember[]
-  uploadedMedia       Media[]
-  notifications       Notification[]
-  blockedDates        BlockedDate[]
-  eventItems          EventItem[]      @relation("EventItemResponsible")
-  assignmentLogs      AssignmentLog[]
+  ministryMemberships       MinistryMember[]
+  leaderOfMinistries        Ministry[]             @relation("MinistryLeader")
+  schedules                 Schedule[]
+  bandMemberships           BandMember[]
+  uploadedMedia             Media[]
+  notifications             Notification[]
+  blockedDates              BlockedDate[]
+  eventItems                EventItem[]            @relation("EventItemResponsible")
+  assignmentLogs            AssignmentLog[]
+  auditLogs                 AuditLog[]
+  createdTemplates          EventTemplate[]        @relation("TemplateCreator")
+  createdChecklistTemplates ChecklistTemplate[]    @relation("ChecklistTemplateCreator")
+  completedChecklistItems   EventChecklistItem[]   @relation("ChecklistItemCompletedBy")
+  updatedAttendance         EventAttendance[]      @relation("AttendanceUpdatedBy")
 
   @@index([email])
   @@index([role])
@@ -168,6 +171,9 @@ model Ministry {
   updatedAt   DateTime @updatedAt
 
   // Relacionamentos
+  permissions  Json?   // Matriz de permissões: { leader: {...}, member: {...} }
+
+  // Relacionamentos
   leader           User?                     @relation("MinistryLeader", fields: [leaderId], references: [id], onDelete: SetNull)
   members          MinistryMember[]
   schedules        Schedule[]
@@ -185,6 +191,7 @@ model MinistryPosition {
   ministryId  String
   name        String   // Ex: "Mesa de Som", "Guitarra", "Recepcionista"
   description String?
+  icon        String?  // Nome do icone Lucide (Ex: "Guitar", "Mic", "Monitor")
   createdAt   DateTime @default(now())
 
   ministry  Ministry               @relation(fields: [ministryId], references: [id], onDelete: Cascade)
@@ -237,14 +244,29 @@ model MemberPosition {
 
 model EventTemplate {
   id          String   @id @default(cuid())
-  name        String
+  name        String   // Ex: "Culto de Domingo"
   description String?  @db.Text
-  items       Json // Array de itens padrao do template
+
+  // Configuracoes do evento
+  eventType   String   // CULTO, SPECIAL, etc
+  duration    Int?     // Duracao em minutos
+
+  // Escalas padrao
+  defaultSchedules Json? // Array de { ministryId, positionId, quantity }
+
+  // Ordem do culto padrao
+  defaultItems Json?   // Array de { type, title, durationMinutes, requiresMedia }
+
+  // Metadata
+  createdById String
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relacionamentos
-  events Event[]
+  createdBy User    @relation("TemplateCreator", fields: [createdById], references: [id])
+  events    Event[]
 
+  @@index([createdById])
   @@map("event_templates")
 }
 
@@ -257,6 +279,7 @@ model Event {
   endTime    DateTime?   @db.Time()
   status     EventStatus @default(PUBLISHED)
   templateId String?
+  checklistTemplateId String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
@@ -267,13 +290,16 @@ model Event {
   parentEventId     String?
 
   // Relacionamentos
-  template       EventTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  items          EventItem[]
-  schedules      Schedule[]
-  setlists       Setlist[]
-  media          Media[]
-  vacancies      EventVacancy[]
-  assignmentLogs AssignmentLog[]
+  template          EventTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  checklistTemplate ChecklistTemplate?  @relation("EventChecklistTemplate", fields: [checklistTemplateId], references: [id], onDelete: SetNull)
+  items             EventItem[]
+  schedules         Schedule[]
+  setlists          Setlist[]
+  media             Media[]
+  vacancies         EventVacancy[]
+  assignmentLogs    AssignmentLog[]
+  checklistItems    EventChecklistItem[]
+  attendance        EventAttendance?
 
   // Self-relation para series de eventos
   parentEvent Event?  @relation("EventSeries", fields: [parentEventId], references: [id], onDelete: SetNull)
@@ -283,6 +309,7 @@ model Event {
   @@index([type])
   @@index([status])
   @@index([templateId])
+  @@index([checklistTemplateId])
   @@index([parentEventId])
   @@map("events")
 }
@@ -296,6 +323,7 @@ model EventItem {
   description     String?       @db.Text
   durationMinutes Int?
   responsibleId   String?
+  responsibleName String?  // Nome do responsavel (para nomes livres quando nao ha usuario)
 
   // Campos adicionais
   bibleReference    String?  // Referencia biblica (Ex: "Joao 3:16-21")
@@ -354,6 +382,7 @@ model Schedule {
   ministryId     String
   userId         String
   vacancyId      String? // Referencia a vaga especifica
+  /// @deprecated — usar vacancy.position.name. Remover em migration futura.
   position       String? // Funcao especifica na escala (legado)
   status         ScheduleStatus @default(PENDING)
   confirmedAt    DateTime?
@@ -462,6 +491,8 @@ model Song {
   defaultKey     String? // Tom padrao (Ex: "C", "G", "Am")
   lyrics         String?   @db.Text
   chordLink      String? // Link para cifra externa
+  spotifyUrl     String? // Link do Spotify
+  youtubeUrl     String? // Link do YouTube
   tags           String[] // Array de tags (Ex: ["adoracao", "rapido", "natal"])
   propresenterId String? // ID no ProPresenter
   lastPlayedAt   DateTime?
@@ -505,18 +536,19 @@ model Setlist {
 // ============================================
 
 model Media {
-  id           String        @id @default(cuid())
-  eventId      String?
-  eventItemId  String?       // FK para EventItem (midia vinculada a item especifico)
-  type         MediaType
-  url          String
-  filename     String?       // Key no R2
-  originalName String?       // Nome original do arquivo
-  fileSize     Int?          // Tamanho em bytes
-  mimeType     String?       // Tipo MIME do arquivo
-  category     MediaCategory @default(OTHER)
-  uploadedById String?
-  createdAt    DateTime      @default(now())
+  id             String        @id @default(cuid())
+  eventId        String?
+  eventItemId    String?       // FK para EventItem (midia vinculada a item especifico)
+  type           MediaType
+  url            String
+  filename       String?       // Key no R2
+  originalName   String?       // Nome original do arquivo
+  fileSize       Int?          // Tamanho em bytes
+  mimeType       String?       // Tipo MIME do arquivo
+  category       MediaCategory @default(OTHER)
+  propresenterId String?       // UUID da midia no ProPresenter
+  uploadedById   String?
+  createdAt      DateTime      @default(now())
 
   // Relacionamentos
   event      Event?     @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -528,6 +560,7 @@ model Media {
   @@index([type])
   @@index([category])
   @@index([uploadedById])
+  @@index([propresenterId])
   @@map("media")
 }
 
@@ -587,4 +620,112 @@ model AppSettings {
   updatedAt DateTime @updatedAt
 
   @@map("app_settings")
+}
+
+// ============================================
+// CHECKLIST (CHECKLISTS PARA EVENTOS)
+// ============================================
+
+model ChecklistTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User                    @relation("ChecklistTemplateCreator", fields: [createdById], references: [id])
+  items     ChecklistTemplateItem[]
+  events    Event[]                 @relation("EventChecklistTemplate")
+
+  @@index([createdById])
+  @@map("checklist_templates")
+}
+
+model ChecklistTemplateItem {
+  id         String   @id @default(cuid())
+  templateId String
+  title      String
+  order      Int
+  createdAt  DateTime @default(now())
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([order])
+  @@map("checklist_template_items")
+}
+
+model EventChecklistItem {
+  id            String    @id @default(cuid())
+  eventId       String
+  title         String
+  order         Int
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+  completedById String?
+  fromTemplate  Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  event       Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  completedBy User? @relation("ChecklistItemCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([completedById])
+  @@index([order])
+  @@map("event_checklist_items")
+}
+
+// ============================================
+// PRESENÇA DO EVENTO
+// ============================================
+
+model EventAttendance {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  attendees   Int      @default(0)
+  visitors    Int      @default(0)
+  conversions Int      @default(0)
+  notes       String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("AttendanceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+  @@map("event_attendance")
+}
+
+// ============================================
+// AUDIT LOG (HISTORICO DE MUDANCAS)
+// ============================================
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  // O que mudou
+  entityType String // "Schedule", "Event", "EventItem"
+  entityId   String
+  action     String // "created", "updated", "deleted", "confirmed", "declined"
+
+  // Quem fez
+  userId    String?
+  userEmail String?
+  userName  String?
+
+  // Detalhes da mudanca
+  changes  Json? // { field: { old: x, new: y } }
+  metadata Json? // Dados extras (IP, user agent, etc)
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

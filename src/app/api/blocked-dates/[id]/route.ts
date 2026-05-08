@@ -32,7 +32,7 @@ export async function DELETE(
     // Only owner or admin can delete
     const userRole = session.user.role;
     const isOwner = blockedDate.userId === session.user.id;
-    const isAdmin = userRole && ["ADMIN", "COORDINATOR"].includes(userRole);
+    const isAdmin = userRole === "ADMIN";
 
     if (!isOwner && !isAdmin) {
       return Response.json(

@@ -1,27 +1,35 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Plus, Music, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Music, SlidersHorizontal, X, Download } from "lucide-react";
+import { useCanEdit } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import { SongCard } from "@/components/music/song-card";
 import { SongSearchInput } from "@/components/music/song-search";
+import { ProPresenterSyncDialog } from "@/components/propresenter/sync-dialog";
+import { ProPresenterStatusBadge } from "@/components/propresenter/connection-status";
 import { useSongs, useAllTags } from "@/hooks/use-songs";
+import { useQueryClient } from "@tanstack/react-query";
+import { songKeys } from "@/hooks/use-songs";
 import type { SongSortOption } from "@/types/music";
 
 const SORT_OPTIONS: { value: SongSortOption; label: string }[] = [
   { value: "name", label: "Nome (A-Z)" },
   { value: "most_played", label: "Mais tocadas" },
-  { value: "last_played", label: "Ultima vez tocada" },
+  { value: "last_played", label: "Última vez tocada" },
 ];
 
 export default function MusicasPage() {
+  const canEditSongs = useCanEdit("songs");
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SongSortOption>("name");
   const [showFilters, setShowFilters] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useSongs({
     search,
@@ -30,6 +38,11 @@ export default function MusicasPage() {
   });
 
   const allTags = useAllTags();
+
+  const handleSyncComplete = () => {
+    // Recarrega a lista de músicas após sincronização
+    queryClient.invalidateQueries({ queryKey: songKeys.lists() });
+  };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -46,24 +59,39 @@ export default function MusicasPage() {
   const hasActiveFilters = search || selectedTags.length > 0 || sortBy !== "name";
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Biblioteca de Musicas
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            {data?.total || 0} {data?.total === 1 ? "musica" : "musicas"} cadastradas
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/musicas/nova">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Musica
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            Biblioteca de Músicas
+            <ProPresenterStatusBadge />
+          </span>
+        }
+        description={`${data?.total || 0} ${data?.total === 1 ? "música" : "músicas"} cadastradas`}
+        actions={
+          <>
+            <ProPresenterSyncDialog
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  <span className="sm:hidden">Sincronizar</span>
+                  <span className="hidden sm:inline">Sincronizar ProPresenter</span>
+                </Button>
+              }
+              onSyncComplete={handleSyncComplete}
+            />
+            {canEditSongs && (
+              <Button asChild>
+                <Link href="/musicas/nova">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Música
+                </Link>
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Search and filters */}
       <Card>
@@ -80,7 +108,8 @@ export default function MusicasPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SongSortOption)}
-                className="h-10 rounded-lg border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="h-11 md:h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Ordenar por"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -91,7 +120,7 @@ export default function MusicasPage() {
               <Button
                 variant={showFilters ? "default" : "outline"}
                 onClick={() => setShowFilters(!showFilters)}
-                className="gap-2"
+                className="gap-2 shrink-0"
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Filtros
@@ -169,7 +198,7 @@ export default function MusicasPage() {
       ) : error ? (
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-destructive">Erro ao carregar musicas</p>
+            <p className="text-destructive">Erro ao carregar músicas</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Tente novamente mais tarde
             </p>
@@ -182,7 +211,7 @@ export default function MusicasPage() {
             {hasActiveFilters ? (
               <>
                 <p className="text-lg font-medium text-muted-foreground">
-                  Nenhuma musica encontrada
+                  Nenhuma música encontrada
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground/70">
                   Tente ajustar os filtros ou busca
@@ -194,17 +223,17 @@ export default function MusicasPage() {
             ) : (
               <>
                 <p className="text-lg font-medium text-muted-foreground">
-                  Nenhuma musica cadastrada
+                  Nenhuma música cadastrada
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground/70">
-                  Comece adicionando sua primeira musica
+                  Comece adicionando sua primeira música
                 </p>
-                <Button asChild className="mt-4">
+                {canEditSongs && <Button asChild className="mt-4">
                   <Link href="/musicas/nova">
                     <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Musica
+                    Adicionar Música
                   </Link>
-                </Button>
+                </Button>}
               </>
             )}
           </CardContent>

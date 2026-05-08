@@ -1,30 +1,54 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Music, Users, Calendar, Download } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { BarChart3, Music, Users, Calendar, Download, ListChecks, ArrowRight, FileText, FileSpreadsheet } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/layout/page-header";
 
 export default function RelatoriosPage() {
   const [activeTab, setActiveTab] = useState("geral");
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Relatorios
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Visualize estatisticas e metricas do sistema
-          </p>
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Exportar
-        </Button>
+      <PageHeader
+        title="Relatórios"
+        description="Visualize estatísticas e métricas do sistema"
+      />
+
+      {/* Quick Access Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/relatorios/escalas">
+          <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ListChecks className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">Relatório de Escalas</CardTitle>
+                  <CardDescription className="text-xs">
+                    Exportar dados de escalas
+                  </CardDescription>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mt-2">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
+                  <FileText className="h-3 w-3" /> PDF
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
+                  <FileSpreadsheet className="h-3 w-3" /> Excel
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Stats Cards */}
@@ -32,7 +56,7 @@ export default function RelatoriosPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total de Voluntarios
+              Total de Voluntários
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -47,7 +71,7 @@ export default function RelatoriosPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Eventos este Mes
+              Eventos este Mês
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -62,7 +86,7 @@ export default function RelatoriosPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Musicas Cadastradas
+              Músicas Cadastradas
             </CardTitle>
             <Music className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -77,7 +101,7 @@ export default function RelatoriosPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Taxa de Confirmacao
+              Taxa de Confirmação
             </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -92,23 +116,29 @@ export default function RelatoriosPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="geral">Visao Geral</TabsTrigger>
-          <TabsTrigger value="voluntarios">Voluntarios</TabsTrigger>
-          <TabsTrigger value="musicas">Musicas</TabsTrigger>
-          <TabsTrigger value="escalas">Escalas</TabsTrigger>
+        <TabsList className="w-full sm:w-auto overflow-x-auto justify-start">
+          <TabsTrigger value="geral" className="whitespace-nowrap">
+            <span className="hidden sm:inline">Visão Geral</span>
+            <span className="sm:hidden">Geral</span>
+          </TabsTrigger>
+          <TabsTrigger value="voluntarios" className="whitespace-nowrap">
+            <span className="hidden sm:inline">Voluntários</span>
+            <span className="sm:hidden">Volunt.</span>
+          </TabsTrigger>
+          <TabsTrigger value="musicas" className="whitespace-nowrap">Músicas</TabsTrigger>
+          <TabsTrigger value="escalas" className="whitespace-nowrap">Escalas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Visao Geral</CardTitle>
+              <CardTitle>Visão Geral</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <BarChart3 className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Graficos e estatisticas serao exibidos aqui
+                  Gráficos e estatísticas serão exibidos aqui
                 </p>
                 <p className="text-sm text-muted-foreground/70 mt-1">
                   Em desenvolvimento
@@ -121,13 +151,13 @@ export default function RelatoriosPage() {
         <TabsContent value="voluntarios" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Relatorio de Voluntarios</CardTitle>
+              <CardTitle>Relatório de Voluntários</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Users className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Participacao por voluntario, ministerio e periodo
+                  Participação por voluntário, ministério e período
                 </p>
                 <p className="text-sm text-muted-foreground/70 mt-1">
                   Em desenvolvimento
@@ -140,13 +170,13 @@ export default function RelatoriosPage() {
         <TabsContent value="musicas" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Relatorio de Musicas</CardTitle>
+              <CardTitle>Relatório de Músicas</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Music className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Musicas mais tocadas, frequencia e historico
+                  Músicas mais tocadas, frequência e histórico
                 </p>
                 <p className="text-sm text-muted-foreground/70 mt-1">
                   Em desenvolvimento
@@ -159,17 +189,20 @@ export default function RelatoriosPage() {
         <TabsContent value="escalas" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Relatorio de Escalas</CardTitle>
+              <CardTitle>Relatório de Escalas</CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Calendar className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                <ListChecks className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Historico de escalas, confirmacoes e recusas
+                  Histórico de escalas, confirmações e recusas
                 </p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  Em desenvolvimento
-                </p>
+                <Link href="/relatorios/escalas">
+                  <Button className="mt-4 gap-2">
+                    <ArrowRight className="h-4 w-4" />
+                    Acessar Relatório de Escalas
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { bandUpdateSchema } from "@/lib/validations/music"
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -39,13 +39,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!band) {
-      return NextResponse.json({ error: "Banda nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Banda nao encontrada" }, { status: 404 })
     }
 
-    return NextResponse.json(band)
+    return Response.json({ data: band })
   } catch (error) {
     console.error("Erro ao buscar banda:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id } = await params
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const validationResult = bandUpdateSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -72,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const existingBand = await prisma.band.findUnique({ where: { id } })
     if (!existingBand) {
-      return NextResponse.json({ error: "Banda nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Banda nao encontrada" }, { status: 404 })
     }
 
     const band = await prisma.band.update({
@@ -94,10 +94,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(band)
+    return Response.json({ data: band })
   } catch (error) {
     console.error("Erro ao atualizar banda:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -108,14 +108,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id } = await params
 
     const existingBand = await prisma.band.findUnique({ where: { id } })
     if (!existingBand) {
-      return NextResponse.json({ error: "Banda nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Banda nao encontrada" }, { status: 404 })
     }
 
     // Desativar a banda ao inves de remover
@@ -124,10 +124,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       data: { active: false },
     })
 
-    return NextResponse.json({ message: "Banda desativada com sucesso", band })
+    return Response.json({ data: band, message: "Banda desativada com sucesso" })
   } catch (error) {
     console.error("Erro ao desativar banda:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

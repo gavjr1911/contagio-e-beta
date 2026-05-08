@@ -49,7 +49,7 @@ export function OfflineBanner({ className }: OfflineIndicatorProps) {
       >
         <WifiOff className="w-4 h-4" />
         <span className="text-sm font-medium">
-          Voce esta offline. Alguns recursos podem estar indisponiveis.
+          Você está offline. Alguns recursos podem estar indisponíveis.
         </span>
         <button
           onClick={() => setDismissed(true)}
@@ -76,7 +76,7 @@ export function OfflineBanner({ className }: OfflineIndicatorProps) {
         )}
       >
         <Wifi className="w-4 h-4" />
-        <span className="text-sm font-medium">Conexao restabelecida!</span>
+        <span className="text-sm font-medium">Conexão restabelecida!</span>
       </div>
     );
   }
@@ -110,9 +110,9 @@ export function OfflineBadge({
     const days = Math.floor(diff / 86400000);
 
     if (minutes < 1) return "Agora mesmo";
-    if (minutes < 60) return `${minutes}min atras`;
-    if (hours < 24) return `${hours}h atras`;
-    return `${days}d atras`;
+    if (minutes < 60) return `${minutes}min atrás`;
+    if (hours < 24) return `${hours}h atrás`;
+    return `${days}d atrás`;
   };
 
   return (
@@ -191,10 +191,10 @@ export function UpdatePrompt({ className }: OfflineIndicatorProps) {
         </div>
         <div className="flex-1">
           <h3 className="font-medium text-sm text-foreground">
-            Atualizacao disponivel
+            Atualização disponível
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Uma nova versao do aplicativo esta disponivel.
+            Uma nova versão do aplicativo está disponível.
           </p>
           <div className="flex gap-2 mt-3">
             <Button size="sm" onClick={skipWaiting}>

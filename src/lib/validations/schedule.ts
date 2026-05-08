@@ -21,9 +21,9 @@ export const ScheduleStatusEnum = z.enum(["PENDING", "CONFIRMED", "DECLINED"])
 // ============================================
 
 export const createScheduleSchema = z.object({
-  userId: z.string().cuid("ID do usuario invalido"),
-  ministryId: z.string().cuid("ID do ministerio invalido"),
-  vacancyId: z.string().cuid("ID da vaga invalido").optional(),
+  userId: z.string().min(1, "ID do usuário inválido"),
+  ministryId: z.string().min(1, "ID do ministério inválido"),
+  vacancyId: z.string().min(1, "ID da vaga inválido").optional(),
   position: z.string().max(100).optional(),
 })
 
@@ -33,9 +33,9 @@ export const updateScheduleSchema = z.object({
 })
 
 export const scheduleFiltersSchema = z.object({
-  userId: z.string().cuid().optional(),
-  eventId: z.string().cuid().optional(),
-  ministryId: z.string().cuid().optional(),
+  userId: z.string().min(1).optional(),
+  eventId: z.string().min(1).optional(),
+  ministryId: z.string().min(1).optional(),
   status: ScheduleStatusEnum.optional(),
   startDate: localDateSchema.optional(),
   endDate: localDateSchema.optional(),
@@ -50,7 +50,7 @@ export const confirmScheduleSchema = z.object({
 export const declineScheduleSchema = z.object({
   reason: z
     .string()
-    .max(500, "Motivo deve ter no maximo 500 caracteres")
+    .max(500, "Motivo deve ter no máximo 500 caracteres")
     .optional(),
 })
 
@@ -64,11 +64,11 @@ export const createBlockedDateSchema = z
     endDate: localDateSchema,
     reason: z
       .string()
-      .max(500, "Motivo deve ter no maximo 500 caracteres")
+      .max(500, "Motivo deve ter no máximo 500 caracteres")
       .optional(),
   })
   .refine((data) => data.endDate >= data.startDate, {
-    message: "Data final deve ser igual ou posterior a data inicial",
+    message: "Data final deve ser igual ou posterior à data inicial",
     path: ["endDate"],
   })
 
@@ -77,6 +77,22 @@ export const blockedDateFiltersSchema = z.object({
   endDate: localDateSchema.optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
+})
+
+// ============================================
+// Bulk Schedule Schemas
+// ============================================
+
+export const bulkScheduleItemSchema = z.object({
+  userId: z.string().min(1, "ID do usuário inválido"),
+  ministryId: z.string().min(1, "ID do ministério inválido"),
+  vacancyId: z.string().min(1, "ID da vaga inválido").optional(),
+  position: z.string().max(100).optional(),
+})
+
+export const createBulkSchedulesSchema = z.object({
+  schedules: z.array(bulkScheduleItemSchema).min(1, "Pelo menos uma escala é necessária"),
+  sendNotifications: z.boolean().optional().default(true),
 })
 
 // ============================================
@@ -90,3 +106,5 @@ export type ConfirmScheduleInput = z.infer<typeof confirmScheduleSchema>
 export type DeclineScheduleInput = z.infer<typeof declineScheduleSchema>
 export type CreateBlockedDateInput = z.infer<typeof createBlockedDateSchema>
 export type BlockedDateFiltersInput = z.infer<typeof blockedDateFiltersSchema>
+export type BulkScheduleItem = z.infer<typeof bulkScheduleItemSchema>
+export type CreateBulkSchedulesInput = z.infer<typeof createBulkSchedulesSchema>

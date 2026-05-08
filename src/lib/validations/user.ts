@@ -71,7 +71,7 @@ export function formatPhone(phone: string): string {
 // ============================================
 
 // Roles disponiveis no sistema
-export const UserRole = z.enum(["ADMIN", "COORDINATOR", "LEADER", "COMMUNICATION", "VOLUNTEER"])
+export const UserRole = z.enum(["ADMIN", "LEADER", "VOLUNTEER"])
 export type UserRole = z.infer<typeof UserRole>
 
 // Schema para criar um novo usuario
@@ -79,14 +79,14 @@ export const createUserSchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres"),
-  email: z.string().email("Email invalido"),
+    .max(100, "Nome deve ter no máximo 100 caracteres"),
+  email: z.string().email("Email inválido"),
   password: z
     .string()
     .min(8, "Senha deve ter pelo menos 8 caracteres")
-    .max(100, "Senha deve ter no maximo 100 caracteres"),
+    .max(100, "Senha deve ter no máximo 100 caracteres"),
   role: UserRole.default("VOLUNTEER"),
-  image: z.string().url("URL da imagem invalida").optional().nullable(),
+  image: z.string().url("URL da imagem inválida").optional().nullable(),
 })
 
 // Schema para atualizar um usuario (admin)
@@ -94,11 +94,13 @@ export const updateUserSchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres")
+    .max(100, "Nome deve ter no máximo 100 caracteres")
     .optional(),
-  email: z.string().email("Email invalido").optional(),
+  email: z.string().email("Email inválido").optional(),
+  phone: z.string().optional().refine((val) => !val || validatePhone(val), "Telefone inválido"),
   role: UserRole.optional(),
-  image: z.string().url("URL da imagem invalida").optional().nullable(),
+  active: z.boolean().optional(),
+  image: z.string().url("URL da imagem inválida").optional().nullable(),
 })
 
 // Schema para atualizar proprio perfil
@@ -106,14 +108,14 @@ export const updateProfileSchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres")
+    .max(100, "Nome deve ter no máximo 100 caracteres")
     .optional(),
-  image: z.string().url("URL da imagem invalida").optional().nullable(),
+  image: z.string().url("URL da imagem inválida").optional().nullable(),
   currentPassword: z.string().optional(),
   newPassword: z
     .string()
     .min(8, "Nova senha deve ter pelo menos 8 caracteres")
-    .max(100, "Nova senha deve ter no maximo 100 caracteres")
+    .max(100, "Nova senha deve ter no máximo 100 caracteres")
     .optional(),
 }).refine(
   (data) => {
@@ -124,7 +126,7 @@ export const updateProfileSchema = z.object({
     return true
   },
   {
-    message: "Senha atual e obrigatoria para alterar a senha",
+    message: "Senha atual é obrigatória para alterar a senha",
     path: ["currentPassword"],
   }
 )
@@ -153,15 +155,15 @@ export const inviteUserSchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres"),
+    .max(100, "Nome deve ter no máximo 100 caracteres"),
   email: z
     .string()
-    .email("Email invalido")
+    .email("Email inválido")
     .transform((v) => v.toLowerCase()),
   cpf: z
     .string()
-    .min(11, "CPF invalido")
-    .refine((val) => validateCPF(val), "CPF invalido")
+    .min(11, "CPF inválido")
+    .refine((val) => validateCPF(val), "CPF inválido")
     .transform((v) => cleanCPF(v)),
   phone: z
     .string()
@@ -172,22 +174,22 @@ export const inviteUserSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? new Date(v) : undefined)),
-  ministryId: z.string().min(1, "Ministerio obrigatorio"),
-  positionIds: z.array(z.string().cuid()).optional(),
+  ministryId: z.string().min(1, "Ministério obrigatório"),
+  positionIds: z.array(z.string().min(1)).optional(),
 });
 
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 
 // Schema para definir senha
 export const setPasswordSchema = z.object({
-  token: z.string().min(1, "Token obrigatorio"),
+  token: z.string().min(1, "Token obrigatório"),
   password: z
     .string()
     .min(8, "Senha deve ter pelo menos 8 caracteres")
-    .max(100, "Senha deve ter no maximo 100 caracteres"),
+    .max(100, "Senha deve ter no máximo 100 caracteres"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Senhas nao conferem",
+  message: "Senhas não conferem",
   path: ["confirmPassword"],
 });
 

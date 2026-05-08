@@ -17,7 +17,7 @@ export const mediaKeys = {
   detail: (id: string) => [...mediaKeys.all, "detail", id] as const,
 }
 
-// Buscar midia do evento
+// Buscar mídia do evento
 export function useEventMedia(eventId: string | undefined) {
   return useQuery({
     queryKey: eventId ? mediaKeys.event(eventId) : [],
@@ -28,7 +28,7 @@ export function useEventMedia(eventId: string | undefined) {
       const json = await response.json()
 
       if (!response.ok) {
-        throw new Error(json.error || "Erro ao carregar midia")
+        throw new Error(json.error || "Erro ao carregar mídia")
       }
 
       return json.data
@@ -80,6 +80,7 @@ export function useUploadMedia() {
       }
 
       const { uploadUrl, key } = urlJson.data
+      console.log("[useUploadMedia] Upload URL received, starting upload to R2...")
 
       // Passo 2: Fazer upload para R2
       await new Promise<void>((resolve, reject) => {
@@ -93,15 +94,18 @@ export function useUploadMedia() {
         })
 
         xhr.addEventListener("load", () => {
+          console.log("[useUploadMedia] XHR load event, status:", xhr.status, xhr.statusText)
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve()
           } else {
-            reject(new Error(`Upload falhou: ${xhr.status}`))
+            console.error("[useUploadMedia] Upload failed:", xhr.status, xhr.statusText, xhr.responseText)
+            reject(new Error(`Upload falhou: ${xhr.status} ${xhr.statusText}`))
           }
         })
 
-        xhr.addEventListener("error", () => {
-          reject(new Error("Erro de rede durante upload"))
+        xhr.addEventListener("error", (e) => {
+          console.error("[useUploadMedia] XHR error event:", e)
+          reject(new Error("Erro de rede durante upload. Verifique se o R2 esta configurado corretamente."))
         })
 
         xhr.open("PUT", uploadUrl)
@@ -146,7 +150,7 @@ export function useUploadMedia() {
   })
 }
 
-// Deletar midia
+// Deletar mídia
 export function useDeleteMedia() {
   const queryClient = useQueryClient()
 
@@ -164,7 +168,7 @@ export function useDeleteMedia() {
 
       if (!response.ok) {
         const json = await response.json()
-        throw new Error(json.error || "Erro ao remover midia")
+        throw new Error(json.error || "Erro ao remover mídia")
       }
     },
     onSuccess: (_, variables) => {
@@ -192,7 +196,7 @@ export function formatFileSize(bytes: number | null | undefined): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
-// Icone por tipo de midia
+// Icone por tipo de mídia
 export function getMediaIcon(type: string): string {
   switch (type) {
     case "IMAGE":

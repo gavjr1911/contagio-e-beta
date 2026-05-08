@@ -32,6 +32,7 @@ import {
   MinistryMember,
 } from "@/hooks/use-ministries";
 import { formatCPF, formatPhone } from "@/lib/validations/user";
+import { PositionIcon } from "@/components/ui/icon-picker";
 
 interface AddMemberDialogProps {
   ministryId: string;
@@ -131,18 +132,18 @@ export function AddMemberDialog({
     }
 
     if (!newUser.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUser.email)) {
-      errors.email = "Email invalido";
+      errors.email = "Email inválido";
     }
 
     if (!newUser.cpf || newUser.cpf.replace(/\D/g, "").length !== 11) {
-      errors.cpf = "CPF invalido";
+      errors.cpf = "CPF inválido";
     }
 
     const phoneDigits = newUser.phone.replace(/\D/g, "");
     if (!newUser.phone || phoneDigits.length < 10) {
-      errors.phone = "Telefone obrigatorio";
+      errors.phone = "Telefone obrigatório";
     } else if (phoneDigits.length > 11) {
-      errors.phone = "Telefone invalido";
+      errors.phone = "Telefone inválido";
     }
 
     setFormErrors(errors);
@@ -169,9 +170,9 @@ export function AddMemberDialog({
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes("email")) {
-          setFormErrors({ email: "Este email ja esta cadastrado" });
+          setFormErrors({ email: "Este email já está cadastrado" });
         } else if (error.message.includes("CPF")) {
-          setFormErrors({ cpf: "Este CPF ja esta cadastrado" });
+          setFormErrors({ cpf: "Este CPF já está cadastrado" });
         } else {
           setFormErrors({ general: error.message });
         }
@@ -198,10 +199,10 @@ export function AddMemberDialog({
       return (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Nenhuma funcao cadastrada para este ministerio.
+            Nenhuma função cadastrada para este ministério.
           </p>
           <p className="text-xs text-muted-foreground">
-            Cadastre funcoes na aba "Funcoes" para seleciona-las aqui.
+            Cadastre funções na aba "Funções" para selecioná-las aqui.
           </p>
         </div>
       );
@@ -221,6 +222,9 @@ export function AddMemberDialog({
                 checked={currentPositionIds.includes(pos.id)}
                 onCheckedChange={() => togglePosition(pos.id, isNewUser)}
               />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                <PositionIcon name={pos.icon} className="h-4 w-4 text-primary" />
+              </div>
               <div className="flex-1">
                 <label
                   htmlFor={`pos-${pos.id}-${isNewUser ? "new" : "existing"}`}
@@ -237,7 +241,7 @@ export function AddMemberDialog({
         </div>
         {currentPositionIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {currentPositionIds.length} funcao(oes) selecionada(s)
+            {currentPositionIds.length} função(ões) selecionada(s)
           </p>
         )}
       </div>
@@ -256,7 +260,7 @@ export function AddMemberDialog({
         <DialogHeader>
           <DialogTitle>Adicionar membro</DialogTitle>
           <DialogDescription>
-            Selecione um usuario existente ou crie um novo.
+            Selecione um usuário existente ou crie um novo.
           </DialogDescription>
         </DialogHeader>
 
@@ -271,7 +275,7 @@ export function AddMemberDialog({
             <form onSubmit={handleAddExisting}>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="user">Usuario</Label>
+                  <Label htmlFor="user">Usuário</Label>
                   {isLoadingUsers ? (
                     <Skeleton className="h-10 w-full" />
                   ) : availableUsers && availableUsers.length > 0 ? (
@@ -280,7 +284,7 @@ export function AddMemberDialog({
                       onValueChange={setSelectedUserId}
                     >
                       <SelectTrigger id="user">
-                        <SelectValue placeholder="Selecione um usuario" />
+                        <SelectValue placeholder="Selecione um usuário" />
                       </SelectTrigger>
                       <SelectContent>
                         {availableUsers.map((user) => (
@@ -292,14 +296,14 @@ export function AddMemberDialog({
                     </Select>
                   ) : (
                     <p className="text-sm text-muted-foreground py-2">
-                      Todos os usuarios ja sao membros deste ministerio.
+                      Todos os usuários já são membros deste ministério.
                     </p>
                   )}
                 </div>
 
                 {/* Posicoes - para usuario existente */}
                 <div className="space-y-2">
-                  <Label>Funcoes no ministerio</Label>
+                  <Label>Funções no ministério</Label>
                   <PositionSelector isNewUser={false} />
                 </div>
               </div>
@@ -433,7 +437,7 @@ export function AddMemberDialog({
 
                 {/* Posicoes - para novo usuario */}
                 <div className="space-y-2">
-                  <Label>Funcoes no ministerio</Label>
+                  <Label>Funções no ministério</Label>
                   <PositionSelector isNewUser={true} />
                 </div>
 
@@ -448,7 +452,7 @@ export function AddMemberDialog({
 
                 {/* Info sobre convite */}
                 <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-                  Um email de convite sera enviado para o usuario definir sua senha e acessar o sistema.
+                  Um email de convite será enviado para o usuário definir sua senha e acessar o sistema.
                 </div>
               </div>
 

@@ -17,6 +17,7 @@ export interface EventData {
   startTime: Date
   endTime?: Date | null
   templateId?: string | null
+  checklistTemplateId?: string | null
 }
 
 // Maximum number of occurrences to generate (safety limit)
@@ -196,11 +197,12 @@ export async function createRecurringEvents(
     const childEvent = await prisma.event.create({
       data: {
         name: parentEvent.name,
-        type: parentEvent.type as "SUNDAY_MORNING" | "SUNDAY_EVENING" | "SPECIAL",
+        type: parentEvent.type as "CULTO" | "SPECIAL",
         date: date,
         startTime: parentEvent.startTime,
         endTime: parentEvent.endTime,
         templateId: parentEvent.templateId,
+        checklistTemplateId: parentEvent.checklistTemplateId,
         isRecurring: true,
         parentEventId: parentEvent.id,
         status: "PUBLISHED",

@@ -67,11 +67,15 @@ export default function OfflinePage() {
 
   const formatDate = (dateString: string) => {
     try {
-      const date = new Date(dateString);
+      const [y, m, d] = dateString.split("T")[0].split("-").map(Number);
+      const date = /^\d{4}-\d{2}-\d{2}/.test(dateString)
+        ? new Date(y, (m || 1) - 1, d || 1, 12, 0, 0)
+        : new Date(dateString);
       return date.toLocaleDateString("pt-BR", {
         weekday: "short",
         day: "2-digit",
         month: "short",
+        timeZone: "America/Sao_Paulo",
       });
     } catch {
       return dateString;

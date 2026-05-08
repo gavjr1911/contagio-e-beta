@@ -43,6 +43,16 @@ export const eventItemIncludeFull = {
     include: setlistItemInclude,
     orderBy: { order: "asc" as const },
   },
+  mediaFiles: {
+    select: {
+      id: true,
+      originalName: true,
+      mimeType: true,
+      url: true,
+      fileSize: true,
+    },
+    orderBy: { createdAt: "desc" as const },
+  },
 } as const satisfies Prisma.EventItemInclude
 
 // Schedule include patterns

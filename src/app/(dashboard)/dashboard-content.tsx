@@ -8,12 +8,22 @@ import {
   AlertCircle,
   CalendarOff,
   RefreshCw,
+  ListChecks,
+  FileText,
+  FileSpreadsheet,
+  ArrowRight,
+  BarChart3,
+  Music,
 } from "lucide-react";
 import Link from "next/link";
 import { useDashboardStats, DashboardEvent, DashboardSchedule } from "@/hooks/use-dashboard";
+import { toLocalDate } from "@/lib/date-utils";
 import { useConfirmSchedule, useDeclineSchedule } from "@/hooks/use-schedules";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/use-permissions";
+import { meetsLevel } from "@/lib/permissions/check";
 
 interface DashboardContentProps {
   userName: string;
@@ -36,21 +46,21 @@ function StatsCard({
   isLoading?: boolean;
 }) {
   return (
-    <div className="bg-card rounded-2xl p-6 border border-border">
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="bg-card rounded-2xl p-5 md:p-6 border border-border">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{title}</p>
           {isLoading ? (
             <Skeleton className="h-9 w-12 mt-1" />
           ) : (
-            <p className="text-3xl font-semibold text-foreground mt-1">{value}</p>
+            <p className="text-2xl md:text-3xl font-semibold text-foreground mt-1">{value}</p>
           )}
           {description && (
             <p className="text-xs text-muted-foreground mt-1">{description}</p>
           )}
         </div>
-        <div className="p-3 bg-primary/20 rounded-xl">
-          <Icon className="h-6 w-6 text-primary" />
+        <div className="shrink-0 p-2.5 md:p-3 bg-primary/20 rounded-xl">
+          <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
         </div>
       </div>
     </div>
@@ -76,11 +86,12 @@ function StatsCardSkeleton() {
 // Event card component
 function EventCard({ event }: { event: DashboardEvent }) {
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const date = toLocalDate(dateStr);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     });
   };
 
@@ -90,26 +101,23 @@ function EventCard({ event }: { event: DashboardEvent }) {
 
   const getEventTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      WORSHIP: "Culto",
-      REHEARSAL: "Ensaio",
-      MEETING: "Reuniao",
+      CULTO: "Culto",
       SPECIAL: "Evento Especial",
-      CONFERENCE: "Conferencia",
     };
     return labels[type] || type;
   };
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { icon: typeof CheckCircle2; color: string; bg: string }> = {
-      CONFIRMED: {
+      PUBLISHED: {
+        icon: AlertCircle,
+        color: "text-blue-400",
+        bg: "bg-blue-400/10",
+      },
+      COMPLETED: {
         icon: CheckCircle2,
         color: "text-green-400",
         bg: "bg-green-400/10",
-      },
-      SCHEDULED: {
-        icon: AlertCircle,
-        color: "text-yellow-400",
-        bg: "bg-yellow-400/10",
       },
     };
     return configs[status] || configs.PUBLISHED;
@@ -181,12 +189,13 @@ function ScaleCard({
   isConfirming: boolean;
   isDeclining: boolean;
 }) {
-  const formatDate = (date: Date) => {
-    const d = new Date(date);
+  const formatDate = (date: Date | string) => {
+    const d = toLocalDate(date);
     return d.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     });
   };
 
@@ -211,11 +220,11 @@ function ScaleCard({
 
   return (
     <div className={`rounded-xl p-4 border-l-4 bg-card/50 ${config.color}`}>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <h3 className="font-medium text-foreground">{schedule.event.title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {schedule.position || schedule.ministry.name}
+            {schedule.vacancy?.position?.name || schedule.position || schedule.ministry.name}
           </p>
           <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
@@ -227,14 +236,14 @@ function ScaleCard({
             <button
               onClick={onConfirm}
               disabled={isProcessing}
-              className="px-3 py-1.5 text-xs font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-initial px-4 h-9 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isConfirming ? "..." : "Aceitar"}
             </button>
             <button
               onClick={onDecline}
               disabled={isProcessing}
-              className="px-3 py-1.5 text-xs font-medium bg-muted text-muted-foreground rounded-lg hover:bg-muted/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-initial px-4 h-9 text-sm font-medium bg-muted text-muted-foreground rounded-lg hover:bg-muted/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDeclining ? "..." : "Recusar"}
             </button>
@@ -289,6 +298,8 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
   const queryClient = useQueryClient();
   const confirmSchedule = useConfirmSchedule();
   const declineSchedule = useDeclineSchedule();
+  const { permissions, isAdmin } = usePermissions();
+  const canViewReports = isAdmin || meetsLevel(permissions.reports, "view");
 
   const handleConfirm = async (scheduleId: string) => {
     try {
@@ -309,20 +320,21 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Greeting */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-semibold text-foreground">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
             {greeting}, {userName}!
           </h2>
-          <p className="text-muted-foreground mt-1">
-            Confira suas escalas e proximos eventos
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
+            Confira suas escalas e próximos eventos
           </p>
         </div>
         <button
           onClick={() => refetch()}
-          className="p-2 rounded-lg hover:bg-muted transition-colors"
+          className="shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+          aria-label="Atualizar dados"
           title="Atualizar dados"
         >
           <RefreshCw className={`h-5 w-5 text-muted-foreground ${isLoading ? "animate-spin" : ""}`} />
@@ -340,21 +352,21 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
         ) : (
           <>
             <StatsCard
-              title="Proximos Eventos"
+              title="Próximos Eventos"
               value={stats.upcomingEventsCount}
-              description="Proximos 30 dias"
+              description="Próximos 30 dias"
               icon={Calendar}
             />
             <StatsCard
               title="Escalas Pendentes"
               value={stats.pendingSchedulesCount}
-              description="Aguardando confirmacao"
+              description="Aguardando confirmação"
               icon={Clock}
             />
             <StatsCard
-              title="Ministerios"
+              title="Ministérios"
               value={stats.myMinistriesCount}
-              description="Voce participa"
+              description="Você participa"
               icon={Users}
             />
           </>
@@ -367,7 +379,7 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">
-              Proximos Eventos
+              Próximos Eventos
             </h3>
             <Link
               href="/eventos"
@@ -390,8 +402,8 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
             ) : (
               <EmptyState
                 icon={CalendarOff}
-                title="Nenhum evento proximo"
-                description="Nao ha eventos agendados para os proximos 30 dias"
+                title="Nenhum evento próximo"
+                description="Não há eventos agendados para os próximos 30 dias"
               />
             )}
           </div>
@@ -437,39 +449,78 @@ export function DashboardContent({ userName, userId, greeting }: DashboardConten
               <EmptyState
                 icon={CheckCircle2}
                 title="Todas as escalas confirmadas!"
-                description="Voce nao tem escalas pendentes"
+                description="Você não tem escalas pendentes"
               />
             )}
           </div>
         </div>
       </div>
 
+      {/* Reports Section */}
+      {canViewReports && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">
+            Relatórios
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Link href="/relatorios/escalas">
+              <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ListChecks className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold">Relatório de Escalas</CardTitle>
+                      <CardDescription className="text-xs">
+                        Exportar dados de escalas
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2 mt-2">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
+                      <FileText className="h-3 w-3" /> PDF
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
+                      <FileSpreadsheet className="h-3 w-3" /> Excel
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
-      <div className="bg-card/30 rounded-2xl p-6 border border-border">
+      <div className="bg-card/30 rounded-2xl p-5 md:p-6 border border-border">
         <h3 className="text-lg font-semibold text-foreground mb-4">
-          Acoes Rapidas
+          Ações Rápidas
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <Link
             href="/eventos"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
+            className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group min-h-[88px] justify-center"
           >
-            <Calendar className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="text-sm text-foreground">Ver Eventos</span>
+            <Calendar className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-xs md:text-sm text-foreground text-center">Ver Eventos</span>
           </Link>
           <Link
             href="/escalas"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
+            className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group min-h-[88px] justify-center"
           >
-            <Clock className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="text-sm text-foreground">Minhas Escalas</span>
+            <Clock className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-xs md:text-sm text-foreground text-center">Minhas Escalas</span>
           </Link>
           <Link
             href="/ministerios"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group"
+            className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl bg-card/50 hover:bg-card transition-colors group min-h-[88px] justify-center"
           >
-            <Users className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="text-sm text-foreground">Ministerios</span>
+            <Users className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="text-xs md:text-sm text-foreground text-center">Ministérios</span>
           </Link>
         </div>
       </div>

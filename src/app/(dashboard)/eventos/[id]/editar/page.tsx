@@ -4,15 +4,16 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   CalendarDays,
   Clock,
   Loader2,
   Users,
   Trash2,
   AlertTriangle,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -42,26 +43,24 @@ import {
   useDeleteVacancy,
 } from "@/hooks/use-vacancies";
 import { VacancyManager, VacancyConfig } from "@/components/events/vacancy-manager";
+import { ChecklistTemplateSelect } from "@/components/events/checklist-template-select";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 const eventTypes: EventType[] = [
-  "SUNDAY_MORNING",
-  "SUNDAY_EVENING",
+  "CULTO",
   "SPECIAL",
 ];
 
 const eventStatuses: { value: EventStatus; label: string }[] = [
   { value: "PUBLISHED", label: "Ativo" },
-  { value: "COMPLETED", label: "Concluido" },
+  { value: "COMPLETED", label: "Concluído" },
 ];
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "SUNDAY_MORNING":
+    case "CULTO":
       return "bg-primary/10 text-primary border-primary/20";
-    case "SUNDAY_EVENING":
-      return "bg-blue-500/10 text-blue-400 border-blue-500/20";
     case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
     default:
@@ -85,13 +84,14 @@ export default function EditarEventoPage() {
 
   const [formData, setFormData] = React.useState({
     name: "",
-    type: "SUNDAY_MORNING" as EventType,
+    type: "CULTO" as EventType,
     date: "",
     startTime: "",
     endTime: "",
     status: "PUBLISHED" as EventStatus,
   });
 
+  const [checklistTemplateId, setChecklistTemplateId] = React.useState<string | null>(null);
   const [vacancies, setVacancies] = React.useState<VacancyConfig[]>([]);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [initialized, setInitialized] = React.useState(false);
@@ -107,6 +107,7 @@ export default function EditarEventoPage() {
         endTime: event.endTime ? formatTimeFromDate(event.endTime) : "",
         status: event.status,
       });
+      setChecklistTemplateId(event.checklistTemplateId || null);
       setInitialized(true);
     }
   }, [event, initialized]);
@@ -115,20 +116,20 @@ export default function EditarEventoPage() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Nome e obrigatorio";
+      newErrors.name = "Nome é obrigatório";
     }
 
     if (!formData.date) {
-      newErrors.date = "Data e obrigatoria";
+      newErrors.date = "Data é obrigatória";
     }
 
     if (!formData.startTime) {
-      newErrors.startTime = "Horario de inicio e obrigatorio";
+      newErrors.startTime = "Horário de início é obrigatório";
     }
 
     if (formData.startTime && formData.endTime) {
       if (formData.startTime >= formData.endTime) {
-        newErrors.endTime = "Horario de termino deve ser depois do inicio";
+        newErrors.endTime = "Horário de término deve ser depois do início";
       }
     }
 
@@ -151,6 +152,7 @@ export default function EditarEventoPage() {
         startTime: formData.startTime,
         endTime: formData.endTime || undefined,
         status: formData.status,
+        checklistTemplateId: checklistTemplateId || undefined,
       });
 
       // 2. Handle vacancies changes
@@ -202,7 +204,7 @@ export default function EditarEventoPage() {
       await deleteEvent.mutateAsync(event.id);
       toast({
         title: "Sucesso",
-        description: "Evento excluido com sucesso!",
+        description: "Evento excluído com sucesso!",
       });
       router.push("/eventos");
     } catch (error) {
@@ -227,9 +229,9 @@ export default function EditarEventoPage() {
 
   if (!event) {
     return (
-      <div className="flex-1 p-6">
+      <div className="space-y-6">
         <Card className="p-8 text-center">
-          <p className="text-destructive mb-4">Evento nao encontrado</p>
+          <p className="text-destructive mb-4">Evento não encontrado</p>
           <Link href="/eventos">
             <Button variant="outline">Voltar para eventos</Button>
           </Link>
@@ -239,27 +241,20 @@ export default function EditarEventoPage() {
   }
 
   return (
-    <div className="flex-1 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href={`/eventos/${eventId}`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold font-display">Editar Evento</h1>
-          <p className="text-muted-foreground">
-            Atualize as informacoes do evento
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backHref={`/eventos/${eventId}`}
+        backLabel="Voltar"
+        title="Editar Evento"
+        description="Atualize as informações do evento"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         {/* Basic Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Informacoes Basicas</CardTitle>
+            <CardTitle className="text-lg">Informações Básicas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Event Name */}
@@ -325,7 +320,7 @@ export default function EditarEventoPage() {
               <div className="space-y-2">
                 <Label htmlFor="startTime">
                   <Clock className="h-4 w-4 inline mr-1" />
-                  Inicio
+                  Início
                 </Label>
                 <Input
                   id="startTime"
@@ -346,7 +341,7 @@ export default function EditarEventoPage() {
               <div className="space-y-2">
                 <Label htmlFor="endTime">
                   <Clock className="h-4 w-4 inline mr-1" />
-                  Termino (opcional)
+                  Término (opcional)
                 </Label>
                 <Input
                   id="endTime"
@@ -394,10 +389,10 @@ export default function EditarEventoPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Funcoes Necessarias
+              Funções Necessárias
             </CardTitle>
             <CardDescription>
-              Selecione as funcoes que serao necessarias para este evento
+              Selecione as funções que serão necessárias para este evento
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -408,17 +403,37 @@ export default function EditarEventoPage() {
           </CardContent>
         </Card>
 
+        {/* Checklist Template Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5" />
+              Checklist
+            </CardTitle>
+            <CardDescription>
+              Selecione um template de checklist para acompanhamento do evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChecklistTemplateSelect
+              value={checklistTemplateId}
+              onChange={setChecklistTemplateId}
+              disabled={isSubmitting}
+            />
+          </CardContent>
+        </Card>
+
         {/* Actions */}
-        <div className="flex items-center justify-end gap-4">
-          <Link href={`/eventos/${eventId}`}>
-            <Button type="button" variant="outline">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Link href={`/eventos/${eventId}`} className="w-full sm:w-auto">
+            <Button type="button" variant="outline" className="w-full sm:w-auto">
               Cancelar
             </Button>
           </Link>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-primary hover:bg-primary-hover"
+            className="w-full sm:w-auto"
           >
             {isSubmitting ? (
               <>
@@ -426,7 +441,7 @@ export default function EditarEventoPage() {
                 Salvando...
               </>
             ) : (
-              "Salvar Alteracoes"
+              "Salvar Alterações"
             )}
           </Button>
         </div>
@@ -439,15 +454,15 @@ export default function EditarEventoPage() {
               Zona de Perigo
             </CardTitle>
             <CardDescription>
-              Acoes irreversiveis para este evento
+              Ações irreversíveis para este evento
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-destructive/5 border border-destructive/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg bg-destructive/5 border border-destructive/20">
               <div>
                 <p className="font-medium text-foreground">Excluir este evento</p>
                 <p className="text-sm text-muted-foreground">
-                  Esta acao e permanente e nao pode ser desfeita. Todas as escalas e atividades associadas serao removidas.
+                  Esta ação é permanente e não pode ser desfeita. Todas as escalas e atividades associadas serão removidas.
                 </p>
               </div>
               <Button
@@ -455,6 +470,7 @@ export default function EditarEventoPage() {
                 variant="destructive"
                 onClick={() => setDeleteDialogOpen(true)}
                 disabled={deleteEvent.isPending}
+                className="w-full sm:w-auto shrink-0"
               >
                 {deleteEvent.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -472,14 +488,14 @@ export default function EditarEventoPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Voce tem certeza?</AlertDialogTitle>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acao nao pode ser desfeita. Isso ira excluir permanentemente o evento
-              <strong className="text-foreground"> "{event?.name}"</strong> e remover todas as escalas
+              Esta ação não pode ser desfeita. Isso irá excluir permanentemente o evento
+              <strong className="text-foreground"> &quot;{event?.name}&quot;</strong> e remover todas as escalas
               e atividades associadas.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}

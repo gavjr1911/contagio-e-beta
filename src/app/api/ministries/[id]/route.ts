@@ -5,6 +5,7 @@ import {
   apiSuccess,
   AuthSession,
   isAdmin,
+  requireMinistryAccess,
   validateBody,
   withAuth,
 } from "@/lib/api-utils"
@@ -67,31 +68,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/ministries/[id] - Atualizar ministerio (ADMIN ou LEADER do ministerio)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id } = await params
+  const { id } = await params
 
-    const bodyResult = await validateBody(request, updateMinistrySchema)
+  const access = await requireMinistryAccess(id)
+  if ("error" in access) return access.error
 
-    if (!bodyResult.success) {
-      return bodyResult.response
+  const bodyResult = await validateBody(request, updateMinistrySchema)
+
+  if (!bodyResult.success) {
+    return bodyResult.response
+  }
+
+  try {
+    // Buscar ministerio (necessario para validar nome duplicado)
+    const ministry = await prisma.ministry.findUnique({
+      where: { id },
+    })
+
+    if (!ministry) {
+      return apiError("Ministerio nao encontrado", 404)
     }
 
-    try {
-      // Buscar ministerio
-      const ministry = await prisma.ministry.findUnique({
-        where: { id },
-      })
-
-      if (!ministry) {
-        return apiError("Ministerio nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
-
-      const { name, description, leaderId } = bodyResult.data
+    const { name, description, leaderId, permissions } = bodyResult.data
 
       // Se name foi fornecido, verificar se ja existe outro ministerio com esse nome
       if (name && name !== ministry.name) {
@@ -126,13 +124,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }
       }
 
+      const updateData: Record<string, unknown> = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (leaderId !== undefined) updateData.leaderId = leaderId;
+      if (permissions !== undefined) updateData.permissions = permissions;
+
       const updatedMinistry = await prisma.ministry.update({
         where: { id },
-        data: {
-          ...(name !== undefined && { name }),
-          ...(description !== undefined && { description }),
-          ...(leaderId !== undefined && { leaderId }),
-        },
+        data: updateData,
         include: {
           leader: {
             select: {
@@ -149,7 +149,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       console.error("Erro ao atualizar ministerio:", error)
       return apiError("Erro ao atualizar ministerio", 500)
     }
-  })
 }
 
 // DELETE /api/ministries/[id] - Remover ministerio (apenas ADMIN)

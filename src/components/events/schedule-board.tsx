@@ -260,9 +260,9 @@ export function ScheduleBoard({
         <Card className="p-8">
           <div className="text-center">
             <p className="text-muted-foreground mb-4">
-              Nenhum ministerio configurado para este evento
+              Nenhum ministério configurado para este evento
             </p>
-            <Button>Configurar Ministerios</Button>
+            <Button>Configurar Ministérios</Button>
           </div>
         </Card>
       )}

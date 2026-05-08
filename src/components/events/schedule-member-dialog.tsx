@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useMinistries, type Ministry, type MinistryMember } from "@/hooks/use-ministries";
+import { PositionIcon } from "@/components/ui/icon-picker";
 
 interface ScheduleMemberDialogProps {
   open: boolean;
@@ -127,7 +128,7 @@ export function ScheduleMemberDialog({
           <div className="space-y-4 py-4">
             {/* Ministry Select */}
             <div className="space-y-2">
-              <Label>Ministerio</Label>
+              <Label>Ministério</Label>
               <div className="flex flex-wrap gap-2">
                 {ministries?.map((ministry) => (
                   <button
@@ -150,7 +151,7 @@ export function ScheduleMemberDialog({
               </div>
               {(!ministries || ministries.length === 0) && (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum ministerio encontrado
+                  Nenhum ministério encontrado
                 </p>
               )}
             </div>
@@ -158,7 +159,7 @@ export function ScheduleMemberDialog({
             {/* Position Select */}
             {selectedMinistry && positions.length > 0 && (
               <div className="space-y-2">
-                <Label>Funcao (opcional)</Label>
+                <Label>Função (opcional)</Label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setSelectedPosition("")}
@@ -176,12 +177,13 @@ export function ScheduleMemberDialog({
                       key={position.id}
                       onClick={() => setSelectedPosition(position.name)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
                         selectedPosition === position.name
                           ? "bg-secondary text-white border-secondary"
                           : "bg-background border-border hover:bg-muted"
                       )}
                     >
+                      <PositionIcon name={position.icon} className="h-4 w-4" />
                       {position.name}
                     </button>
                   ))}
@@ -245,7 +247,7 @@ export function ScheduleMemberDialog({
                           )}
                           {isScheduled && (
                             <p className="text-xs text-amber-500">
-                              Ja escalado neste evento
+                              Já escalado neste evento
                             </p>
                           )}
                         </div>
@@ -262,7 +264,7 @@ export function ScheduleMemberDialog({
                   {filteredMembers.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {currentMinistry?.members?.length === 0
-                        ? "Nenhum membro neste ministerio"
+                        ? "Nenhum membro neste ministério"
                         : "Nenhum membro encontrado"}
                     </p>
                   )}

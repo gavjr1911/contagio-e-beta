@@ -7,6 +7,8 @@ export interface Song {
   defaultKey: string;
   lyrics?: string;
   chordLink?: string;
+  spotifyUrl?: string;
+  youtubeUrl?: string;
   tags: string[];
   timesPlayed: number;
   lastPlayedAt?: Date;
@@ -95,6 +97,8 @@ export interface CreateSongInput {
   defaultKey: string;
   lyrics?: string;
   chordLink?: string;
+  spotifyUrl?: string;
+  youtubeUrl?: string;
   tags: string[];
 }
 

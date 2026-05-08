@@ -6,6 +6,9 @@ import {
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
+import { prisma } from "@/lib/prisma"
+import { decrypt } from "@/lib/crypto"
+
 // Tipos de arquivo permitidos
 export const ALLOWED_FILE_TYPES = {
   // Imagens
@@ -35,24 +38,93 @@ export type MediaTypeFromMime = (typeof ALLOWED_FILE_TYPES)[AllowedMimeType]["ty
 // Limite de 50MB
 export const MAX_FILE_SIZE = 50 * 1024 * 1024
 
-// Configuracao do cliente R2
-function getR2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
+// Interface para configuracoes R2
+interface R2Config {
+  accountId: string
+  accessKeyId: string
+  secretAccessKey: string
+  bucketName: string
+  publicUrl: string
+}
 
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error("Configuracao R2 incompleta. Verifique as variaveis de ambiente.")
+// Cache para configuracoes (evitar queries repetidas)
+let configCache: R2Config | null = null
+let configCacheTime = 0
+const CACHE_TTL = 60 * 1000 // 1 minuto
+
+// Buscar configuracoes do banco ou env
+async function getR2Config(): Promise<R2Config> {
+  // Verificar cache
+  if (configCache && Date.now() - configCacheTime < CACHE_TTL) {
+    return configCache
   }
 
-  return new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
+  // Buscar do banco
+  const settings = await prisma.appSettings.findMany({
+    where: {
+      key: {
+        in: [
+          "R2_ACCOUNT_ID",
+          "R2_ACCESS_KEY_ID",
+          "R2_SECRET_ACCESS_KEY",
+          "R2_BUCKET_NAME",
+          "R2_PUBLIC_URL",
+        ],
+      },
     },
   })
+
+  const settingsMap: Record<string, string> = {}
+  for (const setting of settings) {
+    settingsMap[setting.key] = setting.encrypted
+      ? decrypt(setting.value)
+      : setting.value
+  }
+
+  // Usar banco se disponivel, senao usar env como fallback
+  const config: R2Config = {
+    accountId: settingsMap.R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || "",
+    accessKeyId: settingsMap.R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: settingsMap.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || "",
+    bucketName: settingsMap.R2_BUCKET_NAME || process.env.R2_BUCKET_NAME || "",
+    publicUrl: settingsMap.R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || "",
+  }
+
+  // Atualizar cache
+  configCache = config
+  configCacheTime = Date.now()
+
+  return config
+}
+
+// Limpar cache (chamar apos atualizar configuracoes)
+export function clearR2ConfigCache(): void {
+  configCache = null
+  configCacheTime = 0
+}
+
+// Configuracao do cliente R2
+async function getR2Client(): Promise<{ client: S3Client; bucketName: string }> {
+  const config = await getR2Config()
+
+  if (!config.accountId || !config.accessKeyId || !config.secretAccessKey) {
+    throw new Error("Configuracao R2 incompleta. Configure nas Configuracoes do sistema.")
+  }
+
+  if (!config.bucketName) {
+    throw new Error("Nome do bucket R2 nao configurado.")
+  }
+
+  const client = new S3Client({
+    region: "auto",
+    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+  })
+
+  return { client, bucketName: config.bucketName }
 }
 
 // Gerar key unica para arquivo
@@ -90,12 +162,7 @@ export async function generateUploadPresignedUrl(
     throw new Error(`Arquivo muito grande. Limite: ${MAX_FILE_SIZE / (1024 * 1024)}MB`)
   }
 
-  const bucketName = process.env.R2_BUCKET_NAME
-  if (!bucketName) {
-    throw new Error("R2_BUCKET_NAME nao configurado")
-  }
-
-  const client = getR2Client()
+  const { client, bucketName } = await getR2Client()
   const expiresIn = 3600 // 1 hora
 
   const command = new PutObjectCommand({
@@ -112,12 +179,7 @@ export async function generateUploadPresignedUrl(
 
 // Verificar se arquivo existe no R2
 export async function fileExistsInR2(key: string): Promise<boolean> {
-  const bucketName = process.env.R2_BUCKET_NAME
-  if (!bucketName) {
-    throw new Error("R2_BUCKET_NAME nao configurado")
-  }
-
-  const client = getR2Client()
+  const { client, bucketName } = await getR2Client()
 
   try {
     await client.send(
@@ -134,12 +196,7 @@ export async function fileExistsInR2(key: string): Promise<boolean> {
 
 // Deletar arquivo do R2
 export async function deleteFromR2(key: string): Promise<void> {
-  const bucketName = process.env.R2_BUCKET_NAME
-  if (!bucketName) {
-    throw new Error("R2_BUCKET_NAME nao configurado")
-  }
-
-  const client = getR2Client()
+  const { client, bucketName } = await getR2Client()
 
   await client.send(
     new DeleteObjectCommand({
@@ -150,13 +207,28 @@ export async function deleteFromR2(key: string): Promise<void> {
 }
 
 // Obter URL publica do arquivo
-export function getPublicUrl(key: string): string {
-  const publicUrl = process.env.R2_PUBLIC_URL
-  if (!publicUrl) {
-    throw new Error("R2_PUBLIC_URL nao configurado")
+export async function getPublicUrl(key: string): Promise<string> {
+  const config = await getR2Config()
+
+  if (!config.publicUrl) {
+    throw new Error("URL publica do R2 nao configurada.")
   }
 
   // Remove trailing slash se houver
+  const baseUrl = config.publicUrl.endsWith("/")
+    ? config.publicUrl.slice(0, -1)
+    : config.publicUrl
+  return `${baseUrl}/${key}`
+}
+
+// Versao sincrona para uso onde async nao e possivel
+// Usa cache se disponivel, senao usa env
+export function getPublicUrlSync(key: string): string {
+  const publicUrl = configCache?.publicUrl || process.env.R2_PUBLIC_URL
+  if (!publicUrl) {
+    throw new Error("URL publica do R2 nao configurada.")
+  }
+
   const baseUrl = publicUrl.endsWith("/") ? publicUrl.slice(0, -1) : publicUrl
   return `${baseUrl}/${key}`
 }
@@ -172,8 +244,31 @@ export function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
-// Verificar se a configuracao R2 esta completa
-export function isR2Configured(): boolean {
+// Verificar se a configuracao R2 esta completa (async)
+export async function isR2Configured(): Promise<boolean> {
+  const config = await getR2Config()
+  return Boolean(
+    config.accountId &&
+    config.accessKeyId &&
+    config.secretAccessKey &&
+    config.bucketName &&
+    config.publicUrl
+  )
+}
+
+// Verificar rapidamente usando cache/env (sync)
+export function isR2ConfiguredSync(): boolean {
+  if (configCache) {
+    return Boolean(
+      configCache.accountId &&
+      configCache.accessKeyId &&
+      configCache.secretAccessKey &&
+      configCache.bucketName &&
+      configCache.publicUrl
+    )
+  }
+
+  // Fallback para env
   return Boolean(
     process.env.R2_ACCOUNT_ID &&
     process.env.R2_ACCESS_KEY_ID &&

@@ -64,7 +64,7 @@ export async function getLibraries(
   client?: ProPresenterClient
 ): Promise<Library[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Library[]>("/libraries")
+  return pp.get<Library[]>("/v1/libraries")
 }
 
 /**
@@ -75,7 +75,7 @@ export async function getLibrary(
   client?: ProPresenterClient
 ): Promise<Library> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Library>(`/library/${encodeURIComponent(libraryId)}`)
+  return pp.get<Library>(`/v1/library/${encodeURIComponent(libraryId)}`)
 }
 
 /**
@@ -87,16 +87,46 @@ export async function getLibraryPresentations(
   const pp = client ?? getProPresenterClient()
   const libraries = await getLibraries(pp)
 
+  console.log(`[ProPresenter] Resposta bruta de /v1/libraries:`, JSON.stringify(libraries, null, 2))
+
   const presentations: LibraryItem[] = []
 
+  // Processa cada biblioteca
   for (const library of libraries) {
-    if (library.items) {
-      presentations.push(
-        ...library.items.filter((item) => item.is_presentation)
-      )
+    console.log(`[ProPresenter] Biblioteca: ${library.name} (UUID: ${library.uuid})`)
+
+    const libraryId = library.uuid
+    const libraryName = library.name || 'biblioteca'
+
+    console.log(`[ProPresenter] Processando biblioteca: ${libraryName} (ID: ${libraryId})`)
+
+    // Primeiro verifica se a biblioteca ja veio com os items
+    if (library.items && library.items.length > 0) {
+      console.log(`[ProPresenter] Biblioteca ${libraryName} tem ${library.items.length} items diretos`)
+      presentations.push(...library.items)
+    } else if (libraryId) {
+      // Se nao, busca os items da biblioteca individualmente
+      try {
+        console.log(`[ProPresenter] Buscando items da biblioteca ${libraryId}`)
+        const libraryDetails = await getLibrary(libraryId, pp)
+
+        console.log(`[ProPresenter] Detalhes da biblioteca:`, JSON.stringify(libraryDetails, null, 2))
+
+        if (libraryDetails.items && libraryDetails.items.length > 0) {
+          console.log(`[ProPresenter] Encontrados ${libraryDetails.items.length} items`)
+          presentations.push(...libraryDetails.items)
+        } else {
+          console.log(`[ProPresenter] Biblioteca ${libraryName} sem items`)
+        }
+      } catch (error) {
+        console.log(`[ProPresenter] Erro ao buscar biblioteca ${libraryName}:`, error)
+      }
+    } else {
+      console.log(`[ProPresenter] Biblioteca sem ID identificavel, pulando...`)
     }
   }
 
+  console.log(`[ProPresenter] Total de ${presentations.length} apresentacoes encontradas`)
   return presentations
 }
 
@@ -111,7 +141,27 @@ export async function getPlaylists(
   client?: ProPresenterClient
 ): Promise<Playlist[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Playlist[]>("/playlists")
+  const response = await pp.get<unknown>("/v1/playlists")
+
+  console.log(`[ProPresenter API] Resposta /v1/playlists:`, JSON.stringify(response, null, 2))
+
+  // A resposta é um array de playlists com estrutura {id: {uuid, name, index}, field_type, children}
+  if (Array.isArray(response)) {
+    return response as Playlist[]
+  }
+
+  // Se for um objeto com uma propriedade que contém as playlists
+  if (response && typeof response === "object") {
+    const obj = response as Record<string, unknown>
+    // Tenta encontrar um array dentro do objeto
+    for (const key of Object.keys(obj)) {
+      if (Array.isArray(obj[key])) {
+        return obj[key] as Playlist[]
+      }
+    }
+  }
+
+  return []
 }
 
 /**
@@ -122,7 +172,7 @@ export async function getPlaylist(
   client?: ProPresenterClient
 ): Promise<Playlist> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Playlist>(`/playlist/${encodeURIComponent(playlistId)}`)
+  return pp.get<Playlist>(`/v1/playlist/${encodeURIComponent(playlistId)}`)
 }
 
 /**
@@ -133,7 +183,7 @@ export async function getActivePlaylist(
 ): Promise<Playlist | null> {
   const pp = client ?? getProPresenterClient()
   try {
-    return await pp.get<Playlist>("/playlist/active")
+    return await pp.get<Playlist>("/v1/playlist/active")
   } catch {
     return null
   }
@@ -148,23 +198,106 @@ export async function createPlaylist(
   client?: ProPresenterClient
 ): Promise<Playlist> {
   const pp = client ?? getProPresenterClient()
-  return pp.post<Playlist>("/playlists", {
+
+  console.log(`[ProPresenter API] Criando playlist: ${name}`)
+
+  const response = await pp.post<unknown>("/v1/playlists", {
     name,
     type: "playlist",
     items: items ?? [],
   })
+
+  console.log(`[ProPresenter API] Resposta createPlaylist:`, JSON.stringify(response, null, 2))
+
+  // Verifica se a resposta tem a estrutura esperada {id: {uuid, name, index}}
+  if (response && typeof response === "object") {
+    const obj = response as Record<string, unknown>
+    if (obj.id && typeof obj.id === "object") {
+      console.log(`[ProPresenter API] Playlist criada com estrutura correta`)
+      return response as Playlist
+    }
+  }
+
+  // Busca a playlist pelo nome
+  console.log(`[ProPresenter API] Buscando playlist criada pelo nome...`)
+  const playlists = await getPlaylists(pp)
+  const created = playlists.find((p) => p.id?.name?.toLowerCase() === name.toLowerCase())
+
+  if (created) {
+    console.log(`[ProPresenter API] Playlist encontrada: ${created.id.uuid}`)
+    return created
+  }
+
+  // Retorna objeto parcial se nao encontrar
+  console.log(`[ProPresenter API] Playlist nao encontrada, retornando objeto parcial`)
+  return { id: { uuid: "", name, index: 0 }, type: "playlist" }
 }
 
 /**
- * Adiciona um item a uma playlist
+ * Define os itens de uma playlist via PUT
+ *
+ * ProPresenter 7 API: PUT /v1/playlist/{playlist_id}
+ * Body: Array de items (SEM target_uuid - o ID da playlist já está na URL)
+ *
+ * Formato esperado:
+ * [
+ *   {
+ *     "id": { "uuid": "...", "name": "...", "index": 0 },
+ *     "type": "presentation",
+ *     "is_hidden": false,
+ *     "is_pco": false
+ *   }
+ * ]
+ */
+export async function setPlaylistItems(
+  playlistId: string,
+  items: { uuid: string; name?: string }[],
+  client?: ProPresenterClient
+): Promise<void> {
+  if (!playlistId) {
+    console.log(`[ProPresenter API] ERRO: playlistId vazio`)
+    return
+  }
+
+  const pp = client ?? getProPresenterClient()
+
+  // Formata os itens conforme esperado pela API
+  // PUT requer target_uuid em cada item
+  const body = items.map((item, index) => ({
+    target_uuid: playlistId,
+    id: {
+      uuid: item.uuid,
+      name: item.name || "",
+      index: index,
+    },
+    type: "presentation",
+    is_hidden: false,
+    is_pco: false,
+  }))
+
+  console.log(`[ProPresenter API] Definindo ${items.length} itens na playlist ${playlistId}`)
+  console.log(`[ProPresenter API] Body:`, JSON.stringify(body, null, 2))
+
+  try {
+    // PUT para definir conteúdo da playlist
+    const response = await pp.put(`/v1/playlist/${encodeURIComponent(playlistId)}`, body)
+    console.log(`[ProPresenter API] Resposta setPlaylistItems:`, JSON.stringify(response, null, 2))
+  } catch (error) {
+    console.log(`[ProPresenter API] ERRO ao definir itens:`, error instanceof Error ? error.message : error)
+    throw error
+  }
+}
+
+/**
+ * Adiciona um item a uma playlist (deprecated - use setPlaylistItems)
  */
 export async function addPlaylistItem(
   playlistId: string,
   item: { id: string; type: string },
   client?: ProPresenterClient
 ): Promise<void> {
-  const pp = client ?? getProPresenterClient()
-  await pp.post(`/playlist/${encodeURIComponent(playlistId)}/items`, item)
+  // Método legado - agora é no-op, pois usamos setPlaylistItems
+  console.log(`[ProPresenter API] addPlaylistItem chamado (legado) - use setPlaylistItems`)
 }
 
 /**
@@ -177,7 +310,7 @@ export async function removePlaylistItem(
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
   await pp.delete(
-    `/playlist/${encodeURIComponent(playlistId)}/item/${itemIndex}`
+    `/v1/playlist/${encodeURIComponent(playlistId)}/item/${itemIndex}`
   )
 }
 
@@ -189,7 +322,7 @@ export async function deletePlaylist(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.delete(`/playlist/${encodeURIComponent(playlistId)}`)
+  await pp.delete(`/v1/playlist/${encodeURIComponent(playlistId)}`)
 }
 
 // ============================================================================
@@ -204,7 +337,7 @@ export async function getCurrentPresentation(
 ): Promise<PresentationMetadata | null> {
   const pp = client ?? getProPresenterClient()
   try {
-    return await pp.get<PresentationMetadata>("/presentation/active")
+    return await pp.get<PresentationMetadata>("/v1/presentation/active")
   } catch {
     return null
   }
@@ -219,7 +352,7 @@ export async function getPresentation(
 ): Promise<Presentation> {
   const pp = client ?? getProPresenterClient()
   return pp.get<Presentation>(
-    `/presentation/${encodeURIComponent(presentationId)}`
+    `/v1/presentation/${encodeURIComponent(presentationId)}`
   )
 }
 
@@ -231,7 +364,7 @@ export async function getActiveSlide(
 ): Promise<ActiveSlide | null> {
   const pp = client ?? getProPresenterClient()
   try {
-    return await pp.get<ActiveSlide>("/presentation/slide_index")
+    return await pp.get<ActiveSlide>("/v1/presentation/slide_index")
   } catch {
     return null
   }
@@ -251,7 +384,7 @@ export async function triggerSlide(
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
   await pp.post(
-    `/presentation/${encodeURIComponent(presentationId)}/trigger/slide/${slideIndex}`
+    `/v1/presentation/${encodeURIComponent(presentationId)}/trigger/slide/${slideIndex}`
   )
 }
 
@@ -262,7 +395,7 @@ export async function triggerNext(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post("/trigger/next")
+  await pp.post("/v1/trigger/next")
 }
 
 /**
@@ -272,7 +405,7 @@ export async function triggerPrevious(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post("/trigger/previous")
+  await pp.post("/v1/trigger/previous")
 }
 
 /**
@@ -285,7 +418,7 @@ export async function triggerPlaylistItem(
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
   await pp.post(
-    `/playlist/${encodeURIComponent(playlistId)}/item/${itemIndex}/trigger`
+    `/v1/playlist/${encodeURIComponent(playlistId)}/item/${itemIndex}/trigger`
   )
 }
 
@@ -296,7 +429,7 @@ export async function clearSlide(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post("/clear/slide")
+  await pp.post("/v1/clear/slide")
 }
 
 /**
@@ -306,7 +439,7 @@ export async function clearAll(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post("/clear/all")
+  await pp.post("/v1/clear/all")
 }
 
 // ============================================================================
@@ -320,7 +453,7 @@ export async function getLooks(
   client?: ProPresenterClient
 ): Promise<Look[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Look[]>("/looks")
+  return pp.get<Look[]>("/v1/looks")
 }
 
 /**
@@ -331,7 +464,7 @@ export async function getActiveLook(
 ): Promise<Look | null> {
   const pp = client ?? getProPresenterClient()
   try {
-    return await pp.get<Look>("/look/active")
+    return await pp.get<Look>("/v1/look/active")
   } catch {
     return null
   }
@@ -345,7 +478,7 @@ export async function triggerLook(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/look/${encodeURIComponent(lookId)}/trigger`)
+  await pp.post(`/v1/look/${encodeURIComponent(lookId)}/trigger`)
 }
 
 // ============================================================================
@@ -359,7 +492,7 @@ export async function getMessages(
   client?: ProPresenterClient
 ): Promise<Message[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Message[]>("/messages")
+  return pp.get<Message[]>("/v1/messages")
 }
 
 /**
@@ -371,7 +504,7 @@ export async function showMessage(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/message/${encodeURIComponent(messageId)}/trigger`, {
+  await pp.post(`/v1/message/${encodeURIComponent(messageId)}/trigger`, {
     tokens: tokens
       ? Object.entries(tokens).map(([name, text]) => ({ name, text: { text } }))
       : undefined,
@@ -386,7 +519,7 @@ export async function hideMessage(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.delete(`/message/${encodeURIComponent(messageId)}`)
+  await pp.delete(`/v1/message/${encodeURIComponent(messageId)}`)
 }
 
 // ============================================================================
@@ -400,7 +533,7 @@ export async function getTimers(
   client?: ProPresenterClient
 ): Promise<Timer[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<Timer[]>("/timers")
+  return pp.get<Timer[]>("/v1/timers")
 }
 
 /**
@@ -411,7 +544,7 @@ export async function getTimerState(
   client?: ProPresenterClient
 ): Promise<TimerState> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<TimerState>(`/timer/${encodeURIComponent(timerId)}`)
+  return pp.get<TimerState>(`/v1/timer/${encodeURIComponent(timerId)}`)
 }
 
 /**
@@ -422,7 +555,7 @@ export async function startTimer(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/timer/${encodeURIComponent(timerId)}/start`)
+  await pp.post(`/v1/timer/${encodeURIComponent(timerId)}/start`)
 }
 
 /**
@@ -433,7 +566,7 @@ export async function stopTimer(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/timer/${encodeURIComponent(timerId)}/stop`)
+  await pp.post(`/v1/timer/${encodeURIComponent(timerId)}/stop`)
 }
 
 /**
@@ -444,7 +577,7 @@ export async function resetTimer(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/timer/${encodeURIComponent(timerId)}/reset`)
+  await pp.post(`/v1/timer/${encodeURIComponent(timerId)}/reset`)
 }
 
 // ============================================================================
@@ -458,7 +591,7 @@ export async function getMediaItems(
   client?: ProPresenterClient
 ): Promise<MediaItem[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<MediaItem[]>("/media")
+  return pp.get<MediaItem[]>("/v1/media")
 }
 
 /**
@@ -469,7 +602,7 @@ export async function triggerMedia(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.post(`/media/${encodeURIComponent(mediaId)}/trigger`)
+  await pp.post(`/v1/media/${encodeURIComponent(mediaId)}/trigger`)
 }
 
 // ============================================================================
@@ -483,7 +616,7 @@ export async function getStageDisplayLayouts(
   client?: ProPresenterClient
 ): Promise<unknown[]> {
   const pp = client ?? getProPresenterClient()
-  return pp.get<unknown[]>("/stage/layouts")
+  return pp.get<unknown[]>("/v1/stage/layouts")
 }
 
 /**
@@ -494,7 +627,7 @@ export async function setStageDisplayLayout(
   client?: ProPresenterClient
 ): Promise<void> {
   const pp = client ?? getProPresenterClient()
-  await pp.put(`/stage/layout/${encodeURIComponent(layoutId)}`)
+  await pp.put(`/v1/stage/layout/${encodeURIComponent(layoutId)}`)
 }
 
 // ============================================================================
@@ -512,6 +645,6 @@ export async function searchPresentations(
   const lowerQuery = query.toLowerCase()
 
   return presentations.filter((item) =>
-    item.id.name.toLowerCase().includes(lowerQuery)
+    item.name.toLowerCase().includes(lowerQuery)
   )
 }

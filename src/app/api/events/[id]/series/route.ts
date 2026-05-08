@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getTodayLocal } from "@/lib/date-utils"
 
 // ============================================
 // GET /api/events/[id]/series
@@ -116,7 +117,7 @@ export async function GET(
 // PATCH /api/events/[id]/series
 // Update all events in series (future only or all)
 // Body: { field: value, updateScope: "all" | "future" }
-// Only ADMIN/COORDINATOR can update
+// Only ADMIN can update
 // ============================================
 export async function PATCH(
   request: NextRequest,
@@ -130,9 +131,9 @@ export async function PATCH(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem atualizar series." },
+        { error: "Acesso negado. Apenas ADMIN pode atualizar series." },
         { status: 403 }
       )
     }
@@ -167,7 +168,7 @@ export async function PATCH(
     const parentEventId = event.parentEventId ?? event.id
 
     // Build the where clause based on updateScope
-    const now = new Date()
+    const now = getTodayLocal()
     const whereClause = updateScope === "future"
       ? {
           OR: [
@@ -224,7 +225,7 @@ export async function PATCH(
 // DELETE /api/events/[id]/series
 // Delete entire series (parent + all children)
 // CASCADE will handle schedules/vacancies
-// Only ADMIN/COORDINATOR can delete
+// Only ADMIN can delete
 // ============================================
 export async function DELETE(
   request: NextRequest,
@@ -238,9 +239,9 @@ export async function DELETE(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem remover series." },
+        { error: "Acesso negado. Apenas ADMIN pode remover series." },
         { status: 403 }
       )
     }

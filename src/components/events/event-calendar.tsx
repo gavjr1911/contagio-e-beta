@@ -17,10 +17,8 @@ interface EventCalendarProps {
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "SUNDAY_MORNING":
+    case "CULTO":
       return "bg-primary";
-    case "SUNDAY_EVENING":
-      return "bg-blue-500";
     case "SPECIAL":
       return "bg-purple-500";
     default:
@@ -28,11 +26,7 @@ function getTypeColor(type: EventType): string {
   }
 }
 
-// Parse date string (YYYY-MM-DD) to Date object in local timezone
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
-}
+import { parseLocalDate, formatDateToISO } from "@/lib/date-utils";
 
 function getDateKey(dateOrString: string | Date): string {
   // If already a string in YYYY-MM-DD format, return as-is
@@ -40,10 +34,7 @@ function getDateKey(dateOrString: string | Date): string {
     return dateOrString;
   }
   const date = typeof dateOrString === "string" ? parseLocalDate(dateOrString) : dateOrString;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatDateToISO(date);
 }
 
 export function EventCalendar({
@@ -167,6 +158,7 @@ export function EventCalendar({
                     {eventDate.toLocaleDateString("pt-BR", {
                       day: "numeric",
                       month: "short",
+                      timeZone: "America/Sao_Paulo",
                     })}{" "}
                     - {formatTimeFromDate(event.startTime)}
                   </p>

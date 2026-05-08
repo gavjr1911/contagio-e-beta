@@ -86,9 +86,9 @@ export function EditMinistryDialog({ ministry, trigger }: EditMinistryDialogProp
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Editar ministerio</DialogTitle>
+          <DialogTitle>Editar ministério</DialogTitle>
           <DialogDescription>
-            Altere as informacoes do ministerio e defina o lider.
+            Altere as informações do ministério e defina o líder.
           </DialogDescription>
         </DialogHeader>
 
@@ -97,25 +97,25 @@ export function EditMinistryDialog({ ministry, trigger }: EditMinistryDialogProp
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="edit-name">
-                Nome do ministerio <span className="text-red-500">*</span>
+                Nome do ministério <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="edit-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Ministerio de Louvor"
+                placeholder="Ex: Ministério de Louvor"
                 required
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Descricao</Label>
+              <Label htmlFor="edit-description">Descrição</Label>
               <Textarea
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descreva o proposito e atividades deste ministerio..."
+                placeholder="Descreva o propósito e atividades deste ministério..."
                 rows={3}
               />
             </div>
@@ -124,25 +124,25 @@ export function EditMinistryDialog({ ministry, trigger }: EditMinistryDialogProp
             <div className="space-y-2">
               <Label htmlFor="edit-leader" className="flex items-center gap-2">
                 <Crown className="h-4 w-4 text-primary" />
-                Lider do ministerio
+                Líder do ministério
               </Label>
               {isLoadingUsers ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select value={leaderId} onValueChange={setLeaderId}>
                   <SelectTrigger id="edit-leader">
-                    <SelectValue placeholder="Selecione um lider" />
+                    <SelectValue placeholder="Selecione um líder" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">
-                      <span className="text-muted-foreground">Sem lider</span>
+                      <span className="text-muted-foreground">Sem líder</span>
                     </SelectItem>
 
                     {/* Members first */}
                     {membersAsUsers.length > 0 && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                          Membros do ministerio
+                          Membros do ministério
                         </div>
                         {membersAsUsers.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
@@ -172,7 +172,7 @@ export function EditMinistryDialog({ ministry, trigger }: EditMinistryDialogProp
                     {otherUsers.length > 0 && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                          Outros usuarios
+                          Outros usuários
                         </div>
                         {otherUsers.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
@@ -198,7 +198,7 @@ export function EditMinistryDialog({ ministry, trigger }: EditMinistryDialogProp
                 </Select>
               )}
               <p className="text-xs text-muted-foreground">
-                O lider tera permissoes para gerenciar membros e escalas
+                O líder terá permissões para gerenciar membros e escalas
               </p>
             </div>
           </div>

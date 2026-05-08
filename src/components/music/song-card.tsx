@@ -20,6 +20,7 @@ export function SongCard({ song, showActions = true, onSelect }: SongCardProps) 
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     }).format(new Date(date));
   };
 

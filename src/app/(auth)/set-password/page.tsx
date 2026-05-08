@@ -87,7 +87,7 @@ function SetPasswordContent() {
 
       const result = await response.json()
 
-      if (result.success) {
+      if (response.ok) {
         setIsSuccess(true)
         // Redirecionar para login apos 2 segundos
         setTimeout(() => {

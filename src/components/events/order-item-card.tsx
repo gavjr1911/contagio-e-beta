@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, Music, User, BookOpen, ExternalLink, ChevronDown, ChevronUp } from "lucide-react"
+import { Clock, Music, User, BookOpen, ExternalLink, ChevronDown, ChevronUp, ImageIcon, Video, FileText, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -32,6 +32,8 @@ export function OrderItemCard({ item, startTime, index }: OrderItemCardProps) {
   const hasBibleRef = item.bibleReference && item.bibleReference.trim().length > 0
   const hasDescription = item.description && item.description.trim().length > 0
   const hasMediaUrl = item.mediaUrl && item.mediaUrl.trim().length > 0
+  const hasMediaFiles = item.mediaFiles && item.mediaFiles.length > 0
+  const isPendingMedia = item.requiresMedia && !hasMediaFiles
   const hasExpandableContent = hasNotes || (hasSongs && item.setlistItems.length > 3)
 
   // Para blocos WORSHIP, calcular progresso de músicas
@@ -141,6 +143,44 @@ export function OrderItemCard({ item, startTime, index }: OrderItemCardProps) {
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                 {item.description}
               </p>
+            )}
+
+            {/* Media Files */}
+            {(hasMediaFiles || isPendingMedia) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {hasMediaFiles && item.mediaFiles.map((file) => (
+                  <a
+                    key={file.id}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-blue-500/5 border-blue-500/20 cursor-pointer hover:bg-blue-500/10 transition-colors"
+                    >
+                      {file.mimeType?.startsWith("image/") ? (
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                      ) : file.mimeType?.startsWith("video/") ? (
+                        <Video className="h-3 w-3 mr-1" />
+                      ) : (
+                        <FileText className="h-3 w-3 mr-1" />
+                      )}
+                      <span className="max-w-[150px] truncate">
+                        {file.originalName || "Arquivo"}
+                      </span>
+                      <ExternalLink className="h-3 w-3 ml-1 opacity-50" />
+                    </Badge>
+                  </a>
+                ))}
+                {isPendingMedia && (
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-600">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Mídia pendente
+                  </Badge>
+                )}
+              </div>
             )}
           </div>
 

@@ -33,6 +33,11 @@ import {
   Music,
   X,
   Check,
+  FileIcon,
+  ImageIcon,
+  VideoIcon,
+  FileTextIcon,
+  Search,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -45,6 +50,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -67,21 +73,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useQueryClient } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
@@ -100,7 +97,7 @@ import {
   type CreateEventItemInput,
   type SetlistItem,
 } from "@/hooks/use-event-items"
-import { useUsers, type User as UserType } from "@/hooks/use-users"
+import { useMinistries, type Ministry, type MinistryMember } from "@/hooks/use-ministries"
 
 interface OrderOfServiceEditorProps {
   eventId: string
@@ -244,12 +241,14 @@ const SortableItem = React.memo(function SortableItem({
   }
 
   const config = eventItemTypeConfig[item.type]
-  const hasDetails = item.description || item.bibleReference || item.notes || item.mediaUrl
+  const hasMediaFiles = item.mediaFiles && item.mediaFiles.length > 0
+  const hasDetails = item.description || item.bibleReference || item.notes || item.mediaUrl || hasMediaFiles
   const hasSongs = item.type === "WORSHIP" && item.setlistItems && item.setlistItems.length > 0
   const hasExpectedSongs = item.type === "WORSHIP" && item.expectedSongCount && item.expectedSongCount > 0
   const currentSongCount = item.setlistItems?.length || 0
   const expectedSongCount = item.expectedSongCount || 0
   const isSongCountComplete = hasExpectedSongs && currentSongCount >= expectedSongCount
+  const mediaFileCount = item.mediaFiles?.length || 0
 
   return (
     <div
@@ -320,18 +319,40 @@ const SortableItem = React.memo(function SortableItem({
                   >
                     <Music className="h-3 w-3 mr-1" />
                     {hasExpectedSongs
-                      ? `${currentSongCount}/${expectedSongCount} musicas`
-                      : `${currentSongCount} ${currentSongCount === 1 ? "musica" : "musicas"}`
+                      ? `${currentSongCount}/${expectedSongCount} músicas`
+                      : `${currentSongCount} ${currentSongCount === 1 ? "música" : "músicas"}`
                     }
+                  </Badge>
+                )}
+                {/* Badge de arquivos */}
+                {hasMediaFiles && (
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 text-xs bg-blue-500/20 text-blue-600 border-blue-500/30"
+                  >
+                    <FileIcon className="h-3 w-3 mr-1" />
+                    {mediaFileCount} {mediaFileCount === 1 ? "arquivo" : "arquivos"}
+                  </Badge>
+                )}
+                {/* Badge pendente se requer mídia e não tem */}
+                {item.requiresMedia && !hasMediaFiles && (
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 text-xs border-amber-500 text-amber-500"
+                  >
+                    <FileIcon className="h-3 w-3 mr-1" />
+                    Mídia pendente
                   </Badge>
                 )}
               </div>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                 <span className="truncate">{config.label}</span>
-                {item.responsible && (
+                {(item.responsible || item.responsibleName) && (
                   <span className="flex items-center gap-1 shrink-0">
                     <User className="h-3 w-3" />
-                    {item.responsible.name || item.responsible.email}
+                    {item.responsible
+                      ? item.responsible.name || item.responsible.email
+                      : item.responsibleName}
                   </span>
                 )}
                 {item.bibleReference && (
@@ -357,6 +378,42 @@ const SortableItem = React.memo(function SortableItem({
                   {item.setlistItems.length > 3 && (
                     <Badge variant="outline" className="text-xs">
                       +{item.setlistItems.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {/* Media files preview */}
+              {hasMediaFiles && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {item.mediaFiles.slice(0, 3).map((file) => (
+                    <a
+                      key={file.id}
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-blue-500/5 border-blue-500/20 cursor-pointer hover:bg-blue-500/10 transition-colors"
+                      >
+                        {file.mimeType?.startsWith("image/") ? (
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                        ) : file.mimeType?.startsWith("video/") ? (
+                          <VideoIcon className="h-3 w-3 mr-1" />
+                        ) : file.mimeType === "application/pdf" ? (
+                          <FileTextIcon className="h-3 w-3 mr-1" />
+                        ) : (
+                          <FileIcon className="h-3 w-3 mr-1" />
+                        )}
+                        {file.originalName || "Arquivo"}
+                        <ExternalLink className="h-3 w-3 ml-1 opacity-50" />
+                      </Badge>
+                    </a>
+                  ))}
+                  {item.mediaFiles.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{item.mediaFiles.length - 3}
                     </Badge>
                   )}
                 </div>
@@ -422,7 +479,7 @@ const SortableItem = React.memo(function SortableItem({
                   className="flex items-center gap-2 text-primary hover:underline"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Abrir midia
+                  Abrir mídia
                 </a>
               )}
               {/* Songs list for WORSHIP type - with drag and drop if not readOnly */}
@@ -430,7 +487,7 @@ const SortableItem = React.memo(function SortableItem({
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Music className="h-3 w-3" />
-                    Musicas deste bloco:
+                    Músicas deste bloco:
                     {!readOnly && (
                       <span className="text-xs text-muted-foreground ml-1">
                         (arraste para reordenar)
@@ -511,44 +568,113 @@ const SortableItem = React.memo(function SortableItem({
   )
 })
 
-// User Selector Component
-function UserSelector({
-  value,
+// Responsible Selector Component - Permite selecionar membro ou digitar nome livre
+function ResponsibleSelector({
+  responsibleId,
+  responsibleName,
   onChange,
 }: {
-  value: string | undefined
-  onChange: (userId: string | undefined) => void
+  responsibleId: string | undefined
+  responsibleName: string | undefined
+  onChange: (data: { responsibleId?: string; responsibleName?: string }) => void
 }) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [cachedUser, setCachedUser] = React.useState<UserType | null>(null)
 
-  // Only fetch when popover is open
-  const { data: usersData, isLoading } = useUsers(
-    isOpen ? { search: searchQuery } : null
-  )
+  // Fetch ministries with members
+  const { data: ministries, isLoading } = useMinistries()
 
-  // Garantir que users seja sempre um array
-  const users: UserType[] = Array.isArray(usersData?.data) ? usersData.data : []
-  const selectedUser = (users.length > 0 ? users.find((u) => u.id === value) : null) || cachedUser
+  // Build a flat list of all unique members from all ministries (sorted alphabetically)
+  const allMembers = React.useMemo(() => {
+    if (!ministries) return []
 
-  // Cache the selected user when found
-  React.useEffect(() => {
-    if (value && users.length > 0) {
-      const found = users.find((u) => u.id === value)
-      if (found) {
-        setCachedUser(found)
+    const memberMap = new Map<string, { user: MinistryMember["user"]; ministries: string[] }>()
+
+    for (const ministry of ministries) {
+      if (!ministry.members) continue
+      for (const member of ministry.members) {
+        if (!member.active) continue
+        const existing = memberMap.get(member.userId)
+        if (existing) {
+          existing.ministries.push(ministry.name)
+        } else {
+          memberMap.set(member.userId, {
+            user: member.user,
+            ministries: [ministry.name],
+          })
+        }
       }
-    } else if (!value) {
-      setCachedUser(null)
     }
-  }, [value, users])
+
+    // Sort alphabetically by name
+    return Array.from(memberMap.values()).sort((a, b) => {
+      const nameA = (a.user.name || a.user.email).toLowerCase()
+      const nameB = (b.user.name || b.user.email).toLowerCase()
+      return nameA.localeCompare(nameB, "pt-BR")
+    })
+  }, [ministries])
+
+  // Filter members by search (already sorted from allMembers)
+  const filteredMembers = React.useMemo(() => {
+    if (!searchQuery) return allMembers
+    const query = searchQuery.toLowerCase()
+    return allMembers.filter(
+      (m) =>
+        m.user.name?.toLowerCase().includes(query) ||
+        m.user.email.toLowerCase().includes(query)
+    )
+  }, [allMembers, searchQuery])
+
+  // Find selected member
+  const selectedMember = React.useMemo(() => {
+    if (!responsibleId) return null
+    return allMembers.find((m) => m.user.id === responsibleId)
+  }, [responsibleId, allMembers])
+
+  // Display text for button
+  const displayText = React.useMemo(() => {
+    if (selectedMember) {
+      return selectedMember.user.name || selectedMember.user.email
+    }
+    if (responsibleName) {
+      return responsibleName
+    }
+    return null
+  }, [selectedMember, responsibleName])
+
+  // Handle selecting a member
+  const handleSelectMember = (userId: string) => {
+    onChange({ responsibleId: userId, responsibleName: undefined })
+    setIsOpen(false)
+    setSearchQuery("")
+  }
+
+  // Handle clearing selection
+  const handleClear = () => {
+    onChange({ responsibleId: undefined, responsibleName: undefined })
+    setIsOpen(false)
+    setSearchQuery("")
+  }
+
+  // Handle using custom name
+  const handleUseCustomName = () => {
+    if (searchQuery.trim()) {
+      onChange({ responsibleId: undefined, responsibleName: searchQuery.trim() })
+      setIsOpen(false)
+      setSearchQuery("")
+    }
+  }
+
+  // Check if current search matches any member exactly
+  const hasExactMatch = filteredMembers.some(
+    (m) => m.user.name?.toLowerCase() === searchQuery.toLowerCase()
+  )
 
   return (
     <div className="space-y-2">
       <Label className="flex items-center gap-2">
         <User className="h-4 w-4" />
-        Responsavel
+        Responsável
       </Label>
 
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -558,74 +684,123 @@ function UserSelector({
             className="w-full justify-start"
             type="button"
           >
-            {selectedUser ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5">
-                  <AvatarImage src={selectedUser.image || undefined} />
-                  <AvatarFallback className="text-xs">
-                    {(selectedUser.name || selectedUser.email)[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="truncate">{selectedUser.name || selectedUser.email}</span>
+            {displayText ? (
+              <div className="flex items-center gap-2 w-full">
+                {selectedMember ? (
+                  <>
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={selectedMember.user.image || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {(selectedMember.user.name || selectedMember.user.email)[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{displayText}</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{displayText}</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">Externo</Badge>
+                  </>
+                )}
               </div>
             ) : (
-              <span className="text-muted-foreground">Selecionar responsavel...</span>
+              <span className="text-muted-foreground">Selecionar responsável...</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Buscar usuario..."
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-            />
-            <CommandList>
-              <CommandEmpty>
-                {isLoading ? "Carregando..." : "Nenhum usuario encontrado."}
-              </CommandEmpty>
-              <CommandGroup heading="Usuarios">
-                {value && (
-                  <CommandItem
-                    onSelect={() => {
-                      onChange(undefined)
-                      setIsOpen(false)
-                    }}
-                    className="text-muted-foreground"
+        <PopoverContent className="w-[340px] p-0" align="start">
+          <div className="flex flex-col">
+            {/* Search input */}
+            <div className="flex items-center border-b px-3 py-2">
+              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+              <Input
+                placeholder="Buscar membro ou digitar nome..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-0 p-0 h-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            </div>
+
+            {/* Scrollable list */}
+            <div className="max-h-[280px] overflow-y-auto">
+              {/* Option to clear */}
+              {(responsibleId || responsibleName) && (
+                <div className="p-1 border-b">
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground rounded-sm hover:bg-accent"
                   >
-                    <X className="h-4 w-4 mr-2" />
-                    Remover responsavel
-                  </CommandItem>
-                )}
-                {users.map((user) => (
-                  <CommandItem
-                    key={user.id}
-                    value={user.name || user.email}
-                    onSelect={() => {
-                      onChange(user.id)
-                      setIsOpen(false)
-                    }}
+                    <X className="h-4 w-4" />
+                    Remover responsável
+                  </button>
+                </div>
+              )}
+
+              {/* Option to use custom name */}
+              {searchQuery.trim() && !hasExactMatch && (
+                <div className="p-1 border-b">
+                  <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    Nome personalizado
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleUseCustomName}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-primary rounded-sm hover:bg-accent"
                   >
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {(user.name || user.email)[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate">{user.name || user.email}</p>
-                      {user.name && (
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    <User className="h-4 w-4" />
+                    <span>Usar &quot;{searchQuery}&quot; como nome</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">Externo</Badge>
+                  </button>
+                </div>
+              )}
+
+              {/* Members list */}
+              {isLoading ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Carregando membros...
+                </div>
+              ) : filteredMembers.length === 0 && !searchQuery ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhum membro encontrado.
+                </div>
+              ) : filteredMembers.length > 0 ? (
+                <div className="p-1">
+                  <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    Membros da igreja
+                  </p>
+                  {filteredMembers.map((member) => (
+                    <button
+                      key={member.user.id}
+                      type="button"
+                      onClick={() => handleSelectMember(member.user.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent",
+                        member.user.id === responsibleId && "bg-accent"
                       )}
-                    </div>
-                    {user.id === value && (
-                      <Check className="h-4 w-4 text-primary shrink-0 ml-2" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={member.user.image || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {(member.user.name || member.user.email)[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="truncate">{member.user.name || member.user.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {member.ministries.join(", ")}
+                        </p>
+                      </div>
+                      {member.user.id === responsibleId && (
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </PopoverContent>
       </Popover>
     </div>
@@ -652,6 +827,7 @@ function ItemFormModal({
     description: "",
     durationMinutes: undefined,
     responsibleId: undefined,
+    responsibleName: undefined,
     bibleReference: "",
     mediaUrl: "",
     notes: "",
@@ -670,6 +846,7 @@ function ItemFormModal({
         description: item.description || "",
         durationMinutes: item.durationMinutes || undefined,
         responsibleId: item.responsibleId || undefined,
+        responsibleName: item.responsibleName || undefined,
         bibleReference: item.bibleReference || "",
         mediaUrl: item.mediaUrl || "",
         notes: item.notes || "",
@@ -684,6 +861,7 @@ function ItemFormModal({
         description: "",
         durationMinutes: undefined,
         responsibleId: undefined,
+        responsibleName: undefined,
         bibleReference: "",
         mediaUrl: "",
         notes: "",
@@ -699,7 +877,7 @@ function ItemFormModal({
     if (!formData.title.trim()) {
       toast({
         title: "Erro",
-        description: "Titulo e obrigatorio",
+        description: "Título é obrigatório",
         variant: "destructive",
       })
       return
@@ -725,6 +903,9 @@ function ItemFormModal({
           <DialogTitle>
             {item ? "Editar Item" : "Adicionar Item"}
           </DialogTitle>
+          <DialogDescription>
+            Configure as informações deste item da ordem do culto.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -755,7 +936,7 @@ function ItemFormModal({
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Titulo *</Label>
+            <Label htmlFor="title">Título *</Label>
             <Input
               id="title"
               value={formData.title}
@@ -767,16 +948,21 @@ function ItemFormModal({
           </div>
 
           {/* Responsible */}
-          <UserSelector
-            value={formData.responsibleId}
-            onChange={(userId) =>
-              setFormData({ ...formData, responsibleId: userId })
+          <ResponsibleSelector
+            responsibleId={formData.responsibleId}
+            responsibleName={formData.responsibleName}
+            onChange={(data) =>
+              setFormData({
+                ...formData,
+                responsibleId: data.responsibleId,
+                responsibleName: data.responsibleName,
+              })
             }
           />
 
           {/* Duration */}
           <div className="space-y-2">
-            <Label htmlFor="duration">Duracao (minutos)</Label>
+            <Label htmlFor="duration">Duração (minutos)</Label>
             <Input
               id="duration"
               type="number"
@@ -800,7 +986,7 @@ function ItemFormModal({
             <div className="space-y-2">
               <Label htmlFor="expectedSongCount" className="flex items-center gap-2">
                 <Music className="h-4 w-4" />
-                Quantidade de Musicas
+                Quantidade de Músicas
               </Label>
               <Input
                 id="expectedSongCount"
@@ -819,8 +1005,8 @@ function ItemFormModal({
                 placeholder="Ex: 3"
               />
               <p className="text-xs text-muted-foreground">
-                Defina quantas musicas este bloco de louvor deve ter.
-                A equipe de louvor ira associar as musicas especificas na aba Setlist.
+                Defina quantas músicas este bloco de louvor deve ter.
+                A equipe de louvor irá associar as músicas específicas na aba Setlist.
               </p>
             </div>
           )}
@@ -828,14 +1014,14 @@ function ItemFormModal({
           {/* Bible Reference (only for READING type) */}
           {(formData.type === "READING" || formData.type === "PREACHING") && (
             <div className="space-y-2">
-              <Label htmlFor="bibleRef">Referencia Biblica</Label>
+              <Label htmlFor="bibleRef">Referência Bíblica</Label>
               <Input
                 id="bibleRef"
                 value={formData.bibleReference || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, bibleReference: e.target.value })
                 }
-                placeholder="Ex: Joao 3:16-21"
+                placeholder="Ex: João 3:16-21"
               />
             </div>
           )}
@@ -843,7 +1029,7 @@ function ItemFormModal({
           {/* Media URL (only for VIDEO type) */}
           {formData.type === "VIDEO" && (
             <div className="space-y-2">
-              <Label htmlFor="mediaUrl">Link do Video</Label>
+              <Label htmlFor="mediaUrl">Link do Vídeo</Label>
               <Input
                 id="mediaUrl"
                 type="url"
@@ -858,7 +1044,7 @@ function ItemFormModal({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descricao</Label>
+            <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
               value={formData.description || ""}
@@ -872,14 +1058,14 @@ function ItemFormModal({
 
           {/* Internal Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notas Internas (so equipe)</Label>
+            <Label htmlFor="notes">Notas Internas (só equipe)</Label>
             <Textarea
               id="notes"
               value={formData.notes || ""}
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              placeholder="Informacoes apenas para a equipe..."
+              placeholder="Informações apenas para a equipe..."
               rows={2}
             />
           </div>
@@ -887,9 +1073,9 @@ function ItemFormModal({
           {/* Requires Media */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="space-y-0.5">
-              <Label htmlFor="requiresMedia">Requer Midia</Label>
+              <Label htmlFor="requiresMedia">Requer Mídia</Label>
               <p className="text-xs text-muted-foreground">
-                A equipe de midia vera que precisa adicionar arquivos
+                A equipe de mídia verá que precisa adicionar arquivos
               </p>
             </div>
             <Switch
@@ -930,7 +1116,7 @@ async function reorderSetlistSongs(
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao reordenar musicas")
+    throw new Error(error.error || "Erro ao reordenar músicas")
   }
 }
 
@@ -992,7 +1178,7 @@ export function OrderOfServiceEditor({
       console.error("Error reordering songs:", error)
       toast({
         title: "Erro",
-        description: "Erro ao reordenar musicas",
+        description: "Erro ao reordenar músicas",
         variant: "destructive",
       })
     }
@@ -1099,10 +1285,10 @@ export function OrderOfServiceEditor({
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="h-4 w-4" />
-            Inicio: {eventStartTime}
+            Início: {eventStartTime}
           </span>
           {totalDuration > 0 && (
-            <span>Duracao total: {formatDuration(totalDuration)}</span>
+            <span>Duração total: {formatDuration(totalDuration)}</span>
           )}
         </div>
         {!readOnly && (
@@ -1192,7 +1378,7 @@ export function OrderOfServiceEditor({
             <AlertDialogTitle>Remover item?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja remover &quot;{deleteConfirmItem?.title}&quot;?
-              Esta acao nao pode ser desfeita.
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -28,6 +28,8 @@ interface ApiSong {
   defaultKey: string | null
   lyrics: string | null
   chordLink: string | null
+  spotifyUrl: string | null
+  youtubeUrl: string | null
   tags: string[]
   playCount: number
   lastPlayedAt: string | null
@@ -53,6 +55,8 @@ function transformApiSong(apiSong: ApiSong): Song {
     defaultKey: apiSong.defaultKey || "",
     lyrics: apiSong.lyrics || undefined,
     chordLink: apiSong.chordLink || undefined,
+    spotifyUrl: apiSong.spotifyUrl || undefined,
+    youtubeUrl: apiSong.youtubeUrl || undefined,
     tags: apiSong.tags || [],
     timesPlayed: apiSong.playCount,
     lastPlayedAt: apiSong.lastPlayedAt ? new Date(apiSong.lastPlayedAt) : undefined,
@@ -105,7 +109,7 @@ async function fetchSong(id: string): Promise<SongWithHistory | null> {
   if (!response.ok) {
     if (response.status === 404) return null
     const error = await response.json()
-    throw new Error(error.error || "Erro ao carregar musica")
+    throw new Error(error.error || "Erro ao carregar música")
   }
 
   const result = await response.json()
@@ -139,10 +143,11 @@ async function createSong(input: CreateSongInput): Promise<Song> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao criar musica")
+    throw new Error(error.error || "Erro ao criar música")
   }
 
-  const apiSong: ApiSong = await response.json()
+  const result = await response.json()
+  const apiSong: ApiSong = result.data
   return transformApiSong(apiSong)
 }
 
@@ -156,7 +161,7 @@ async function updateSong(input: UpdateSongInput): Promise<Song> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao atualizar musica")
+    throw new Error(error.error || "Erro ao atualizar música")
   }
 
   const result = await response.json()
@@ -171,7 +176,7 @@ async function deleteSong(id: string): Promise<void> {
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error || "Erro ao deletar musica")
+    throw new Error(error.error || "Erro ao deletar música")
   }
 }
 

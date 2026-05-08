@@ -101,7 +101,7 @@ async function fetchAutoAssignPreview(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao carregar preview de distribuicao");
+    throw new Error(error.error || "Erro ao carregar preview de distribuição");
   }
 
   const result = await response.json();
@@ -123,7 +123,7 @@ async function executeAutoAssign(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao executar distribuicao automatica");
+    throw new Error(error.error || "Erro ao executar distribuição automática");
   }
 
   const result = await response.json();
@@ -137,7 +137,7 @@ async function fetchAutoAssignConfig(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao carregar configuracao de distribuicao");
+    throw new Error(error.error || "Erro ao carregar configuração de distribuição");
   }
 
   const result = await response.json();
@@ -159,7 +159,7 @@ async function updateAutoAssignConfig(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Erro ao atualizar configuracao de distribuicao");
+    throw new Error(error.error || "Erro ao atualizar configuração de distribuição");
   }
 
   const result = await response.json();

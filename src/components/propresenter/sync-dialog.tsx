@@ -119,7 +119,7 @@ export function ProPresenterSyncDialog({
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || data.error || "Erro na sincronizacao")
+        throw new Error(data.message || data.error || "Erro na sincronização")
       }
 
       const data = await response.json() as SyncResult
@@ -127,7 +127,7 @@ export function ProPresenterSyncDialog({
       setStep("complete")
       onSyncComplete?.(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro na sincronizacao")
+      setError(err instanceof Error ? err.message : "Erro na sincronização")
       setStep("preview")
     } finally {
       setLoading(false)
@@ -159,10 +159,10 @@ export function ProPresenterSyncDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Music className="h-5 w-5" />
-            Sincronizar Musicas do ProPresenter
+            Sincronizar Músicas do ProPresenter
           </DialogTitle>
           <DialogDescription>
-            Importe musicas da biblioteca do ProPresenter ou vincule musicas existentes.
+            Importe músicas da biblioteca do ProPresenter ou vincule músicas existentes.
           </DialogDescription>
         </DialogHeader>
 
@@ -238,7 +238,7 @@ export function ProPresenterSyncDialog({
                       <Badge variant="default" className="bg-green-500">
                         Criar
                       </Badge>
-                      Novas musicas a serem criadas
+                      Novas músicas a serem criadas
                     </h4>
                     <div className="max-h-32 overflow-y-auto rounded-md border p-2">
                       <ul className="space-y-1 text-sm">
@@ -250,7 +250,7 @@ export function ProPresenterSyncDialog({
                         ))}
                         {preview.toCreate.length > 10 && (
                           <li className="text-muted-foreground">
-                            ... e mais {preview.toCreate.length - 10} musicas
+                            ... e mais {preview.toCreate.length - 10} músicas
                           </li>
                         )}
                       </ul>
@@ -264,7 +264,7 @@ export function ProPresenterSyncDialog({
                       <Badge variant="default" className="bg-blue-500">
                         Vincular
                       </Badge>
-                      Musicas existentes a serem vinculadas
+                      Músicas existentes a serem vinculadas
                     </h4>
                     <div className="max-h-32 overflow-y-auto rounded-md border p-2">
                       <ul className="space-y-1 text-sm">
@@ -277,7 +277,7 @@ export function ProPresenterSyncDialog({
                         ))}
                         {preview.toUpdate.length > 10 && (
                           <li className="text-muted-foreground">
-                            ... e mais {preview.toUpdate.length - 10} vinculos
+                            ... e mais {preview.toUpdate.length - 10} vínculos
                           </li>
                         )}
                       </ul>
@@ -290,7 +290,7 @@ export function ProPresenterSyncDialog({
                     <Check className="mx-auto h-8 w-8 text-green-500" />
                     <p className="mt-2 font-medium">Tudo sincronizado!</p>
                     <p className="text-sm text-muted-foreground">
-                      Todas as musicas do ProPresenter ja estao sincronizadas.
+                      Todas as músicas do ProPresenter já estão sincronizadas.
                     </p>
                   </div>
                 )}
@@ -323,7 +323,7 @@ export function ProPresenterSyncDialog({
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="mt-4 text-lg font-medium">Sincronizando...</p>
             <p className="text-muted-foreground">
-              Importando musicas do ProPresenter
+              Importando músicas do ProPresenter
             </p>
           </div>
         )}
@@ -337,14 +337,14 @@ export function ProPresenterSyncDialog({
                   <div className="rounded-full bg-green-100 p-3">
                     <Check className="h-8 w-8 text-green-600" />
                   </div>
-                  <p className="mt-4 text-lg font-medium">Sincronizacao concluida!</p>
+                  <p className="mt-4 text-lg font-medium">Sincronização concluída!</p>
                 </>
               ) : (
                 <>
                   <div className="rounded-full bg-red-100 p-3">
                     <X className="h-8 w-8 text-red-600" />
                   </div>
-                  <p className="mt-4 text-lg font-medium">Sincronizacao com erros</p>
+                  <p className="mt-4 text-lg font-medium">Sincronização com erros</p>
                 </>
               )}
 
@@ -391,7 +391,7 @@ export function ProPresenterSyncDialog({
   )
 }
 
-// Botao de sincronizacao rapida
+// Botao de sincronização rapida
 export function ProPresenterQuickSync({
   className,
   onComplete,
@@ -415,7 +415,7 @@ export function ProPresenterQuickSync({
       onComplete?.({
         success: false,
         mode: "sync",
-        errors: [{ item: "sync", error: "Falha na sincronizacao" }],
+        errors: [{ item: "sync", error: "Falha na sincronização" }],
       })
     } finally {
       setLoading(false)

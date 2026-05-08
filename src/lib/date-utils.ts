@@ -113,6 +113,22 @@ export function isTodayOrFuture(date: Date): boolean {
 }
 
 /**
+ * Converte um valor de data (string YYYY-MM-DD, ISO ou Date) para Date
+ * representando o dia correto no timezone local de Sao Paulo.
+ *
+ * - "YYYY-MM-DD" -> usa parseLocalDate (meio-dia local)
+ * - ISO string ou Date -> retorna Date diretamente (assume que o backend
+ *   ja entregou o instante correto)
+ */
+export function toLocalDate(value: string | Date): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return parseLocalDate(value);
+  }
+  return new Date(value);
+}
+
+/**
  * Formata data para exibicao amigavel em portugues.
  * Ex: "Dom, 22 de marco"
  */
@@ -121,6 +137,7 @@ export function formatDateDisplay(date: Date): string {
     weekday: "short",
     day: "numeric",
     month: "long",
+    timeZone: DEFAULT_TIMEZONE,
   });
 }
 
@@ -135,6 +152,7 @@ export function formatDateTimeDisplay(date: Date): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: DEFAULT_TIMEZONE,
   });
 }
 

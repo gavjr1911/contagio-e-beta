@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ function BandCard({ band }: BandCardProps) {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     }).format(new Date(date));
   };
 
@@ -153,7 +155,7 @@ function CreateBandDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Nova Banda
         </Button>
@@ -179,7 +181,7 @@ function CreateBandDialog() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bandDescription">Descricao (opcional)</Label>
+              <Label htmlFor="bandDescription">Descrição (opcional)</Label>
               <Input
                 id="bandDescription"
                 value={description}
@@ -219,7 +221,7 @@ function CreateBandDialog() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
@@ -237,17 +239,13 @@ export default function BandasPage() {
   const { data, isLoading, error } = useBands();
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Bandas</h1>
-          <p className="mt-1 text-muted-foreground">
-            {data?.total || 0} {data?.total === 1 ? "banda" : "bandas"} cadastradas
-          </p>
-        </div>
-        <CreateBandDialog />
-      </div>
+      <PageHeader
+        title="Bandas"
+        description={`${data?.total || 0} ${data?.total === 1 ? "banda cadastrada" : "bandas cadastradas"}`}
+        actions={<CreateBandDialog />}
+      />
 
       {/* Bands grid */}
       {isLoading ? (
@@ -292,7 +290,7 @@ export default function BandasPage() {
               Nenhuma banda cadastrada
             </p>
             <p className="mt-1 text-sm text-muted-foreground/70">
-              Crie sua primeira banda para comecar
+              Crie sua primeira banda para começar
             </p>
             <div className="mt-4">
               <CreateBandDialog />

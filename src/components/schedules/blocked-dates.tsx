@@ -74,7 +74,7 @@ export function BlockedDates({
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg text-foreground flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-primary" />
-              Calendario de Disponibilidade
+              Calendário de Disponibilidade
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -89,7 +89,7 @@ export function BlockedDates({
                     Nova indisponibilidade
                   </DialogTitle>
                   <DialogDescription className="text-muted-foreground">
-                    Selecione as datas em que voce nao estara disponivel.
+                    Selecione as datas em que você não estará disponível.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -105,7 +105,7 @@ export function BlockedDates({
                   {selectedRange?.from && (
                     <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
                       <p className="text-foreground text-sm font-medium">
-                        Periodo selecionado:
+                        Período selecionado:
                       </p>
                       <p className="text-primary text-sm">
                         {format(selectedRange.from, "dd 'de' MMMM", {
@@ -114,7 +114,7 @@ export function BlockedDates({
                         {selectedRange.to && !isSameDay(selectedRange.from, selectedRange.to) && (
                           <>
                             {" "}
-                            ate{" "}
+                            até{" "}
                             {format(selectedRange.to, "dd 'de' MMMM", {
                               locale: ptBR,
                             })}
@@ -191,7 +191,7 @@ export function BlockedDates({
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-full bg-red-500/30" />
-              <span>Indisponivel</span>
+              <span>Indisponível</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-full bg-primary" />
@@ -216,7 +216,7 @@ export function BlockedDates({
                 Nenhuma data bloqueada
               </p>
               <p className="text-muted-foreground/70 text-xs mt-1">
-                Adicione datas em que voce nao estara disponivel
+                Adicione datas em que você não estará disponível
               </p>
             </div>
           ) : (

@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { updateScheduleSchema } from "@/lib/validations/schedule"
+import { logAuditAsync, getAuditContext, getRequestMetadata, calculateDiff } from "@/lib/audit"
 
 // PATCH /api/events/[id]/schedules/[scheduleId] - Update schedule
 export async function PATCH(
@@ -43,11 +44,11 @@ export async function PATCH(
 
     const userRole = session.user.role
     const isOwner = existingSchedule.user.id === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)
+    const isAdminOrLeader =
+      userRole && ["ADMIN", "LEADER"].includes(userRole)
 
-    // Only the scheduled user or admin/coordinator can update
-    if (!isOwner && !isAdminOrCoordinator) {
+    // Only the scheduled user or admin/leader can update
+    if (!isOwner && !isAdminOrLeader) {
       return Response.json(
         { error: "Acesso negado." },
         { status: 403 }
@@ -64,19 +65,15 @@ export async function PATCH(
       )
     }
 
-    const { position, status } = parseResult.data
+    const { status } = parseResult.data
 
     // Build update data
+    // Nota: campo `position` legado nao e mais setado em updates (usar vacancy.position.name)
     const updateData: {
-      position?: string
       status?: "PENDING" | "CONFIRMED" | "DECLINED"
       confirmedAt?: Date | null
       declinedReason?: string | null
     } = {}
-
-    if (position !== undefined) {
-      updateData.position = position
-    }
 
     if (status !== undefined) {
       updateData.status = status
@@ -106,6 +103,28 @@ export async function PATCH(
         },
       },
     })
+
+    // Registrar auditoria
+    const auditContext = getAuditContext(session)
+    const changes = calculateDiff(
+      { position: existingSchedule.position, status: existingSchedule.status },
+      { position: schedule.position, status: schedule.status }
+    )
+
+    if (changes) {
+      logAuditAsync({
+        entityType: "Schedule",
+        entityId: scheduleId,
+        action: "updated",
+        ...auditContext,
+        changes: {
+          ...changes,
+          userName: { old: null, new: schedule.user.name },
+          eventName: { old: null, new: schedule.event.name },
+        },
+        metadata: getRequestMetadata(request),
+      })
+    }
 
     return Response.json({ data: schedule })
   } catch (error) {
@@ -140,6 +159,11 @@ export async function DELETE(
     // Verify schedule exists and belongs to this event
     const existingSchedule = await prisma.schedule.findUnique({
       where: { id: scheduleId },
+      include: {
+        user: { select: { id: true, name: true } },
+        ministry: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true } },
+      },
     })
     if (!existingSchedule) {
       return Response.json({ error: "Escala nao encontrada" }, { status: 404 })
@@ -152,14 +176,33 @@ export async function DELETE(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
+    if (!userRole || !["ADMIN", "LEADER"].includes(userRole)) {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN, COORDINATOR ou LEADER podem remover escalas." },
+        { error: "Acesso negado. Apenas ADMIN ou LEADER podem remover escalas." },
         { status: 403 }
       )
     }
 
     await prisma.schedule.delete({ where: { id: scheduleId } })
+
+    // Registrar auditoria
+    const auditContext = getAuditContext(session)
+    logAuditAsync({
+      entityType: "Schedule",
+      entityId: scheduleId,
+      action: "deleted",
+      ...auditContext,
+      changes: {
+        eventId: { old: existingSchedule.eventId, new: null },
+        userId: { old: existingSchedule.userId, new: null },
+        ministryId: { old: existingSchedule.ministryId, new: null },
+        position: { old: existingSchedule.position, new: null },
+        userName: { old: existingSchedule.user.name, new: null },
+        eventName: { old: existingSchedule.event.name, new: null },
+        ministryName: { old: existingSchedule.ministry.name, new: null },
+      },
+      metadata: getRequestMetadata(request),
+    })
 
     return Response.json({ message: "Escala removida com sucesso" })
   } catch (error) {

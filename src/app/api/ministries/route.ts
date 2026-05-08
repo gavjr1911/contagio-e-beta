@@ -3,7 +3,7 @@ import { NextRequest } from "next/server"
 import {
   apiError,
   apiSuccess,
-  createPaginatedResponse,
+  apiSuccessPaginated,
   getPaginationParams,
   validateBody,
   validateQuery,
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         prisma.ministry.count({ where }),
       ])
 
-      return apiSuccess(createPaginatedResponse(ministries, total, page, limit))
+      return apiSuccessPaginated(ministries, total, page, limit)
     } catch (error) {
       console.error("Erro ao listar ministerios:", error)
       return apiError("Erro ao listar ministerios", 500)
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       return bodyResult.response
     }
 
-    const { name, description, leaderId } = bodyResult.data
+    const { name, description, leaderId, permissions } = bodyResult.data
 
     try {
       // Verificar se ja existe ministerio com esse nome
@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
           name,
           description,
           leaderId,
+          permissions: permissions ?? undefined,
         },
         include: {
           leader: {

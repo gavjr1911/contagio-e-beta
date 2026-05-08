@@ -12,16 +12,17 @@ import { getProPresenterClient, type ProPresenterClient } from "./client"
 import {
   getLibraryPresentations,
   createPlaylist,
-  addPlaylistItem,
+  setPlaylistItems,
   searchPresentations,
   getPlaylists,
+  getMediaItems,
 } from "./api"
 import type {
   SyncResult,
   SyncError,
   SongMapping,
   LibraryItem,
-  ProPresenterError,
+  MediaItem,
 } from "./types"
 
 // ============================================================================
@@ -78,8 +79,8 @@ export async function syncSongsFromLibrary(
 
     for (const presentation of presentations) {
       try {
-        const presentationName = presentation.id.name
-        const presentationId = presentation.id.uuid
+        const presentationName = presentation.name
+        const presentationId = presentation.uuid
         const normalizedName = normalizeForMatch(presentationName)
 
         // Verifica se ja existe uma musica vinculada a essa apresentacao
@@ -118,7 +119,7 @@ export async function syncSongsFromLibrary(
         result.synced++
       } catch (error) {
         result.errors.push({
-          item: presentation.id.name,
+          item: presentation.name,
           error: error instanceof Error ? error.message : "Erro desconhecido",
         })
       }
@@ -171,8 +172,8 @@ export async function getSyncPreview(
   )
 
   for (const presentation of presentations) {
-    const presentationId = presentation.id.uuid
-    const normalizedName = normalizeForMatch(presentation.id.name)
+    const presentationId = presentation.uuid
+    const normalizedName = normalizeForMatch(presentation.name)
 
     if (songsByPpId.has(presentationId)) {
       toSkip.push(presentation)
@@ -223,7 +224,7 @@ export async function exportSetlistToPlaylist(
   }
 
   try {
-    // Obtem o evento com setlist
+    // Obtem o evento com setlist (incluindo setlists dos items)
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
@@ -231,6 +232,17 @@ export async function exportSetlistToPlaylist(
           orderBy: { order: "asc" },
           include: {
             song: true,
+          },
+        },
+        items: {
+          orderBy: { order: "asc" },
+          include: {
+            setlistItems: {
+              orderBy: { order: "asc" },
+              include: {
+                song: true,
+              },
+            },
           },
         },
       },
@@ -242,20 +254,56 @@ export async function exportSetlistToPlaylist(
       return result
     }
 
+    console.log(`[ProPresenter Export] Evento: ${event.name}`)
+    console.log(`[ProPresenter Export] Setlists diretas: ${event.setlists.length}`)
+    console.log(`[ProPresenter Export] Items da ordem: ${event.items.length}`)
+
+    // Coleta todas as músicas - setlists diretas + setlists dos items
+    const allSongs: { song: typeof event.setlists[0]["song"]; key?: string | null }[] = []
+
+    // Adiciona setlists diretas
+    for (const setlist of event.setlists) {
+      allSongs.push({ song: setlist.song, key: setlist.key })
+    }
+
+    // Adiciona setlists dos items da ordem (blocos de louvor)
+    for (const item of event.items) {
+      if (item.setlistItems && item.setlistItems.length > 0) {
+        console.log(`[ProPresenter Export] Item "${item.title}" tem ${item.setlistItems.length} músicas`)
+        for (const setlistItem of item.setlistItems) {
+          allSongs.push({ song: setlistItem.song, key: setlistItem.key })
+        }
+      }
+    }
+
+    console.log(`[ProPresenter Export] Total de músicas para exportar: ${allSongs.length}`)
+
+    if (allSongs.length === 0) {
+      result.success = false
+      result.errors.push({ item: event.name, error: "Evento nao tem musicas para exportar" })
+      return result
+    }
+
     // Gera nome da playlist
     const playlistName =
       options.playlistName ||
-      `${event.name} - ${event.date.toLocaleDateString("pt-BR")}`
+      `${event.name} - ${event.date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
 
     result.playlistName = playlistName
 
+    console.log(`[ProPresenter Export] Nome da playlist: ${playlistName}`)
+
     // Verifica se a playlist ja existe
     const existingPlaylists = await getPlaylists(pp)
+    console.log(`[ProPresenter Export] Playlists existentes: ${existingPlaylists.length}`)
+    existingPlaylists.forEach((p) => console.log(`  - ${p.id?.name} (${p.id?.uuid})`))
+
     const existing = existingPlaylists.find(
-      (p) => p.id.name.toLowerCase() === playlistName.toLowerCase()
+      (p) => p.id?.name?.toLowerCase() === playlistName.toLowerCase()
     )
 
     if (existing && !overwrite) {
+      console.log(`[ProPresenter Export] Playlist "${playlistName}" já existe! Retornando erro.`)
       result.success = false
       result.errors.push({
         item: playlistName,
@@ -264,51 +312,106 @@ export async function exportSetlistToPlaylist(
       return result
     }
 
+    console.log(`[ProPresenter Export] Playlist não existe, criando...`)
+
     // Cria a playlist
+    console.log(`[ProPresenter Export] Criando playlist: ${playlistName}`)
     const playlist = await createPlaylist(playlistName, undefined, pp)
-    result.playlistId = playlist.id.uuid
+    const playlistUuid = playlist.id?.uuid || ""
+    console.log(`[ProPresenter Export] Playlist criada com UUID: ${playlistUuid}`)
+    result.playlistId = playlistUuid
 
-    // Adiciona cada musica da setlist
-    for (const setlistItem of event.setlists) {
-      const song = setlistItem.song
+    // Busca as apresentações da biblioteca para obter os nomes corretos
+    const libraryPresentations = await getLibraryPresentations(pp)
+    console.log(`[ProPresenter Export] Biblioteca tem ${libraryPresentations.length} apresentações`)
+    if (libraryPresentations.length > 0) {
+      console.log(`[ProPresenter Export] Exemplo de apresentação:`, JSON.stringify(libraryPresentations[0], null, 2))
+    }
 
-      if (!song.propresenterId) {
-        // Tenta encontrar a apresentacao por nome
-        const presentations = await searchPresentations(song.name, pp)
+    // Cria mapa de UUID para nome da biblioteca
+    const presentationsByUuid = new Map(
+      libraryPresentations.map((p) => [p.uuid, p])
+    )
 
-        if (presentations.length === 0) {
-          result.errors.push({
-            item: song.name,
-            error: "Apresentacao nao encontrada no ProPresenter",
+    // Coleta todos os itens para adicionar à playlist (evitando duplicatas)
+    const playlistItems: { uuid: string; name: string }[] = []
+    const addedUuids = new Set<string>()
+
+    for (const { song } of allSongs) {
+      console.log(`[ProPresenter Export] Processando música: ${song.name} (propresenterId: ${song.propresenterId || 'nenhum'})`)
+
+      try {
+        if (!song.propresenterId) {
+          // Tenta encontrar a apresentacao por nome
+          const presentations = await searchPresentations(song.name, pp)
+
+          if (presentations.length === 0) {
+            console.log(`[ProPresenter Export] Música "${song.name}" não encontrada no ProPresenter`)
+            result.errors.push({
+              item: song.name,
+              error: "Apresentacao nao encontrada no ProPresenter",
+            })
+            continue
+          }
+
+          // Usa a primeira correspondencia
+          const presentationId = presentations[0].uuid
+          const presentationName = presentations[0].name
+          console.log(`[ProPresenter Export] Encontrada correspondência: ${presentationName} (${presentationId})`)
+
+          // Atualiza o propresenterId da musica
+          await prisma.song.update({
+            where: { id: song.id },
+            data: { propresenterId: presentationId },
           })
-          continue
+
+          // Adiciona à lista de itens (evita duplicatas)
+          if (!addedUuids.has(presentationId)) {
+            playlistItems.push({ uuid: presentationId, name: presentationName })
+            addedUuids.add(presentationId)
+            result.itemsAdded++
+          } else {
+            console.log(`[ProPresenter Export] Pulando duplicata: ${presentationName}`)
+          }
+        } else {
+          // Adiciona usando o propresenterId existente
+          // Busca o nome correto da biblioteca
+          const libPresentation = presentationsByUuid.get(song.propresenterId)
+          const presentationName = libPresentation?.name || song.name
+          console.log(`[ProPresenter Export] Usando ID existente: ${song.propresenterId} (nome biblioteca: ${presentationName})`)
+
+          // Evita duplicatas
+          if (!addedUuids.has(song.propresenterId)) {
+            playlistItems.push({ uuid: song.propresenterId, name: presentationName })
+            addedUuids.add(song.propresenterId)
+            result.itemsAdded++
+          } else {
+            console.log(`[ProPresenter Export] Pulando duplicata: ${presentationName}`)
+          }
         }
-
-        // Usa a primeira correspondencia
-        const presentationId = presentations[0].id.uuid
-
-        // Atualiza o propresenterId da musica
-        await prisma.song.update({
-          where: { id: song.id },
-          data: { propresenterId: presentationId },
+      } catch (error) {
+        console.log(`[ProPresenter Export] ERRO ao processar música "${song.name}":`, error instanceof Error ? error.message : error)
+        result.errors.push({
+          item: song.name,
+          error: error instanceof Error ? error.message : "Erro ao processar música",
         })
-
-        // Adiciona a playlist
-        await addPlaylistItem(
-          playlist.id.uuid,
-          { id: presentationId, type: "presentation" },
-          pp
-        )
-      } else {
-        // Adiciona usando o propresenterId existente
-        await addPlaylistItem(
-          playlist.id.uuid,
-          { id: song.propresenterId, type: "presentation" },
-          pp
-        )
       }
+    }
 
-      result.itemsAdded++
+    // Define todos os itens na playlist de uma vez
+    if (playlistItems.length > 0) {
+      console.log(`[ProPresenter Export] Definindo ${playlistItems.length} itens na playlist...`)
+      try {
+        await setPlaylistItems(playlistUuid, playlistItems, pp)
+        console.log(`[ProPresenter Export] Itens definidos com sucesso!`)
+      } catch (error) {
+        console.log(`[ProPresenter Export] ERRO ao definir itens na playlist:`, error instanceof Error ? error.message : error)
+        result.success = false
+        result.errors.push({
+          item: "playlist",
+          error: error instanceof Error ? error.message : "Erro ao definir itens na playlist",
+        })
+      }
     }
   } catch (error) {
     result.success = false
@@ -431,7 +534,7 @@ export async function autoMapSongs(
   const presentations = await getLibraryPresentations(pp)
 
   const presentationsMap = new Map(
-    presentations.map((p) => [normalizeForMatch(p.id.name), p])
+    presentations.map((p) => [normalizeForMatch(p.name), p])
   )
 
   for (const song of unmappedSongs) {
@@ -439,11 +542,11 @@ export async function autoMapSongs(
     const exactMatch = presentationsMap.get(normalizedSongName)
 
     if (exactMatch) {
-      await mapSongToPresentation(song.id, exactMatch.id.uuid)
+      await mapSongToPresentation(song.id, exactMatch.uuid)
       mapped.push({
         songId: song.id,
         songName: song.name,
-        presentationId: exactMatch.id.uuid,
+        presentationId: exactMatch.uuid,
       })
     } else {
       // Busca fuzzy match
@@ -453,7 +556,7 @@ export async function autoMapSongs(
       for (const presentation of presentations) {
         const score = calculateSimilarity(
           normalizedSongName,
-          normalizeForMatch(presentation.id.name)
+          normalizeForMatch(presentation.name)
         )
         if (score > bestScore && score >= threshold) {
           bestScore = score
@@ -462,11 +565,11 @@ export async function autoMapSongs(
       }
 
       if (bestMatch) {
-        await mapSongToPresentation(song.id, bestMatch.id.uuid)
+        await mapSongToPresentation(song.id, bestMatch.uuid)
         mapped.push({
           songId: song.id,
           songName: song.name,
-          presentationId: bestMatch.id.uuid,
+          presentationId: bestMatch.uuid,
         })
       } else {
         notFound.push({ songId: song.id, songName: song.name })

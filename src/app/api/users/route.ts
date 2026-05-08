@@ -4,7 +4,7 @@ import { NextRequest } from "next/server"
 import {
   apiError,
   apiSuccess,
-  createPaginatedResponse,
+  apiSuccessPaginated,
   getPaginationParams,
   validateBody,
   validateQuery,
@@ -16,7 +16,7 @@ import { createUserSchema, userQuerySchema } from "@/lib/validations/user"
 
 // GET /api/users - Listar usuarios
 export async function GET(request: NextRequest) {
-  return withAuth(async () => {
+  return withAuth(async (session) => {
     const searchParams = request.nextUrl.searchParams
     const queryResult = validateQuery(searchParams, userQuerySchema)
 
@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { page = 1, limit = 20, search, role, ministryId } = queryResult.data
+    const active = request.nextUrl.searchParams.get("active")
+
+    // Determina se o chamador pode ver PII (email e phone)
+    const canSeePII = session.user.role === "ADMIN" || session.user.role === "LEADER"
 
     try {
       const { skip, take } = getPaginationParams(page, limit)
@@ -41,6 +45,10 @@ export async function GET(request: NextRequest) {
 
       if (role) {
         where.role = role
+      }
+
+      if (active !== null) {
+        where.active = active === "true"
       }
 
       if (ministryId) {
@@ -61,11 +69,14 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true,
+            email: canSeePII,
+            phone: canSeePII,
             image: true,
             role: true,
+            active: true,
             createdAt: true,
             ministryMemberships: {
+              where: { active: true },
               include: {
                 ministry: {
                   select: {
@@ -80,7 +91,7 @@ export async function GET(request: NextRequest) {
         prisma.user.count({ where }),
       ])
 
-      return apiSuccess(createPaginatedResponse(users, total, page, limit))
+      return apiSuccessPaginated(users, total, page, limit)
     } catch (error) {
       console.error("Erro ao listar usuarios:", error)
       return apiError("Erro ao listar usuarios", 500)

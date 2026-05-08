@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server"
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto"
 
 import {
   apiError,
@@ -8,47 +7,13 @@ import {
   withRole,
 } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
+import { encrypt, decrypt, maskEncryptedValue } from "@/lib/crypto"
 import {
   updateSettingsSchema,
-  testEmailSchema,
   ENCRYPTED_SETTINGS,
   SettingKey,
   DEFAULT_SETTINGS,
 } from "@/lib/validations/settings"
-
-// Chave para criptografia (em producao, usar variavel de ambiente segura)
-const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagie-beta-settings-key-32ch"
-
-// Funcoes de criptografia
-function encrypt(text: string): string {
-  const key = scryptSync(ENCRYPTION_KEY, "salt", 32)
-  const iv = randomBytes(16)
-  const cipher = createCipheriv("aes-256-cbc", key, iv)
-  let encrypted = cipher.update(text, "utf8", "hex")
-  encrypted += cipher.final("hex")
-  return iv.toString("hex") + ":" + encrypted
-}
-
-function decrypt(encryptedText: string): string {
-  try {
-    const key = scryptSync(ENCRYPTION_KEY, "salt", 32)
-    const [ivHex, encrypted] = encryptedText.split(":")
-    if (!ivHex || !encrypted) return ""
-    const iv = Buffer.from(ivHex, "hex")
-    const decipher = createDecipheriv("aes-256-cbc", key, iv)
-    let decrypted = decipher.update(encrypted, "hex", "utf8")
-    decrypted += decipher.final("utf8")
-    return decrypted
-  } catch {
-    return ""
-  }
-}
-
-// Mascara valor encriptado para exibicao
-function maskEncryptedValue(value: string): string {
-  if (!value || value.length < 8) return "****"
-  return value.substring(0, 4) + "****" + value.substring(value.length - 4)
-}
 
 // GET /api/settings - Listar configuracoes (apenas admin)
 export async function GET() {

@@ -180,7 +180,7 @@ export function MediaList({
           <AlertDialogHeader>
             <AlertDialogTitle>Remover arquivo?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acao nao pode ser desfeita. O arquivo sera removido
+              Esta ação não pode ser desfeita. O arquivo será removido
               permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>

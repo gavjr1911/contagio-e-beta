@@ -16,6 +16,7 @@ import {
   formatTimeFromDate,
   formatDateFromDate,
 } from "@/hooks/use-events";
+import { toLocalDate } from "@/lib/date-utils";
 
 interface EventCardProps {
   event: Event;
@@ -39,10 +40,8 @@ function getStatusVariant(
 
 function getTypeColor(type: EventType): string {
   switch (type) {
-    case "SUNDAY_MORNING":
+    case "CULTO":
       return "bg-primary/10 text-primary border-primary/20";
-    case "SUNDAY_EVENING":
-      return "bg-info/10 text-info border-info/20";
     case "SPECIAL":
       return "bg-purple-500/10 text-purple-400 border-purple-500/20";
     default:
@@ -51,11 +50,12 @@ function getTypeColor(type: EventType): string {
 }
 
 function formatDate(dateOrString: string | Date): string {
-  const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
+  const date = toLocalDate(dateOrString);
   return date.toLocaleDateString("pt-BR", {
     weekday: "short",
     day: "numeric",
     month: "short",
+    timeZone: "America/Sao_Paulo",
   });
 }
 

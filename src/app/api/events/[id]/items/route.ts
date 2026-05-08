@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/events/[id]/items - Add item to event order
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
@@ -59,12 +59,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       description,
       durationMinutes,
       responsibleId,
+      responsibleName,
       order,
       bibleReference,
       mediaUrl,
       notes,
       isPublic,
       expectedSongCount,
+      requiresMedia,
     } = validation.data
 
     // Validate responsibleId if provided
@@ -88,21 +90,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       finalOrder = (maxOrderItem?.order ?? -1) + 1
     }
 
+    // Monta os dados para create
+    const createData: Parameters<typeof prisma.eventItem.create>[0]["data"] = {
+      event: { connect: { id: eventId } },
+      type,
+      title,
+      description,
+      durationMinutes,
+      responsibleName: responsibleName || null,
+      order: finalOrder,
+      bibleReference,
+      mediaUrl: mediaUrl || null,
+      notes,
+      isPublic: isPublic ?? true,
+      expectedSongCount: type === "WORSHIP" ? expectedSongCount : null,
+      requiresMedia: requiresMedia ?? false,
+    }
+
+    // Conecta o responsavel se fornecido
+    if (responsibleId) {
+      createData.responsible = { connect: { id: responsibleId } }
+    }
+
     const item = await prisma.eventItem.create({
-      data: {
-        eventId,
-        type,
-        title,
-        description,
-        durationMinutes,
-        responsibleId,
-        order: finalOrder,
-        bibleReference,
-        mediaUrl: mediaUrl || null,
-        notes,
-        isPublic: isPublic ?? true,
-        expectedSongCount: type === "WORSHIP" ? expectedSongCount : null,
-      },
+      data: createData,
       include: eventItemIncludeFull,
     })
 
@@ -112,7 +123,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/events/[id]/items - Reorder event items
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "COORDINATOR", "LEADER"], async () => {
+  return withRole(["ADMIN", "LEADER"], async () => {
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })

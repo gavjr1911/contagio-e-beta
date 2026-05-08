@@ -1,17 +1,19 @@
 import { z } from "zod"
+import { ministryPermissionsSchema } from "@/lib/validations/permissions"
 
 // Schema para criar um novo ministerio
 export const createMinistrySchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres"),
+    .max(100, "Nome deve ter no máximo 100 caracteres"),
   description: z
     .string()
-    .max(500, "Descricao deve ter no maximo 500 caracteres")
+    .max(500, "Descrição deve ter no máximo 500 caracteres")
     .optional()
     .nullable(),
   leaderId: z.string().optional().nullable(),
+  permissions: ministryPermissionsSchema.optional().nullable(),
 })
 
 // Schema para atualizar um ministerio
@@ -19,25 +21,26 @@ export const updateMinistrySchema = z.object({
   name: z
     .string()
     .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no maximo 100 caracteres")
+    .max(100, "Nome deve ter no máximo 100 caracteres")
     .optional(),
   description: z
     .string()
-    .max(500, "Descricao deve ter no maximo 500 caracteres")
+    .max(500, "Descrição deve ter no máximo 500 caracteres")
     .optional()
     .nullable(),
   leaderId: z.string().optional().nullable(),
+  permissions: ministryPermissionsSchema.optional().nullable(),
 })
 
 // Schema para adicionar membro ao ministerio
 export const addMemberSchema = z.object({
-  userId: z.string().cuid("ID do usuario invalido"),
-  positionIds: z.array(z.string().cuid()).optional(),
+  userId: z.string().min(1, "ID do usuário inválido"),
+  positionIds: z.array(z.string().min(1)).optional(),
 })
 
 // Schema para atualizar membro do ministerio
 export const updateMemberSchema = z.object({
-  positionIds: z.array(z.string().cuid()).optional(),
+  positionIds: z.array(z.string().min(1)).optional(),
   active: z.boolean().optional(),
 })
 

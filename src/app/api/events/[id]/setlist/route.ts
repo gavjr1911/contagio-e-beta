@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { setlistItemCreateSchema, setlistReorderSchema } from "@/lib/validations/music"
@@ -11,14 +11,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: eventId } = await params
 
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return NextResponse.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
     const setlist = await prisma.setlist.findMany({
@@ -39,16 +39,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       orderBy: { order: "asc" },
     })
 
-    return NextResponse.json({
-      eventId,
-      eventName: event.name,
-      eventDate: event.date,
-      eventStatus: event.status,
-      items: setlist,
+    return Response.json({
+      data: {
+        eventId,
+        eventName: event.name,
+        eventDate: event.date,
+        eventStatus: event.status,
+        items: setlist,
+      },
     })
   } catch (error) {
     console.error("Erro ao listar setlist:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: eventId } = await params
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const validationResult = setlistItemCreateSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -78,13 +80,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Verificar se o evento existe
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return NextResponse.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
     // Verificar se a musica existe
     const song = await prisma.song.findUnique({ where: { id: songId } })
     if (!song) {
-      return NextResponse.json({ error: "Musica nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Musica nao encontrada" }, { status: 404 })
     }
 
     // Determinar a ordem (proxima disponivel se nao fornecida)
@@ -121,10 +123,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(setlistItem, { status: 201 })
+    return Response.json({ data: setlistItem }, { status: 201 })
   } catch (error) {
     console.error("Erro ao adicionar ao setlist:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -135,7 +137,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: eventId } = await params
@@ -143,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const validationResult = setlistReorderSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -154,7 +156,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Verificar se o evento existe
     const event = await prisma.event.findUnique({ where: { id: eventId } })
     if (!event) {
-      return NextResponse.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
     // Verificar se todos os itens pertencem ao evento
@@ -166,7 +168,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const invalidIds = items.filter((item) => !validIds.has(item.id))
     if (invalidIds.length > 0) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Alguns itens nao pertencem ao setlist deste evento" },
         { status: 400 }
       )
@@ -199,13 +201,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       orderBy: { order: "asc" },
     })
 
-    return NextResponse.json({
+    return Response.json({
+      data: updatedSetlist,
       message: "Setlist reordenado com sucesso",
-      items: updatedSetlist,
     })
   } catch (error) {
     console.error("Erro ao reordenar setlist:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

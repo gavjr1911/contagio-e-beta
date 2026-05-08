@@ -5,26 +5,26 @@ const allowedMimeTypes = Object.keys(ALLOWED_FILE_TYPES) as [string, ...string[]
 
 // Schema para solicitar URL de upload
 export const uploadUrlRequestSchema = z.object({
-  filename: z.string().min(1, "Nome do arquivo obrigatorio"),
-  contentType: z.enum(allowedMimeTypes, "Tipo de arquivo nao permitido") as z.ZodType<AllowedMimeType>,
+  filename: z.string().min(1, "Nome do arquivo obrigatório"),
+  contentType: z.enum(allowedMimeTypes, "Tipo de arquivo não permitido") as z.ZodType<AllowedMimeType>,
   fileSize: z
     .number()
     .positive("Tamanho deve ser positivo")
     .max(MAX_FILE_SIZE, `Arquivo muito grande. Limite: ${MAX_FILE_SIZE / (1024 * 1024)}MB`),
-  eventId: z.string().cuid("ID do evento invalido"),
-  eventItemId: z.string().cuid("ID do item invalido").optional(),
+  eventId: z.string().min(1, "ID do evento obrigatório"),
+  eventItemId: z.string().min(1, "ID do item inválido").optional(),
 })
 
 export type UploadUrlRequest = z.infer<typeof uploadUrlRequestSchema>
 
 // Schema para confirmar upload
 export const confirmUploadSchema = z.object({
-  key: z.string().min(1, "Key do arquivo obrigatoria"),
-  eventId: z.string().cuid("ID do evento invalido"),
-  eventItemId: z.string().cuid("ID do item invalido").optional(),
-  originalName: z.string().min(1, "Nome original obrigatorio"),
+  key: z.string().min(1, "Key do arquivo obrigatória"),
+  eventId: z.string().min(1, "ID do evento obrigatório"),
+  eventItemId: z.string().min(1, "ID do item inválido").optional(),
+  originalName: z.string().min(1, "Nome original obrigatório"),
   fileSize: z.number().positive("Tamanho deve ser positivo"),
-  mimeType: z.enum(allowedMimeTypes, "Tipo de arquivo nao permitido") as z.ZodType<AllowedMimeType>,
+  mimeType: z.enum(allowedMimeTypes, "Tipo de arquivo não permitido") as z.ZodType<AllowedMimeType>,
   category: z.enum(["ANNOUNCEMENTS", "PREACHING", "OTHER"]).default("OTHER"),
 })
 
@@ -32,12 +32,12 @@ export type ConfirmUploadRequest = z.infer<typeof confirmUploadSchema>
 
 // Schema para deletar midia
 export const deleteMediaSchema = z.object({
-  id: z.string().cuid("ID da midia invalido"),
+  id: z.string().min(1, "ID da mídia inválido"),
 })
 
 // Schema para listar midia de evento
 export const listEventMediaSchema = z.object({
-  eventId: z.string().cuid("ID do evento invalido"),
+  eventId: z.string().min(1, "ID do evento obrigatório"),
 })
 
 // Tipo para resposta de midia

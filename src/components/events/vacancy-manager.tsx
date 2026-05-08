@@ -10,6 +10,7 @@ import {
   type PositionWithMinistry,
 } from "@/hooks/use-ministries";
 import { useEventVacancies } from "@/hooks/use-vacancies";
+import { PositionIcon } from "@/components/ui/icon-picker";
 
 export interface VacancyConfig {
   id?: string; // Present for existing vacancies, absent for new ones
@@ -60,6 +61,17 @@ function PositionCheckbox({
         )}
       >
         {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+      </div>
+
+      {/* Position icon */}
+      <div className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-full shrink-0",
+        isSelected ? "bg-primary/20" : "bg-muted"
+      )}>
+        <PositionIcon
+          name={position.icon}
+          className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")}
+        />
       </div>
 
       {/* Position info */}
@@ -177,9 +189,9 @@ export function VacancyManager({
   if (!allPositions || allPositions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <p>Nenhuma funcao cadastrada nos ministerios.</p>
+        <p>Nenhuma função cadastrada nos ministérios.</p>
         <p className="text-sm mt-1">
-          Cadastre funcoes nos ministerios primeiro.
+          Cadastre funções nos ministérios primeiro.
         </p>
       </div>
     );
@@ -212,11 +224,11 @@ export function VacancyManager({
         <span className="text-sm text-muted-foreground">Selecionadas:</span>
         <Badge variant="default">
           {summary.totalPositions}{" "}
-          {summary.totalPositions === 1 ? "funcao" : "funcoes"}
+          {summary.totalPositions === 1 ? "função" : "funções"}
           {summary.uniqueMinistries > 0 && (
             <>
               {" "}de {summary.uniqueMinistries}{" "}
-              {summary.uniqueMinistries === 1 ? "ministerio" : "ministerios"}
+              {summary.uniqueMinistries === 1 ? "ministério" : "ministérios"}
             </>
           )}
         </Badge>

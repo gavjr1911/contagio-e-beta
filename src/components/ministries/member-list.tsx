@@ -30,6 +30,7 @@ import {
   useRemoveMember,
   useMinistryPositions,
 } from "@/hooks/use-ministries";
+import { PositionIcon } from "@/components/ui/icon-picker";
 
 interface MemberListProps {
   members: MinistryMember[];
@@ -91,9 +92,12 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
     setDeletingMember(null);
   };
 
-  // Helper para obter nomes das posições de um membro
-  const getPositionNames = (member: MinistryMember): string[] => {
-    return member.positions?.map((p) => p.position?.name).filter(Boolean) as string[] || [];
+  // Helper para obter posições de um membro
+  const getMemberPositions = (member: MinistryMember): { name: string; icon: string | null }[] => {
+    return member.positions?.map((p) => ({
+      name: p.position?.name || "",
+      icon: p.position?.icon || null,
+    })).filter((p) => p.name) || [];
   };
 
   if (members.length === 0) {
@@ -106,7 +110,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
           Nenhum membro
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Este ministerio ainda nao possui membros cadastrados.
+          Este ministério ainda não possui membros cadastrados.
         </p>
       </div>
     );
@@ -116,7 +120,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
     <>
       <div className="divide-y divide-border">
         {members.map((member) => {
-          const positionNames = getPositionNames(member);
+          const memberPositions = getMemberPositions(member);
 
           return (
             <div
@@ -139,15 +143,16 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
                   <p className="truncate font-medium text-foreground">
                     {member.user.name || member.user.email}
                   </p>
-                  {positionNames.length > 0 && (
+                  {memberPositions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {positionNames.map((name, idx) => (
+                      {memberPositions.map((pos, idx) => (
                         <Badge
                           key={idx}
                           variant="outline"
-                          className="text-xs font-normal"
+                          className="text-xs font-normal flex items-center gap-1"
                         >
-                          {name}
+                          <PositionIcon name={pos.icon} className="h-3 w-3" />
+                          {pos.name}
                         </Badge>
                       ))}
                     </div>
@@ -174,13 +179,13 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       >
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Acoes</span>
+                        <span className="sr-only">Ações</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleEdit(member)}>
                         <Pencil className="mr-2 h-4 w-4" />
-                        Editar funcoes
+                        Editar funções
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleToggleActive(member)}>
                         {member.active ? (
@@ -216,17 +221,17 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
       <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar funcoes</DialogTitle>
+            <DialogTitle>Editar funções</DialogTitle>
             <DialogDescription>
-              Selecione as funcoes de {editingMember?.user.name} no ministerio.
+              Selecione as funções de {editingMember?.user.name} no ministério.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Funcoes</Label>
+              <Label>Funções</Label>
               {!positions || positions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma funcao cadastrada para este ministerio.
+                  Nenhuma função cadastrada para este ministério.
                 </p>
               ) : (
                 <div className="grid gap-2">
@@ -241,6 +246,9 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
                         checked={selectedPositionIds.includes(pos.id)}
                         onCheckedChange={() => togglePosition(pos.id)}
                       />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                        <PositionIcon name={pos.icon} className="h-4 w-4 text-primary" />
+                      </div>
                       <div className="flex-1">
                         <label
                           htmlFor={`edit-pos-${pos.id}`}
@@ -258,7 +266,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
               )}
               {selectedPositionIds.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  {selectedPositionIds.length} funcao(oes) selecionada(s)
+                  {selectedPositionIds.length} função(ões) selecionada(s)
                 </p>
               )}
             </div>
@@ -288,7 +296,7 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
             <DialogTitle>Remover membro</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja remover {deletingMember?.user.name} deste
-              ministerio? Esta acao nao pode ser desfeita.
+              ministério? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

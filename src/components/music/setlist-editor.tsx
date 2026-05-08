@@ -206,7 +206,7 @@ export function SetlistEditor({
           <div>
             <CardTitle className="font-display text-xl">{eventName}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {items.length} {items.length === 1 ? "musica" : "musicas"} no setlist
+              {items.length} {items.length === 1 ? "música" : "músicas"} no setlist
             </p>
           </div>
           {onSave && (
@@ -220,12 +220,12 @@ export function SetlistEditor({
         {/* Search to add songs */}
         <div>
           <label className="mb-2 block text-sm font-medium text-muted-foreground">
-            Adicionar musica
+            Adicionar música
           </label>
           <SongSearch
             onSelect={handleAddSong}
             excludeIds={excludeIds}
-            placeholder="Buscar musica para adicionar..."
+            placeholder="Buscar música para adicionar..."
           />
         </div>
 
@@ -233,7 +233,7 @@ export function SetlistEditor({
         {items.length > 0 ? (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-muted-foreground">
-              Ordem das musicas (arraste para reordenar)
+              Ordem das músicas (arraste para reordenar)
             </label>
             <DndContext
               sensors={sensors}
@@ -261,10 +261,10 @@ export function SetlistEditor({
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 text-center">
             <Music className="mb-3 h-12 w-12 text-muted-foreground/50" />
             <p className="text-sm font-medium text-muted-foreground">
-              Nenhuma musica no setlist
+              Nenhuma música no setlist
             </p>
             <p className="mt-1 text-xs text-muted-foreground/70">
-              Use a busca acima para adicionar musicas
+              Use a busca acima para adicionar músicas
             </p>
           </div>
         )}
@@ -295,7 +295,7 @@ export function SetlistDisplay({ items, showChordLinks = true }: SetlistDisplayP
   if (items.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
-        Nenhuma musica no setlist
+        Nenhuma música no setlist
       </div>
     );
   }

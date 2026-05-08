@@ -5,21 +5,21 @@ import { z } from "zod"
 // ============================================
 
 export const songCreateSchema = z.object({
-  name: z.string().min(1, "Nome da musica e obrigatorio"),
+  name: z.string().min(1, "Nome da música é obrigatório"),
   artist: z.string().nullable().optional(),
   defaultKey: z.string().nullable().optional(),
   lyrics: z.string().nullable().optional(),
-  chordLink: z.string().url("URL invalida").nullable().optional(),
+  chordLink: z.string().url("URL inválida").nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
   propresenterId: z.string().nullable().optional(),
 })
 
 export const songUpdateSchema = z.object({
-  name: z.string().min(1, "Nome da musica e obrigatorio").optional(),
+  name: z.string().min(1, "Nome da música é obrigatório").optional(),
   artist: z.string().nullable().optional(),
   defaultKey: z.string().nullable().optional(),
   lyrics: z.string().nullable().optional(),
-  chordLink: z.string().url("URL invalida").nullable().optional(),
+  chordLink: z.string().url("URL inválida").nullable().optional(),
   tags: z.array(z.string()).optional(),
   propresenterId: z.string().nullable().optional(),
 })
@@ -34,7 +34,7 @@ export const songQuerySchema = z.object({
 })
 
 export const songSearchSchema = z.object({
-  q: z.string().min(1, "Termo de busca e obrigatorio"),
+  q: z.string().min(1, "Termo de busca é obrigatório"),
   limit: z.coerce.number().int().positive().max(20).optional().default(10),
 })
 
@@ -43,12 +43,12 @@ export const songSearchSchema = z.object({
 // ============================================
 
 export const bandCreateSchema = z.object({
-  name: z.string().min(1, "Nome da banda e obrigatorio"),
+  name: z.string().min(1, "Nome da banda é obrigatório"),
   active: z.boolean().optional().default(true),
 })
 
 export const bandUpdateSchema = z.object({
-  name: z.string().min(1, "Nome da banda e obrigatorio").optional(),
+  name: z.string().min(1, "Nome da banda é obrigatório").optional(),
   active: z.boolean().optional(),
 })
 
@@ -64,12 +64,12 @@ export const bandQuerySchema = z.object({
 // ============================================
 
 export const bandMemberCreateSchema = z.object({
-  userId: z.string().min(1, "ID do usuario e obrigatorio"),
-  instrument: z.string().min(1, "Instrumento e obrigatorio"),
+  userId: z.string().min(1, "ID do usuário é obrigatório"),
+  instrument: z.string().min(1, "Instrumento é obrigatório"),
 })
 
 export const bandMemberUpdateSchema = z.object({
-  instrument: z.string().min(1, "Instrumento e obrigatorio").optional(),
+  instrument: z.string().min(1, "Instrumento é obrigatório").optional(),
 })
 
 // ============================================
@@ -77,7 +77,7 @@ export const bandMemberUpdateSchema = z.object({
 // ============================================
 
 export const setlistItemCreateSchema = z.object({
-  songId: z.string().min(1, "ID da musica e obrigatorio"),
+  songId: z.string().min(1, "ID da música é obrigatório"),
   key: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   order: z.number().int().nonnegative().optional(),
@@ -94,7 +94,7 @@ export const setlistReorderSchema = z.object({
       id: z.string().min(1),
       order: z.number().int().nonnegative(),
     })
-  ).min(1, "Lista de itens e obrigatoria"),
+  ).min(1, "Lista de itens é obrigatória"),
 })
 
 // ============================================

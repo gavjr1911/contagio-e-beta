@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCanEdit } from "@/hooks/use-permissions";
 import {
   Plus,
   CalendarDays,
@@ -10,10 +11,22 @@ import {
   Filter,
   ChevronDown,
   Loader2,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/layout/page-header";
 import { EventCard } from "@/components/events/event-card";
 import { EventCalendar } from "@/components/events/event-calendar";
 import {
@@ -21,40 +34,41 @@ import {
   useDeleteEvent,
   Event,
   EventType,
-  EventStatus,
   EventFilters,
   getEventTypeLabel,
-  getEventStatusLabel,
 } from "@/hooks/use-events";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
-type ViewMode = "calendar" | "list";
+type TabMode = "lista" | "calendario" | "historico";
 
 const eventTypes: EventType[] = [
-  "SUNDAY_MORNING",
-  "SUNDAY_EVENING",
+  "CULTO",
   "SPECIAL",
-];
-
-const eventStatuses: EventStatus[] = [
-  "PUBLISHED",
-  "COMPLETED",
 ];
 
 export default function EventosPage() {
   const router = useRouter();
-  const [viewMode, setViewMode] = React.useState<ViewMode>("list");
+  const canCreateEvent = useCanEdit("events");
+  const [activeTab, setActiveTab] = React.useState<TabMode>("lista");
   const [filters, setFilters] = React.useState<EventFilters>({});
   const [showFilters, setShowFilters] = React.useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = React.useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = React.useState(false);
+  const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
 
-  const { data: events, isLoading, error } = useEvents(filters);
+  // Aplica filtro de status baseado na aba ativa
+  const effectiveFilters = React.useMemo(() => {
+    if (activeTab === "historico") {
+      return { ...filters, status: "COMPLETED" as const };
+    }
+    // Lista e Calendário mostram apenas eventos ativos (não concluídos)
+    return { ...filters, status: "PUBLISHED" as const };
+  }, [filters, activeTab]);
+
+  const { data: events, isLoading, error } = useEvents(effectiveFilters);
   const deleteEvent = useDeleteEvent();
 
   const typeDropdownRef = React.useRef<HTMLDivElement>(null);
-  const statusDropdownRef = React.useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
@@ -64,12 +78,6 @@ export default function EventosPage() {
         !typeDropdownRef.current.contains(e.target as Node)
       ) {
         setShowTypeDropdown(false);
-      }
-      if (
-        statusDropdownRef.current &&
-        !statusDropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowStatusDropdown(false);
       }
     }
 
@@ -81,21 +89,26 @@ export default function EventosPage() {
     router.push(`/eventos/${event.id}`);
   };
 
-  const handleDelete = async (event: Event) => {
-    if (confirm(`Tem certeza que deseja excluir "${event.name}"?`)) {
-      try {
-        await deleteEvent.mutateAsync(event.id);
-        toast({
-          title: "Sucesso",
-          description: "Evento excluido com sucesso!",
-        });
-      } catch (error) {
-        toast({
-          title: "Erro ao excluir evento",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
-          variant: "destructive",
-        });
-      }
+  const handleDelete = (event: Event) => {
+    setEventToDelete(event);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!eventToDelete) return;
+    try {
+      await deleteEvent.mutateAsync(eventToDelete.id);
+      toast({
+        title: "Sucesso",
+        description: "Evento excluido com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir evento",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setEventToDelete(null);
     }
   };
 
@@ -103,37 +116,36 @@ export default function EventosPage() {
     setFilters({});
   };
 
-  const hasActiveFilters = filters.type || filters.status;
+  const hasActiveFilters = !!filters.type;
 
   return (
-    <div className="flex-1 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold font-display">Eventos</h1>
-          <p className="text-muted-foreground">
-            Gerencie os eventos e cultos da igreja
-          </p>
-        </div>
+      <PageHeader
+        title="Eventos"
+        description="Gerencie os eventos e cultos da igreja"
+        actions={
+          canCreateEvent && (
+            <Link href="/eventos/novo">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Evento
+              </Button>
+            </Link>
+          )
+        }
+      />
 
-        <Link href="/eventos/novo">
-          <Button className="bg-primary hover:bg-primary-hover">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Evento
-          </Button>
-        </Link>
-      </div>
-
-      {/* View Toggle and Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* View Toggle */}
-        <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+      {/* Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Tab Toggle */}
+        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-1">
           <button
-            onClick={() => setViewMode("list")}
+            onClick={() => setActiveTab("lista")}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              viewMode === "list"
-                ? "bg-background shadow text-foreground"
+              "flex items-center gap-2 px-3 h-9 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0",
+              activeTab === "lista"
+                ? "bg-background shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -141,16 +153,28 @@ export default function EventosPage() {
             Lista
           </button>
           <button
-            onClick={() => setViewMode("calendar")}
+            onClick={() => setActiveTab("calendario")}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              viewMode === "calendar"
-                ? "bg-background shadow text-foreground"
+              "flex items-center gap-2 px-3 h-9 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0",
+              activeTab === "calendario"
+                ? "bg-background shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             <CalendarDays className="h-4 w-4" />
-            Calendario
+            Calendário
+          </button>
+          <button
+            onClick={() => setActiveTab("historico")}
+            className={cn(
+              "flex items-center gap-2 px-3 h-9 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0",
+              activeTab === "historico"
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <History className="h-4 w-4" />
+            Histórico
           </button>
         </div>
 
@@ -158,14 +182,12 @@ export default function EventosPage() {
         <Button
           variant="outline"
           onClick={() => setShowFilters(!showFilters)}
-          className={cn(hasActiveFilters && "border-primary")}
+          className={cn("w-full sm:w-auto", hasActiveFilters && "border-primary")}
         >
           <Filter className="h-4 w-4 mr-2" />
           Filtros
           {hasActiveFilters && (
-            <Badge className="ml-2 bg-primary text-white">
-              {(filters.type ? 1 : 0) + (filters.status ? 1 : 0)}
-            </Badge>
+            <Badge className="ml-2 bg-primary text-primary-foreground">1</Badge>
           )}
         </Button>
       </div>
@@ -220,53 +242,6 @@ export default function EventosPage() {
               )}
             </div>
 
-            {/* Status Filter */}
-            <div className="relative" ref={statusDropdownRef}>
-              <button
-                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
-              >
-                <span className="text-sm">
-                  {filters.status
-                    ? getEventStatusLabel(filters.status)
-                    : "Status"}
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-
-              {showStatusDropdown && (
-                <div className="absolute top-full left-0 mt-1 w-48 rounded-lg border border-border bg-card shadow-lg z-10">
-                  <div className="py-1">
-                    <button
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-                      onClick={() => {
-                        setFilters({ ...filters, status: undefined });
-                        setShowStatusDropdown(false);
-                      }}
-                    >
-                      Todos os status
-                    </button>
-                    {eventStatuses.map((status) => (
-                      <button
-                        key={status}
-                        className={cn(
-                          "w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors",
-                          filters.status === status &&
-                            "bg-muted text-primary"
-                        )}
-                        onClick={() => {
-                          setFilters({ ...filters, status });
-                          setShowStatusDropdown(false);
-                        }}
-                      >
-                        {getEventStatusLabel(status)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Clear Filters */}
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -293,8 +268,13 @@ export default function EventosPage() {
             Tentar novamente
           </Button>
         </Card>
-      ) : viewMode === "list" ? (
+      ) : activeTab === "lista" || activeTab === "historico" ? (
         <div className="space-y-4">
+          {activeTab === "historico" && (
+            <p className="text-sm text-muted-foreground">
+              Mostrando eventos concluídos
+            </p>
+          )}
           {events && events.length > 0 ? (
             events.map((event) => (
               <EventCard
@@ -309,20 +289,22 @@ export default function EventosPage() {
               <p className="text-muted-foreground mb-4">
                 {hasActiveFilters
                   ? "Nenhum evento encontrado com os filtros aplicados"
-                  : "Nenhum evento cadastrado"}
+                  : activeTab === "historico"
+                  ? "Nenhum evento concluído"
+                  : "Nenhum evento ativo"}
               </p>
               {hasActiveFilters ? (
                 <Button variant="outline" onClick={clearFilters}>
                   Limpar filtros
                 </Button>
-              ) : (
+              ) : activeTab === "lista" && canCreateEvent ? (
                 <Link href="/eventos/novo">
-                  <Button className="bg-primary hover:bg-primary-hover">
+                  <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     Criar primeiro evento
                   </Button>
                 </Link>
-              )}
+              ) : null}
             </Card>
           )}
         </div>
@@ -330,7 +312,7 @@ export default function EventosPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
           {/* Event List for selected date */}
           <div className="space-y-4 order-2 lg:order-1">
-            <h2 className="font-semibold">Todos os Eventos</h2>
+            <h2 className="font-semibold">Eventos Ativos</h2>
             {events && events.length > 0 ? (
               events.map((event) => (
                 <EventCard
@@ -342,7 +324,7 @@ export default function EventosPage() {
               ))
             ) : (
               <Card className="p-8 text-center">
-                <p className="text-muted-foreground">Nenhum evento cadastrado</p>
+                <p className="text-muted-foreground">Nenhum evento ativo</p>
               </Card>
             )}
           </div>
@@ -359,6 +341,28 @@ export default function EventosPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={eventToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setEventToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir evento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir &quot;{eventToDelete?.name}&quot;? Esta ação
+              não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

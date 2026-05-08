@@ -35,26 +35,26 @@ export function ConfirmDialog({
             <PartyPopper className="h-8 w-8 text-emerald-400" />
           </div>
           <DialogTitle className="text-xl text-foreground">
-            Confirmar presenca?
+            Confirmar presença?
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {eventName ? (
               <>
-                Voce esta confirmando sua presenca em{" "}
+                Você está confirmando sua presença em{" "}
                 <span className="text-primary font-medium">
                   {eventName}
                 </span>
                 .
               </>
             ) : (
-              "Voce esta confirmando sua presenca nesta escala."
+              "Você está confirmando sua presença nesta escala."
             )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 text-center">
           <p className="text-emerald-400 text-sm">
-            Obrigado por servir! Sua dedicacao faz a diferenca em nossa igreja.
+            Obrigado por servir! Sua dedicação faz a diferença em nossa igreja.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export function ConfirmDialog({
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Confirmar presenca
+                Confirmar presença
               </>
             )}
           </Button>

@@ -24,8 +24,8 @@ async function hasMinistryPermission(
   userRole: string,
   ministryId: string
 ): Promise<boolean> {
-  // ADMIN and COORDINATOR have access to all ministries
-  if (userRole === "ADMIN" || userRole === "COORDINATOR") {
+  // ADMIN has access to all ministries
+  if (userRole === "ADMIN") {
     return true
   }
 
@@ -56,9 +56,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
+    if (!userRole || !["ADMIN", "LEADER"].includes(userRole)) {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN, COORDINATOR ou LEADER podem visualizar preview." },
+        { error: "Acesso negado. Apenas ADMIN ou LEADER podem visualizar preview." },
         { status: 403 }
       )
     }
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Filter ministries based on user permission (for LEADER)
     const allowedMinistries =
-      userRole === "ADMIN" || userRole === "COORDINATOR"
+      userRole === "ADMIN"
         ? vacancies
         : vacancies.filter((v) => v.ministry.leaderId === session.user.id)
 
@@ -205,9 +205,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem executar distribuicao automatica." },
+        { error: "Acesso negado. Apenas ADMIN pode executar distribuicao automatica." },
         { status: 403 }
       )
     }
@@ -289,6 +289,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       distinct: ["ministryId"],
     })
 
+    // Executar auto-assign para todos os ministerios em paralelo
+    const assignResults = await Promise.all(
+      vacancies.map((v) => executeAutoAssign(eventId, v.ministryId))
+    )
+
+    // Consolidar todos os userIds atribuidos e buscar nomes em uma unica query
+    const allAssignedUserIds = assignResults.flatMap((r) => r.assigned.map((a) => a.userId))
+    const uniqueUserIds = [...new Set(allAssignedUserIds)]
+    const usersData =
+      uniqueUserIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: uniqueUserIds } },
+            select: { id: true, name: true },
+          })
+        : []
+    const userMap = new Map(usersData.map((u) => [u.id, u.name]))
+
     const allAssigned: Array<{
       vacancyId: string
       userId: string
@@ -297,28 +314,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }> = []
     const allUnassigned: string[] = []
 
-    for (const v of vacancies) {
-      const result = await executeAutoAssign(eventId, v.ministryId)
-
-      // Get user names
-      const userIds = result.assigned.map((a) => a.userId)
-      if (userIds.length > 0) {
-        const users = await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true },
-        })
-        const userMap = new Map(users.map((u) => [u.id, u.name]))
-
-        allAssigned.push(
-          ...result.assigned.map((a) => ({
-            vacancyId: a.vacancyId,
-            userId: a.userId,
-            userName: userMap.get(a.userId) || a.userId,
-            score: a.score,
-          }))
-        )
-      }
-
+    for (const result of assignResults) {
+      allAssigned.push(
+        ...result.assigned.map((a) => ({
+          vacancyId: a.vacancyId,
+          userId: a.userId,
+          userName: userMap.get(a.userId) || a.userId,
+          score: a.score,
+        }))
+      )
       allUnassigned.push(...result.unassigned)
     }
 

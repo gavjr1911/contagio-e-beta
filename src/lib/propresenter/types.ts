@@ -111,30 +111,25 @@ export interface ActiveSlide {
 // ============================================================================
 
 export interface Library {
-  id: {
-    uuid: string
-    name: string
-    index: number
-  }
-  items: LibraryItem[]
+  uuid: string
+  name: string
+  index: number
+  items?: LibraryItem[]
+  update_type?: string
 }
 
 export interface LibraryItem {
-  id: {
-    uuid: string
-    name: string
-    index: number
-  }
+  uuid: string
+  name: string
+  index: number
   is_presentation?: boolean
   is_media?: boolean
   is_playlist?: boolean
 }
 
 export interface LibraryPresentation {
-  id: {
-    uuid: string
-    name: string
-  }
+  uuid: string
+  name: string
   path?: string
 }
 
@@ -148,9 +143,10 @@ export interface Playlist {
     name: string
     index: number
   }
-  type: PlaylistType
+  field_type?: string
+  type?: PlaylistType
   items?: PlaylistItem[]
-  children?: Playlist[]
+  children?: PlaylistItem[]
 }
 
 export type PlaylistType = "playlist" | "group" | "smart_playlist"
@@ -161,7 +157,7 @@ export interface PlaylistItem {
     name: string
     index: number
   }
-  type: PlaylistItemType
+  type?: PlaylistItemType
   is_hidden?: boolean
   is_pco?: boolean
   arrangement_id?: string

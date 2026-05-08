@@ -7,7 +7,7 @@ import { ScheduleChangedEmail, ScheduleChangedEmailProps } from "./templates/sch
 import { SetlistUpdateEmail, SetlistUpdateEmailProps } from "./templates/setlist-update"
 import { UserInviteEmail, UserInviteEmailProps } from "./templates/user-invite"
 import { prisma } from "@/lib/prisma"
-import { createHash } from "crypto"
+import { createHmac } from "crypto"
 import { format } from "date-fns"
 
 // Base URL da aplicacao
@@ -23,14 +23,29 @@ function formatEventTime(startTime: Date): string {
   return format(new Date(startTime), "HH:mm")
 }
 
+// Expiracao do token em 24 horas (em milissegundos)
+export const TOKEN_EXPIRATION_MS = 24 * 60 * 60 * 1000
+
 /**
- * Gera um token unico para confirmacao de escala
+ * Gera um token unico para confirmacao de escala com HMAC e timestamp
+ * Formato: <timestamp_base64>.<hmac_signature>
  */
 function generateConfirmToken(scheduleId: string, action: "confirm" | "decline"): string {
-  const secret = process.env.EMAIL_TOKEN_SECRET || "beta-church-secret"
+  const secret = process.env.NEXTAUTH_SECRET || process.env.EMAIL_TOKEN_SECRET;
+  if (!secret) {
+    throw new Error("NEXTAUTH_SECRET ou EMAIL_TOKEN_SECRET não configurado — defina a variável de ambiente");
+  }
   const timestamp = Date.now()
-  const data = `${scheduleId}:${action}:${timestamp}:${secret}`
-  return createHash("sha256").update(data).digest("hex").substring(0, 32)
+
+  // Codifica o timestamp em base64 URL-safe
+  const timestampBase64 = Buffer.from(timestamp.toString()).toString("base64url")
+
+  // Gera HMAC com scheduleId, action e timestamp
+  const data = `${scheduleId}:${action}:${timestamp}`
+  const hmac = createHmac("sha256", secret).update(data).digest("base64url")
+
+  // Retorna token no formato: timestamp.hmac (truncado para 32 chars no hmac)
+  return `${timestampBase64}.${hmac.substring(0, 32)}`
 }
 
 /**

@@ -5,7 +5,7 @@ import { z } from "zod"
 // ============================================
 
 export const autoAssignPreviewQuerySchema = z.object({
-  ministryId: z.string().cuid().optional(),
+  ministryId: z.string().min(1).optional(),
 })
 
 // ============================================
@@ -13,7 +13,7 @@ export const autoAssignPreviewQuerySchema = z.object({
 // ============================================
 
 export const autoAssignExecuteSchema = z.object({
-  ministryId: z.string().cuid().optional(),
+  ministryId: z.string().min(1).optional(),
 })
 
 // ============================================
@@ -35,9 +35,38 @@ export const updateAutoAssignConfigSchema = z.object({
 })
 
 // ============================================
+// Suggestions Query Schema
+// ============================================
+
+export const suggestionsQuerySchema = z.object({
+  ministryId: z.string().min(1),
+  positionId: z.string().min(1).optional(),
+  limit: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int().min(1).max(50))
+    .optional(),
+})
+
+// ============================================
+// Distribution Stats Query Schema
+// ============================================
+
+export const distributionStatsQuerySchema = z.object({
+  ministryId: z.string().min(1).optional(),
+  days: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int().min(1).max(365))
+    .optional(),
+})
+
+// ============================================
 // Types
 // ============================================
 
 export type AutoAssignPreviewQuery = z.infer<typeof autoAssignPreviewQuerySchema>
 export type AutoAssignExecuteInput = z.infer<typeof autoAssignExecuteSchema>
 export type UpdateAutoAssignConfigInput = z.infer<typeof updateAutoAssignConfigSchema>
+export type SuggestionsQuery = z.infer<typeof suggestionsQuerySchema>
+export type DistributionStatsQuery = z.infer<typeof distributionStatsQuerySchema>

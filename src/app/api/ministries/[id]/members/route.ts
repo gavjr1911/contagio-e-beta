@@ -3,10 +3,9 @@ import { NextRequest } from "next/server"
 import {
   apiError,
   apiSuccess,
-  AuthSession,
-  createPaginatedResponse,
+  apiSuccessPaginated,
   getPaginationParams,
-  isAdmin,
+  requireMinistryAccess,
   validateBody,
   withAuth,
 } from "@/lib/api-utils"
@@ -70,7 +69,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         prisma.ministryMember.count({ where }),
       ])
 
-      return apiSuccess(createPaginatedResponse(members, total, page, limit))
+      return apiSuccessPaginated(members, total, page, limit)
     } catch (error) {
       console.error("Erro ao listar membros:", error)
       return apiError("Erro ao listar membros", 500)
@@ -80,31 +79,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/ministries/[id]/members - Adicionar membro ao ministerio
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id } = await params
+  const { id } = await params
 
-    const bodyResult = await validateBody(request, addMemberSchema)
+  const access = await requireMinistryAccess(id)
+  if ("error" in access) return access.error
 
-    if (!bodyResult.success) {
-      return bodyResult.response
+  const bodyResult = await validateBody(request, addMemberSchema)
+
+  if (!bodyResult.success) {
+    return bodyResult.response
+  }
+
+  const { userId, positionIds } = bodyResult.data
+
+  try {
+    // Verificar se ministerio existe
+    const ministry = await prisma.ministry.findUnique({ where: { id } })
+    if (!ministry) {
+      return apiError("Ministerio nao encontrado", 404)
     }
-
-    const { userId, positionIds } = bodyResult.data
-
-    try {
-      // Verificar se o ministerio existe
-      const ministry = await prisma.ministry.findUnique({
-        where: { id },
-      })
-
-      if (!ministry) {
-        return apiError("Ministerio nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
 
       // Verificar se o usuario existe
       const user = await prisma.user.findUnique({
@@ -158,9 +151,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
 
       return apiSuccess(member, 201)
-    } catch (error) {
-      console.error("Erro ao adicionar membro:", error)
-      return apiError("Erro ao adicionar membro", 500)
-    }
-  })
+  } catch (error) {
+    console.error("Erro ao adicionar membro:", error)
+    return apiError("Erro ao adicionar membro", 500)
+  }
 }

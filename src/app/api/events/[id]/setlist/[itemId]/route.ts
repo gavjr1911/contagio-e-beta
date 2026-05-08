@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { setlistItemUpdateSchema } from "@/lib/validations/music"
@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: eventId, itemId } = await params
@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const validationResult = setlistItemUpdateSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -33,11 +33,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!existingItem) {
-      return NextResponse.json({ error: "Item do setlist nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Item do setlist nao encontrado" }, { status: 404 })
     }
 
     if (existingItem.eventId !== eventId) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Item nao pertence a este evento" },
         { status: 400 }
       )
@@ -59,10 +59,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(setlistItem)
+    return Response.json({ data: setlistItem })
   } catch (error) {
     console.error("Erro ao atualizar item do setlist:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -73,7 +73,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: eventId, itemId } = await params
@@ -85,11 +85,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     })
 
     if (!existingItem) {
-      return NextResponse.json({ error: "Item do setlist nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Item do setlist nao encontrado" }, { status: 404 })
     }
 
     if (existingItem.eventId !== eventId) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Item nao pertence a este evento" },
         { status: 400 }
       )
@@ -97,7 +97,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Nao permitir remocao se o evento ja foi concluido
     if (existingItem.event.status === EventStatus.COMPLETED) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Nao e possivel modificar setlist de evento concluido" },
         { status: 400 }
       )
@@ -120,10 +120,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     )
 
-    return NextResponse.json({ message: "Item removido do setlist com sucesso" })
+    return Response.json({ message: "Item removido do setlist com sucesso" })
   } catch (error) {
     console.error("Erro ao remover item do setlist:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

@@ -2,7 +2,127 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { formatDateToISO } from "@/lib/date-utils"
 import { createScheduleSchema } from "@/lib/validations/schedule"
+import { sendScheduleInvite } from "@/lib/email"
+import { logAuditAsync, getAuditContext, getRequestMetadata } from "@/lib/audit"
+
+// Helper function to check for time conflicts
+interface TimeConflict {
+  eventId: string
+  eventName: string
+  eventDate: string
+  startTime: string
+  endTime: string | null
+  ministryName: string
+  conflictType: "same_event" | "overlapping" | "close_proximity"
+}
+
+async function checkTimeConflicts(
+  userId: string,
+  eventId: string,
+  eventDate: Date,
+  startTime: Date,
+  endTime: Date | null
+): Promise<TimeConflict[]> {
+  const conflicts: TimeConflict[] = []
+
+  // Calculate time window: 1 hour before and after
+  const eventStart = new Date(eventDate)
+  eventStart.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0)
+
+  const eventEnd = endTime
+    ? new Date(eventDate).setHours(endTime.getHours(), endTime.getMinutes(), 0, 0)
+    : new Date(eventStart.getTime() + 2 * 60 * 60 * 1000) // Default 2 hours if no end time
+
+  // Get all schedules for the user on the same date
+  const dateStart = new Date(eventDate)
+  dateStart.setHours(0, 0, 0, 0)
+  const dateEnd = new Date(eventDate)
+  dateEnd.setHours(23, 59, 59, 999)
+
+  const existingSchedules = await prisma.schedule.findMany({
+    where: {
+      userId,
+      event: {
+        date: {
+          gte: dateStart,
+          lte: dateEnd,
+        },
+      },
+    },
+    include: {
+      event: { select: { id: true, name: true, startTime: true, endTime: true, date: true } },
+      ministry: { select: { id: true, name: true } },
+    },
+  })
+
+  for (const schedule of existingSchedules) {
+    const scheduleEventDate = new Date(schedule.event.date)
+    const scheduleStart = new Date(scheduleEventDate)
+    scheduleStart.setHours(
+      schedule.event.startTime.getHours(),
+      schedule.event.startTime.getMinutes(),
+      0,
+      0
+    )
+
+    const scheduleEnd = schedule.event.endTime
+      ? new Date(scheduleEventDate).setHours(
+          schedule.event.endTime.getHours(),
+          schedule.event.endTime.getMinutes(),
+          0,
+          0
+        )
+      : new Date(scheduleStart.getTime() + 2 * 60 * 60 * 1000)
+
+    // Same event - skip
+    if (schedule.eventId === eventId) {
+      continue
+    }
+
+    // Check for overlapping times
+    const eventStartTime = eventStart.getTime()
+    const eventEndTime = typeof eventEnd === "number" ? eventEnd : eventEnd.getTime()
+    const scheduleStartTime = scheduleStart.getTime()
+    const scheduleEndTime = typeof scheduleEnd === "number" ? scheduleEnd : scheduleEnd.getTime()
+
+    // Check if times overlap
+    if (eventStartTime < scheduleEndTime && eventEndTime > scheduleStartTime) {
+      conflicts.push({
+        eventId: schedule.event.id,
+        eventName: schedule.event.name,
+        eventDate: formatDateToISO(schedule.event.date),
+        startTime: schedule.event.startTime.toTimeString().substring(0, 5),
+        endTime: schedule.event.endTime?.toTimeString().substring(0, 5) || null,
+        ministryName: schedule.ministry.name,
+        conflictType: "overlapping",
+      })
+      continue
+    }
+
+    // Check for close proximity (within 1 hour)
+    const oneHour = 60 * 60 * 1000
+    const timeDiff = Math.min(
+      Math.abs(eventStartTime - scheduleEndTime),
+      Math.abs(scheduleStartTime - eventEndTime)
+    )
+
+    if (timeDiff <= oneHour) {
+      conflicts.push({
+        eventId: schedule.event.id,
+        eventName: schedule.event.name,
+        eventDate: formatDateToISO(schedule.event.date),
+        startTime: schedule.event.startTime.toTimeString().substring(0, 5),
+        endTime: schedule.event.endTime?.toTimeString().substring(0, 5) || null,
+        ministryName: schedule.ministry.name,
+        conflictType: "close_proximity",
+      })
+    }
+  }
+
+  return conflicts
+}
 
 // GET /api/events/[id]/schedules - List schedules for an event (by ministry)
 export async function GET(
@@ -77,7 +197,6 @@ export async function GET(
 
     return Response.json({
       data: Object.values(groupedByMinistry),
-      raw: schedules,
     })
   } catch (error) {
     console.error("Error fetching event schedules:", error)
@@ -101,9 +220,9 @@ export async function POST(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)) {
+    if (!userRole || !["ADMIN", "LEADER"].includes(userRole)) {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN, COORDINATOR ou LEADER podem criar escalas." },
+        { error: "Acesso negado. Apenas ADMIN ou LEADER podem criar escalas." },
         { status: 403 }
       )
     }
@@ -228,6 +347,28 @@ export async function POST(
       }
     }
 
+    // Check for time conflicts with other events (warnings only, not blocking)
+    const timeConflicts = await checkTimeConflicts(
+      userId,
+      eventId,
+      event.date,
+      event.startTime,
+      event.endTime
+    )
+
+    const warnings: string[] = []
+    for (const conflict of timeConflicts) {
+      if (conflict.conflictType === "overlapping") {
+        warnings.push(
+          `Conflito de horario com "${conflict.eventName}" (${conflict.startTime})`
+        )
+      } else if (conflict.conflictType === "close_proximity") {
+        warnings.push(
+          `Proximo ao evento "${conflict.eventName}" (menos de 1h de intervalo)`
+        )
+      }
+    }
+
     const schedule = await prisma.schedule.create({
       data: {
         eventId,
@@ -245,12 +386,65 @@ export async function POST(
           select: { id: true, name: true },
         },
         event: {
-          select: { id: true, name: true, date: true },
+          select: { id: true, name: true, date: true, startTime: true, endTime: true },
         },
       },
     })
 
-    return Response.json({ data: schedule }, { status: 201 })
+    // Envia email de convite para o voluntario escalado (em background)
+    if (schedule.user.email) {
+      sendScheduleInvite({
+        id: schedule.id,
+        eventId: schedule.event.id,
+        ministryId: schedule.ministry.id,
+        userId: schedule.user.id,
+        position: position || null,
+        status: "PENDING",
+        event: {
+          id: schedule.event.id,
+          name: schedule.event.name,
+          date: schedule.event.date,
+          startTime: schedule.event.startTime,
+          endTime: schedule.event.endTime,
+        },
+        ministry: {
+          id: schedule.ministry.id,
+          name: schedule.ministry.name,
+        },
+        user: {
+          id: schedule.user.id,
+          name: schedule.user.name,
+          email: schedule.user.email,
+        },
+      }).catch((error) => {
+        console.error("[Schedule] Erro ao enviar email de convite:", error)
+      })
+    }
+
+    // Registrar auditoria
+    const auditContext = getAuditContext(session)
+    logAuditAsync({
+      entityType: "Schedule",
+      entityId: schedule.id,
+      action: "created",
+      ...auditContext,
+      changes: {
+        eventId: { old: null, new: eventId },
+        userId: { old: null, new: userId },
+        ministryId: { old: null, new: ministryId },
+        position: { old: null, new: position || null },
+        userName: { old: null, new: schedule.user.name },
+        eventName: { old: null, new: schedule.event.name },
+        ministryName: { old: null, new: schedule.ministry.name },
+      },
+      metadata: getRequestMetadata(request),
+    })
+
+    return Response.json({
+      data: schedule,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      timeConflicts: timeConflicts.length > 0 ? timeConflicts : undefined,
+    }, { status: 201 })
   } catch (error) {
     console.error("Error creating schedule:", error)
     return Response.json(

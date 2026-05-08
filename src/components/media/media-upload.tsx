@@ -43,7 +43,7 @@ export function MediaUpload({
 
   const validateFile = (file: File): string | null => {
     if (!isAllowedFileType(file.type)) {
-      return "Tipo de arquivo nao permitido"
+      return "Tipo de arquivo não permitido"
     }
     if (!isFileSizeValid(file.size)) {
       return `Arquivo muito grande. Limite: ${MAX_FILE_SIZE / (1024 * 1024)}MB`
@@ -215,7 +215,7 @@ export function MediaUpload({
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
-            PDF, imagens, videos, PowerPoint (max. 50MB)
+            PDF, imagens, vídeos, PowerPoint (máx. 50MB)
           </p>
         </div>
       </div>

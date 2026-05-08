@@ -19,14 +19,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se R2 esta configurado
-    if (!isR2Configured()) {
+    const r2Ready = await isR2Configured()
+    if (!r2Ready) {
       return Response.json(
-        { error: "Storage nao configurado. Entre em contato com o administrador." },
+        { error: "Storage nao configurado. Configure o Cloudflare R2 nas Configuracoes do sistema." },
         { status: 503 }
       )
     }
 
     const body = await request.json()
+
     const parseResult = uploadUrlRequestSchema.safeParse(body)
 
     if (!parseResult.success) {

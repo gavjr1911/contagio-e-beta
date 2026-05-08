@@ -69,7 +69,7 @@ export function ProPresenterConnectionStatus({
     } catch (error) {
       setStatus({
         connected: false,
-        state: { status: "error", lastError: "Falha ao verificar conexao" },
+        state: { status: "error", lastError: "Falha ao verificar conexão" },
         config: { host: hostOverride || host, port: parseInt(portOverride || port, 10) },
       })
       onConnectionChange?.(false)
@@ -81,7 +81,7 @@ export function ProPresenterConnectionStatus({
   React.useEffect(() => {
     checkConnection()
 
-    // Verifica conexao a cada 30 segundos
+    // Verifica conexão a cada 30 segundos
     const interval = setInterval(() => {
       checkConnection()
     }, 30000)
@@ -118,7 +118,7 @@ export function ProPresenterConnectionStatus({
     return (
       <div className={cn("flex items-center gap-2", className)}>
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Verificando conexao...</span>
+        <span className="text-sm text-muted-foreground">Verificando conexão...</span>
       </div>
     )
   }
@@ -159,15 +159,15 @@ export function ProPresenterConnectionStatus({
         {showSettings && (
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Configuracoes">
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Configurações">
                 <Settings className="h-4 w-4" />
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Configuracoes do ProPresenter</DialogTitle>
+                <DialogTitle>Configurações do ProPresenter</DialogTitle>
                 <DialogDescription>
-                  Configure a conexao com o ProPresenter. O ProPresenter precisa estar com a API
+                  Configure a conexão com o ProPresenter. O ProPresenter precisa estar com a API
                   habilitada em Settings &gt; Network.
                 </DialogDescription>
               </DialogHeader>
@@ -196,7 +196,7 @@ export function ProPresenterConnectionStatus({
                     placeholder="1025"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Porta da API (padrao: 1025)
+                    Porta da API (padrão: 1025)
                   </p>
                 </div>
 

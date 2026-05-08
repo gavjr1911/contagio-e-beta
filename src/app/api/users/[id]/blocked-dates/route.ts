@@ -24,10 +24,10 @@ export async function GET(
     // Check if user can access this data
     const userRole = session.user.role
     const isOwner = userId === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)
+    const isAdminOrLeader =
+      userRole && ["ADMIN", "LEADER"].includes(userRole)
 
-    if (!isOwner && !isAdminOrCoordinator) {
+    if (!isOwner && !isAdminOrLeader) {
       return Response.json(
         { error: "Acesso negado." },
         { status: 403 }
@@ -111,10 +111,9 @@ export async function POST(
     // Check if user can add blocked dates for this user
     const userRole = session.user.role
     const isOwner = userId === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR"].includes(userRole)
+    const isAdmin = userRole === "ADMIN"
 
-    if (!isOwner && !isAdminOrCoordinator) {
+    if (!isOwner && !isAdmin) {
       return Response.json(
         { error: "Acesso negado." },
         { status: 403 }
@@ -202,10 +201,9 @@ export async function DELETE(
     // Check if user can delete blocked dates for this user
     const userRole = session.user.role
     const isOwner = userId === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR"].includes(userRole)
+    const isAdmin = userRole === "ADMIN"
 
-    if (!isOwner && !isAdminOrCoordinator) {
+    if (!isOwner && !isAdmin) {
       return Response.json(
         { error: "Acesso negado." },
         { status: 403 }

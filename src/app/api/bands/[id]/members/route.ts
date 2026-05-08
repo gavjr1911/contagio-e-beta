@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { bandMemberCreateSchema } from "@/lib/validations/music"
@@ -12,14 +12,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: bandId } = await params
 
     const band = await prisma.band.findUnique({ where: { id: bandId } })
     if (!band) {
-      return NextResponse.json({ error: "Banda nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Banda nao encontrada" }, { status: 404 })
     }
 
     const members = await prisma.bandMember.findMany({
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       orderBy: { createdAt: "asc" },
     })
 
-    return NextResponse.json(members)
+    return Response.json({ data: members })
   } catch (error) {
     console.error("Erro ao listar membros:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: bandId } = await params
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const validationResult = bandMemberCreateSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -70,13 +70,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Verificar se a banda existe
     const band = await prisma.band.findUnique({ where: { id: bandId } })
     if (!band) {
-      return NextResponse.json({ error: "Banda nao encontrada" }, { status: 404 })
+      return Response.json({ error: "Banda nao encontrada" }, { status: 404 })
     }
 
     // Verificar se o usuario existe
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (!user) {
-      return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Usuario nao encontrado" }, { status: 404 })
     }
 
     // Verificar se o usuario ja e membro da banda
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       where: { bandId_userId: { bandId, userId } },
     })
     if (existingMember) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Usuario ja e membro desta banda" },
         { status: 400 }
       )
@@ -108,10 +108,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
 
-    return NextResponse.json(member, { status: 201 })
+    return Response.json({ data: member }, { status: 201 })
   } catch (error) {
     console.error("Erro ao adicionar membro:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
@@ -126,7 +126,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 })
+      return Response.json({ error: "Nao autorizado" }, { status: 401 })
     }
 
     const { id: bandId } = await params
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const validationResult = deleteMemberSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: "Dados invalidos", details: validationResult.error.flatten() },
         { status: 400 }
       )
@@ -147,17 +147,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { bandId_userId: { bandId, userId } },
     })
     if (!member) {
-      return NextResponse.json({ error: "Membro nao encontrado" }, { status: 404 })
+      return Response.json({ error: "Membro nao encontrado" }, { status: 404 })
     }
 
     await prisma.bandMember.delete({
       where: { bandId_userId: { bandId, userId } },
     })
 
-    return NextResponse.json({ message: "Membro removido com sucesso" })
+    return Response.json({ message: "Membro removido com sucesso" })
   } catch (error) {
     console.error("Erro ao remover membro:", error)
-    return NextResponse.json(
+    return Response.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
       day: "2-digit",
       month: "long",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     }).format(new Date(date));
   };
 
@@ -54,7 +56,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
           <div className="space-y-2">
@@ -77,7 +79,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
       <div className="flex flex-col items-center justify-center p-12">
         <Music className="mb-4 h-16 w-16 text-muted-foreground/50" />
         <h2 className="text-lg font-medium text-muted-foreground">
-          Musica nao encontrada
+          Música não encontrada
         </h2>
         <Button asChild className="mt-4">
           <Link href="/musicas">
@@ -90,81 +92,73 @@ export default function MusicaDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/musicas">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Voltar</span>
-            </Link>
-          </Button>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/20">
-            <Music className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-              {song.name}
-            </h1>
-            <p className="text-lg text-muted-foreground">{song.artist}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="font-mono text-base px-3">
-                Tom: {song.defaultKey}
+      <PageHeader
+        backHref="/musicas"
+        backLabel="Voltar"
+        icon={Music}
+        iconClassName="bg-primary/20"
+        title={song.name}
+        description={<span className="text-lg text-muted-foreground">{song.artist}</span>}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="font-mono text-base px-3">
+              Tom: {song.defaultKey}
+            </Badge>
+            {song.tags.map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
               </Badge>
-              {song.tags.map((tag) => (
-                <Badge key={tag} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+            ))}
           </div>
-        </div>
-
-        <div className="flex gap-2 sm:flex-row">
-          {song.chordLink && (
-            <Button variant="outline" asChild>
-              <a href={song.chordLink} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Abrir Cifra
-              </a>
-            </Button>
-          )}
-          <Button variant="outline" asChild>
-            <Link href={`/musicas/${id}/editar`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Editar
-            </Link>
-          </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
+        }
+        actions={
+          <>
+            {song.chordLink && (
+              <Button variant="outline" asChild>
+                <a href={song.chordLink} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Abrir Cifra
+                </a>
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Excluir musica</DialogTitle>
-                <DialogDescription>
-                  Tem certeza que deseja excluir &quot;{song.name}&quot;? Esta acao nao
-                  pode ser desfeita.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline">Cancelar</Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            )}
+            <Button variant="outline" asChild>
+              <Link href={`/musicas/${id}/editar`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </Link>
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Excluir música</DialogTitle>
+                  <DialogDescription>
+                    Tem certeza que deseja excluir &quot;{song.name}&quot;? Esta ação não
+                    pode ser desfeita.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <Button variant="outline">Cancelar</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
       {/* Content */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -207,12 +201,64 @@ export default function MusicaDetailPage({ params }: PageProps) {
 
         {/* Sidebar - Stats and History */}
         <div className="space-y-6">
+          {/* Streaming Links */}
+          {(song.spotifyUrl || song.youtubeUrl) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Music className="h-5 w-5 text-primary" />
+                  Ouvir Música
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {song.spotifyUrl && (
+                  <a
+                    href={song.spotifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1DB954]/10">
+                      <svg className="h-5 w-5 text-[#1DB954]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Spotify</p>
+                      <p className="text-xs text-muted-foreground">Abrir no Spotify</p>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </a>
+                )}
+                {song.youtubeUrl && (
+                  <a
+                    href={song.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF0000]/10">
+                      <svg className="h-5 w-5 text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">YouTube</p>
+                      <p className="text-xs text-muted-foreground">Assistir no YouTube</p>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </a>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5 text-primary" />
-                Estatisticas
+                Estatísticas
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -223,7 +269,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Ultima vez</span>
+                <span className="text-sm text-muted-foreground">Última vez</span>
                 <span className="text-sm font-medium text-foreground">
                   {formatDate(song.lastPlayedAt)}
                 </span>
@@ -242,7 +288,7 @@ export default function MusicaDetailPage({ params }: PageProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5 text-primary" />
-                Historico de Eventos
+                Histórico de Eventos
               </CardTitle>
             </CardHeader>
             <CardContent>

@@ -3,10 +3,8 @@ import { NextRequest } from "next/server"
 import {
   apiError,
   apiSuccess,
-  AuthSession,
-  isAdmin,
+  requireMinistryAccess,
   validateBody,
-  withAuth,
 } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
 import { updateMemberSchema } from "@/lib/validations/ministry"
@@ -17,121 +15,109 @@ type RouteParams = {
 
 // PATCH /api/ministry-members/[id] - Atualizar membro
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id } = await params
+  const { id } = await params
 
-    const bodyResult = await validateBody(request, updateMemberSchema)
+  const bodyResult = await validateBody(request, updateMemberSchema)
 
-    if (!bodyResult.success) {
-      return bodyResult.response
+  if (!bodyResult.success) {
+    return bodyResult.response
+  }
+
+  try {
+    // Buscar o membro com o ministerio para obter o ministryId
+    const member = await prisma.ministryMember.findUnique({
+      where: { id },
+      select: { ministryId: true },
+    })
+
+    if (!member) {
+      return apiError("Membro nao encontrado", 404)
     }
 
-    try {
-      // Buscar o membro com o ministerio
-      const member = await prisma.ministryMember.findUnique({
-        where: { id },
-        include: {
-          ministry: true,
-        },
+    const access = await requireMinistryAccess(member.ministryId)
+    if ("error" in access) return access.error
+
+    const { positionIds, active } = bodyResult.data
+
+    // Se positionIds foi fornecido, atualizar posicoes
+    if (positionIds !== undefined) {
+      // Remover todas as posicoes atuais
+      await prisma.memberPosition.deleteMany({
+        where: { memberId: id },
       })
 
-      if (!member) {
-        return apiError("Membro nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && member.ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
-
-      const { positionIds, active } = bodyResult.data
-
-      // Se positionIds foi fornecido, atualizar posicoes
-      if (positionIds !== undefined) {
-        // Remover todas as posicoes atuais
-        await prisma.memberPosition.deleteMany({
-          where: { memberId: id },
-        })
-
-        // Criar novas posicoes
-        if (positionIds.length > 0) {
-          await prisma.memberPosition.createMany({
-            data: positionIds.map((positionId: string) => ({
-              memberId: id,
-              positionId,
-            })),
-          })
-        }
-      }
-
-      // Atualizar active se fornecido
-      if (active !== undefined) {
-        await prisma.ministryMember.update({
-          where: { id },
-          data: { active },
+      // Criar novas posicoes
+      if (positionIds.length > 0) {
+        await prisma.memberPosition.createMany({
+          data: positionIds.map((positionId: string) => ({
+            memberId: id,
+            positionId,
+          })),
         })
       }
-
-      // Buscar membro atualizado
-      const updatedMember = await prisma.ministryMember.findUnique({
-        where: { id },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-            },
-          },
-          positions: {
-            include: {
-              position: true,
-            },
-          },
-        },
-      })
-
-      return apiSuccess(updatedMember)
-    } catch (error) {
-      console.error("Erro ao atualizar membro:", error)
-      return apiError("Erro ao atualizar membro", 500)
     }
-  })
+
+    // Atualizar active se fornecido
+    if (active !== undefined) {
+      await prisma.ministryMember.update({
+        where: { id },
+        data: { active },
+      })
+    }
+
+    // Buscar membro atualizado
+    const updatedMember = await prisma.ministryMember.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        positions: {
+          include: {
+            position: true,
+          },
+        },
+      },
+    })
+
+    return apiSuccess(updatedMember)
+  } catch (error) {
+    console.error("Erro ao atualizar membro:", error)
+    return apiError("Erro ao atualizar membro", 500)
+  }
 }
 
 // DELETE /api/ministry-members/[id] - Remover membro
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withAuth(async (session: AuthSession) => {
-    const { id } = await params
+  const { id } = await params
 
-    try {
-      // Buscar o membro com o ministerio
-      const member = await prisma.ministryMember.findUnique({
-        where: { id },
-        include: {
-          ministry: true,
-        },
-      })
+  try {
+    // Buscar o membro com o ministerio para obter o ministryId
+    const member = await prisma.ministryMember.findUnique({
+      where: { id },
+      select: { ministryId: true },
+    })
 
-      if (!member) {
-        return apiError("Membro nao encontrado", 404)
-      }
-
-      // Verificar permissao (admin ou lider do ministerio)
-      if (!isAdmin(session) && member.ministry.leaderId !== session.user.id) {
-        return apiError("Permissao negada", 403)
-      }
-
-      await prisma.ministryMember.delete({
-        where: { id },
-      })
-
-      return apiSuccess({ message: "Membro removido com sucesso" })
-    } catch (error) {
-      console.error("Erro ao remover membro:", error)
-      return apiError("Erro ao remover membro", 500)
+    if (!member) {
+      return apiError("Membro nao encontrado", 404)
     }
-  })
+
+    const access = await requireMinistryAccess(member.ministryId)
+    if ("error" in access) return access.error
+
+    await prisma.ministryMember.delete({
+      where: { id },
+    })
+
+    return apiSuccess({ message: "Membro removido com sucesso" })
+  } catch (error) {
+    console.error("Erro ao remover membro:", error)
+    return apiError("Erro ao remover membro", 500)
+  }
 }

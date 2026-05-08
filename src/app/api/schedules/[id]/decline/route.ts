@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { declineScheduleSchema } from "@/lib/validations/schedule"
+import { logAuditAsync, getAuditContext, getRequestMetadata } from "@/lib/audit"
 
 // POST /api/schedules/[id]/decline - Decline schedule participation
 export async function POST(
@@ -30,13 +31,12 @@ export async function POST(
       return Response.json({ error: "Escala nao encontrada" }, { status: 404 })
     }
 
-    // Only the scheduled user or admin/coordinator can decline
+    // Only the scheduled user or admin can decline
     const userRole = session.user.role
     const isOwner = schedule.user.id === session.user.id
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR"].includes(userRole)
+    const isAdmin = userRole === "ADMIN"
 
-    if (!isOwner && !isAdminOrCoordinator) {
+    if (!isOwner && !isAdmin) {
       return Response.json(
         { error: "Acesso negado. Apenas o usuario escalado pode recusar." },
         { status: 403 }
@@ -71,6 +71,8 @@ export async function POST(
       // Body is optional, ignore parse errors
     }
 
+    const previousStatus = schedule.status
+
     const updatedSchedule = await prisma.schedule.update({
       where: { id: scheduleId },
       data: {
@@ -89,6 +91,23 @@ export async function POST(
           select: { id: true, name: true, date: true },
         },
       },
+    })
+
+    // Registrar auditoria
+    const auditContext = getAuditContext(session)
+    logAuditAsync({
+      entityType: "Schedule",
+      entityId: scheduleId,
+      action: "declined",
+      ...auditContext,
+      changes: {
+        status: { old: previousStatus, new: "DECLINED" },
+        declinedReason: { old: null, new: reason || null },
+        userName: { old: null, new: updatedSchedule.user.name },
+        eventName: { old: null, new: updatedSchedule.event.name },
+        ministryName: { old: null, new: updatedSchedule.ministry.name },
+      },
+      metadata: getRequestMetadata(request),
     })
 
     return Response.json({

@@ -148,6 +148,7 @@ export function useEventVacancies(eventId: string) {
     queryKey: vacancyKeys.list(eventId),
     queryFn: () => fetchEventVacancies(eventId),
     enabled: !!eventId,
+    staleTime: 1000 * 60 * 2, // 2 minutos
   });
 }
 

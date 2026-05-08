@@ -46,12 +46,13 @@ export class ProPresenterClient {
   }
 
   private get baseUrl(): string {
-    return `${this.config.protocol}://${this.config.host}:${this.config.port}/v1`
+    // ProPresenter API nao usa prefixo /v1 nos endpoints
+    return `${this.config.protocol}://${this.config.host}:${this.config.port}`
   }
 
   private get wsUrl(): string {
     const wsProtocol = this.config.protocol === "https" ? "wss" : "ws"
-    return `${wsProtocol}://${this.config.host}:${this.config.port}/v1/status/updates`
+    return `${wsProtocol}://${this.config.host}:${this.config.port}/status/updates`
   }
 
   // ============================================================================
@@ -95,6 +96,15 @@ export class ProPresenterClient {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
+        // Tenta capturar o corpo do erro para debug
+        let errorBody = ""
+        try {
+          errorBody = await response.text()
+          console.log(`[ProPresenter Client] Erro ${response.status} - Body:`, errorBody)
+        } catch {
+          // Ignora erro ao ler body
+        }
+
         if (response.status === 404) {
           throw new ProPresenterError(
             `Endpoint nao encontrado: ${endpoint}`,
@@ -108,7 +118,7 @@ export class ProPresenterClient {
           )
         }
         throw new ProPresenterError(
-          `Erro na API: ${response.status} ${response.statusText}`,
+          `Erro na API: ${response.status} ${response.statusText}${errorBody ? ` - ${errorBody}` : ""}`,
           "API_ERROR"
         )
       }

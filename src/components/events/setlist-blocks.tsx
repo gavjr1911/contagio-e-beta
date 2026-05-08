@@ -28,6 +28,8 @@ import {
   Check,
   Search,
   User,
+  Monitor,
+  Upload,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -48,6 +50,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
+import { ProPresenterStatusBadge } from "@/components/propresenter/connection-status"
 import {
   useEventItems,
   useAddSongsToItem,
@@ -181,7 +184,7 @@ function EmptySlot({ slotNumber, onClick, disabled }: {
       </div>
       <div className="flex-1 flex items-center gap-2 text-muted-foreground">
         <Plus className="h-4 w-4" />
-        <span className="text-sm">Adicionar musica</span>
+        <span className="text-sm">Adicionar música</span>
       </div>
     </button>
   )
@@ -216,15 +219,15 @@ function SongSearchPopover({
       <PopoverContent className="w-[350px] p-0" align="start">
         <Command>
           <CommandInput
-            placeholder="Buscar musica..."
+            placeholder="Buscar música..."
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
           <CommandList>
             <CommandEmpty>
-              {isLoading ? "Carregando..." : "Nenhuma musica encontrada."}
+              {isLoading ? "Carregando..." : "Nenhuma música encontrada."}
             </CommandEmpty>
-            <CommandGroup heading="Musicas">
+            <CommandGroup heading="Músicas">
               {availableSongs.map((song) => (
                 <CommandItem
                   key={song.id}
@@ -294,10 +297,10 @@ function WorshipBlock({
         itemId: item.id,
         songIds: [song.id],
       })
-      toast({ title: "Musica adicionada" })
+      toast({ title: "Música adicionada" })
     } catch (error) {
       toast({
-        title: "Erro ao adicionar musica",
+        title: "Erro ao adicionar música",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       })
@@ -312,10 +315,10 @@ function WorshipBlock({
         itemId: item.id,
         songId,
       })
-      toast({ title: "Musica removida" })
+      toast({ title: "Música removida" })
     } catch (error) {
       toast({
-        title: "Erro ao remover musica",
+        title: "Erro ao remover música",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       })
@@ -451,7 +454,7 @@ function WorshipBlock({
             ) : (
               <Plus className="h-4 w-4 mr-2" />
             )}
-            Adicionar musica
+            Adicionar música
           </Button>
         )}
 
@@ -459,7 +462,7 @@ function WorshipBlock({
         {localSetlistItems.length === 0 && emptySlots === 0 && expectedCount === 0 && (
           <div className="text-center py-6 text-muted-foreground">
             <Music className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Nenhuma musica neste bloco</p>
+            <p className="text-sm">Nenhuma música neste bloco</p>
           </div>
         )}
 
@@ -478,12 +481,44 @@ function WorshipBlock({
 // Main component
 export function SetlistBlocks({ eventId, readOnly = false }: SetlistBlocksProps) {
   const { data: items, isLoading } = useEventItems(eventId)
+  const [isExporting, setIsExporting] = React.useState(false)
 
   // Filter only WORSHIP items
   const worshipItems = React.useMemo(() => {
     if (!items) return []
     return items.filter((item) => item.type === "WORSHIP")
   }, [items])
+
+  // Export to ProPresenter
+  const handleExportToProPresenter = async () => {
+    setIsExporting(true)
+    try {
+      const response = await fetch(`/api/propresenter/export/${eventId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Erro ao exportar")
+      }
+
+      toast({
+        title: "Playlist criada no ProPresenter",
+        description: `${data.itemsAdded || 0} músicas adicionadas a playlist "${data.playlistName}"`,
+      })
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar",
+        description: error instanceof Error ? error.message : "Nao foi possivel conectar ao ProPresenter",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -502,7 +537,7 @@ export function SetlistBlocks({ eventId, readOnly = false }: SetlistBlocksProps)
             Nenhum bloco de louvor
           </p>
           <p className="text-muted-foreground">
-            Adicione atividades de louvor na ordem do culto para associar musicas.
+            Adicione atividades de louvor na ordem do culto para associar músicas.
           </p>
         </div>
       </Card>
@@ -515,24 +550,54 @@ export function SetlistBlocks({ eventId, readOnly = false }: SetlistBlocksProps)
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
-      {totalExpected > 0 && (
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>
-            Total: <strong className="text-foreground">{totalCurrent}/{totalExpected}</strong> musicas
-          </span>
-          {totalCurrent >= totalExpected ? (
-            <Badge variant="default" className="text-xs">
-              <Check className="h-3 w-3 mr-1" />
-              Completo
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
-              {totalExpected - totalCurrent} restantes
-            </Badge>
-          )}
-        </div>
-      )}
+      {/* Header with Summary and Export */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Summary */}
+        {totalExpected > 0 ? (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>
+              Total: <strong className="text-foreground">{totalCurrent}/{totalExpected}</strong> músicas
+            </span>
+            {totalCurrent >= totalExpected ? (
+              <Badge variant="default" className="text-xs">
+                <Check className="h-3 w-3 mr-1" />
+                Completo
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
+                {totalExpected - totalCurrent} restantes
+              </Badge>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Total: <strong className="text-foreground">{totalCurrent}</strong> músicas
+            </span>
+          </div>
+        )}
+
+        {/* Export to ProPresenter */}
+        {totalCurrent > 0 && (
+          <div className="flex items-center gap-3">
+            <ProPresenterStatusBadge />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToProPresenter}
+              disabled={isExporting}
+              className="gap-2"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              Exportar para ProPresenter
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Blocks */}
       <div className="grid gap-6 md:grid-cols-2">

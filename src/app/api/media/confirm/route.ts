@@ -58,8 +58,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Obter tipo de media
+    // Obter tipo de media e URL publica
     const mediaType = getMediaTypeFromMime(mimeType as AllowedMimeType)
+    const publicUrl = await getPublicUrl(key)
+
+    // Verificar se o usuario existe no banco
+    let uploadedById: string | null = null
+    if (session.user.id) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true },
+      })
+      if (userExists) {
+        uploadedById = userExists.id
+      }
+    }
 
     // Criar registro no banco
     const media = await prisma.media.create({
@@ -67,13 +80,13 @@ export async function POST(request: NextRequest) {
         eventId,
         eventItemId: eventItemId || null,
         type: mediaType,
-        url: getPublicUrl(key),
+        url: publicUrl,
         filename: key,
         originalName,
         fileSize,
         mimeType,
         category,
-        uploadedById: session.user.id,
+        uploadedById,
       },
       include: {
         uploadedBy: {

@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -29,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MediaUpload } from "@/components/media/media-upload"
 import { MediaList } from "@/components/media/media-list"
 import { useEventMedia } from "@/hooks/use-media"
+import { eventItemTypeConfig, type EventItemType } from "@/hooks/use-event-items"
 import type { EventItemMediaStatus } from "@/lib/validations/media"
 import { cn } from "@/lib/utils"
 
@@ -68,7 +70,7 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <AlertCircle className="h-10 w-10 text-destructive" />
         <p className="mt-2 text-sm text-muted-foreground">
-          Erro ao carregar midia
+          Erro ao carregar mídia
         </p>
         <Button variant="outline" onClick={() => refetch()} className="mt-4">
           Tentar novamente
@@ -96,13 +98,13 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.itemsRequiringMedia}</div>
-            <p className="text-sm text-muted-foreground">Itens que requerem midia</p>
+            <p className="text-sm text-muted-foreground">Itens que requerem mídia</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">{stats.itemsWithMedia}</div>
-            <p className="text-sm text-muted-foreground">Itens com midia</p>
+            <p className="text-sm text-muted-foreground">Itens com mídia</p>
           </CardContent>
         </Card>
         <Card>
@@ -116,18 +118,30 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
       </div>
 
       <Tabs defaultValue="items" className="w-full">
-        <TabsList>
-          <TabsTrigger value="items">Por Item</TabsTrigger>
-          <TabsTrigger value="all">Todos os Arquivos</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="items">Por Item</TabsTrigger>
+            <TabsTrigger value="all">Todos os Arquivos</TabsTrigger>
+          </TabsList>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLooseUpload(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar arquivo avulso
+            </Button>
+          )}
+        </div>
 
         {/* Por Item */}
         <TabsContent value="items" className="space-y-4 mt-4">
-          {/* Itens que requerem midia */}
+          {/* Itens que requerem mídia */}
           {itemsRequiringMedia.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground">
-                Itens que requerem midia
+                Itens que requerem mídia
               </h3>
               {itemsRequiringMedia.map((item) => (
                 <ItemMediaCard
@@ -143,7 +157,7 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
             </div>
           )}
 
-          {/* Outros itens com midia */}
+          {/* Outros itens com mídia */}
           {items.filter((i) => !i.requiresMedia && i.mediaCount > 0).length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground">
@@ -180,24 +194,12 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
             </div>
           )}
 
-          {/* Botao para adicionar arquivo avulso */}
-          {!readOnly && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowLooseUpload(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar arquivo avulso
-            </Button>
-          )}
-
           {itemsRequiringMedia.length === 0 && looseMedia.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
               <FileIcon className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-medium">Nenhum item requer midia</h3>
+              <h3 className="mt-4 text-lg font-medium">Nenhum item requer mídia</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Marque itens na ordem do culto como "Requer Midia" para que aparecam aqui
+                Marque itens na ordem do culto como "Requer Mídia" para que apareçam aqui
               </p>
             </div>
           )}
@@ -222,8 +224,11 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              Adicionar midia: {uploadDialogItem?.title}
+              Adicionar mídia: {uploadDialogItem?.title}
             </DialogTitle>
+            <DialogDescription>
+              Faça upload de arquivos vinculados a este item da ordem do culto.
+            </DialogDescription>
           </DialogHeader>
           <MediaUpload
             eventId={eventId}
@@ -241,6 +246,9 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Adicionar arquivo avulso</DialogTitle>
+            <DialogDescription>
+              Faça upload de arquivos não vinculados a um item específico da ordem.
+            </DialogDescription>
           </DialogHeader>
           <MediaUpload
             eventId={eventId}
@@ -288,7 +296,9 @@ function ItemMediaCard({
                 </span>
                 <div>
                   <CardTitle className="text-base">{item.title}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{item.type}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {eventItemTypeConfig[item.type as EventItemType]?.label || item.type}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

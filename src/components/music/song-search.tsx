@@ -15,7 +15,7 @@ interface SongSearchProps {
 
 export function SongSearch({
   onSelect,
-  placeholder = "Buscar musica por nome ou artista...",
+  placeholder = "Buscar música por nome ou artista...",
   excludeIds = [],
   autoFocus = false,
 }: SongSearchProps) {
@@ -109,7 +109,7 @@ export function SongSearch({
         <div className="absolute z-50 mt-2 w-full rounded-lg border border-border bg-background shadow-lg">
           {filteredResults.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              {isLoading ? "Buscando..." : "Nenhuma musica encontrada"}
+              {isLoading ? "Buscando..." : "Nenhuma música encontrada"}
             </div>
           ) : (
             <ul className="max-h-64 overflow-auto py-2">
@@ -155,7 +155,7 @@ interface SongSearchWithFiltersProps {
 export function SongSearchInput({
   value,
   onChange,
-  placeholder = "Buscar musica por nome ou artista...",
+  placeholder = "Buscar música por nome ou artista...",
 }: SongSearchWithFiltersProps) {
   return (
     <div className="relative">

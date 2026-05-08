@@ -28,8 +28,7 @@ const localTimeSchema = z
 // ============================================
 
 export const EventTypeEnum = z.enum([
-  "SUNDAY_MORNING",
-  "SUNDAY_EVENING",
+  "CULTO",
   "SPECIAL",
 ])
 
@@ -60,14 +59,15 @@ export const EventItemTypeEnum = z.enum([
 const baseEventSchema = z.object({
   name: z
     .string()
-    .min(1, "Nome e obrigatorio")
-    .max(200, "Nome deve ter no maximo 200 caracteres"),
+    .min(1, "Nome é obrigatório")
+    .max(200, "Nome deve ter no máximo 200 caracteres"),
   type: EventTypeEnum,
   date: localDateSchema,
   startTime: localTimeSchema,
   endTime: localTimeSchema.optional(),
   status: EventStatusEnum.optional().default("PUBLISHED"),
-  templateId: z.string().cuid().optional(),
+  templateId: z.string().min(1).optional(),
+  checklistTemplateId: z.string().min(1).optional().nullable(),
   isRecurring: z.boolean().optional().default(false),
   recurrencePattern: RecurrencePatternEnum.optional(),
   recurrenceEndDate: z.string().optional(),
@@ -83,7 +83,7 @@ export const createEventSchema = baseEventSchema.refine(
   },
   {
     message:
-      "Padrao de recorrencia e data final sao obrigatorios para eventos recorrentes",
+      "Padrão de recorrência e data final são obrigatórios para eventos recorrentes",
     path: ["recurrencePattern"],
   }
 )
@@ -92,15 +92,16 @@ export const createEventSchema = baseEventSchema.refine(
 export const updateEventSchema = z.object({
   name: z
     .string()
-    .min(1, "Nome e obrigatorio")
-    .max(200, "Nome deve ter no maximo 200 caracteres")
+    .min(1, "Nome é obrigatório")
+    .max(200, "Nome deve ter no máximo 200 caracteres")
     .optional(),
   type: EventTypeEnum.optional(),
   date: localDateSchema.optional(),
   startTime: localTimeSchema.optional(),
   endTime: localTimeSchema.optional().nullable(),
   status: EventStatusEnum.optional(),
-  templateId: z.string().cuid().optional().nullable(),
+  templateId: z.string().min(1).optional().nullable(),
+  checklistTemplateId: z.string().min(1).optional().nullable(),
   isRecurring: z.boolean().optional(),
   recurrencePattern: RecurrencePatternEnum.optional().nullable(),
   recurrenceEndDate: z.string().optional().nullable(),
@@ -123,11 +124,12 @@ export const createEventItemSchema = z.object({
   type: EventItemTypeEnum,
   title: z
     .string()
-    .min(1, "Titulo e obrigatorio")
-    .max(200, "Titulo deve ter no maximo 200 caracteres"),
+    .min(1, "Título é obrigatório")
+    .max(200, "Título deve ter no máximo 200 caracteres"),
   description: z.string().max(1000).optional(),
   durationMinutes: z.coerce.number().int().positive().optional(),
-  responsibleId: z.string().cuid().optional(),
+  responsibleId: z.string().min(1).optional().nullable(),
+  responsibleName: z.string().max(200).optional().nullable(), // Nome livre para responsaveis externos
   order: z.coerce.number().int().min(0).optional(),
   // Campos adicionais
   bibleReference: z.string().max(100).optional(),
@@ -145,7 +147,7 @@ export const updateEventItemSchema = createEventItemSchema.partial()
 
 export const reorderEventItemsSchema = z.object({
   itemIds: z
-    .array(z.string().cuid())
+    .array(z.string().min(1))
     .min(1, "Pelo menos um item deve ser fornecido"),
 })
 

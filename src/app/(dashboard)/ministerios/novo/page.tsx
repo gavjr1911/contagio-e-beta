@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Church, Loader2, User, Mail, Phone, Calendar, CreditCard, Crown, UserPlus } from "lucide-react";
+import { Church, Loader2, User, Mail, Phone, Calendar, CreditCard, Crown, UserPlus, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,6 +27,9 @@ import {
   useInviteMember,
 } from "@/hooks/use-ministries";
 import { formatCPF, formatPhone } from "@/lib/validations/user";
+import { PermissionMatrixEditor } from "@/components/permissions/permission-matrix-editor";
+import { DEFAULT_MINISTRY_PERMISSIONS } from "@/lib/permissions/defaults";
+import type { MinistryPermissions } from "@/lib/permissions/types";
 
 export default function NovoMinisterioPage() {
   const { data: session, status } = useSession();
@@ -36,7 +40,7 @@ export default function NovoMinisterioPage() {
   const [leaderTab, setLeaderTab] = useState<"existing" | "new">("existing");
   const [leaderId, setLeaderId] = useState<string>("");
 
-  // Estados para criar novo lider
+  // Estados para criar novo líder
   const [newLeader, setNewLeader] = useState({
     name: "",
     email: "",
@@ -44,6 +48,7 @@ export default function NovoMinisterioPage() {
     phone: "",
     birthDate: "",
   });
+  const [permissions, setPermissions] = useState<MinistryPermissions>(DEFAULT_MINISTRY_PERMISSIONS);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: users, isLoading: isLoadingUsers } = useUsers();
@@ -66,18 +71,18 @@ export default function NovoMinisterioPage() {
     }
 
     if (!newLeader.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newLeader.email)) {
-      errors.email = "Email invalido";
+      errors.email = "Email inválido";
     }
 
     if (!newLeader.cpf || newLeader.cpf.replace(/\D/g, "").length !== 11) {
-      errors.cpf = "CPF invalido";
+      errors.cpf = "CPF inválido";
     }
 
     const phoneDigits = newLeader.phone.replace(/\D/g, "");
     if (!newLeader.phone || phoneDigits.length < 10) {
-      errors.phone = "Telefone obrigatorio";
+      errors.phone = "Telefone obrigatório";
     } else if (phoneDigits.length > 11) {
-      errors.phone = "Telefone invalido";
+      errors.phone = "Telefone inválido";
     }
 
     setFormErrors(errors);
@@ -103,18 +108,19 @@ export default function NovoMinisterioPage() {
 
     let finalLeaderId: string | undefined;
 
-    // Se estiver na aba de novo lider e tiver dados preenchidos
+    // Se estiver na aba de novo líder e tiver dados preenchidos
     if (leaderTab === "new" && newLeader.name && newLeader.email) {
       if (!validateNewLeader()) return;
 
       try {
-        // Primeiro cria o ministerio sem lider
+        // Primeiro cria o ministério sem líder
         const ministry = await createMinistry.mutateAsync({
           name: name.trim(),
           description: description.trim() || undefined,
+          permissions: permissions as unknown as Record<string, Record<string, string>>,
         });
 
-        // Depois convida o usuario e adiciona como membro
+        // Depois convida o usuário e adiciona como membro
         const result = await inviteMember.mutateAsync({
           name: newLeader.name,
           email: newLeader.email,
@@ -124,7 +130,7 @@ export default function NovoMinisterioPage() {
           ministryId: ministry.id,
         });
 
-        // Atualiza o ministerio com o lider
+        // Atualiza o ministério com o líder
         await fetch(`/api/ministries/${ministry.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -136,9 +142,9 @@ export default function NovoMinisterioPage() {
       } catch (error) {
         if (error instanceof Error) {
           if (error.message.includes("email")) {
-            setFormErrors({ email: "Este email ja esta cadastrado" });
+            setFormErrors({ email: "Este email já está cadastrado" });
           } else if (error.message.includes("CPF")) {
-            setFormErrors({ cpf: "Este CPF ja esta cadastrado" });
+            setFormErrors({ cpf: "Este CPF já está cadastrado" });
           } else {
             setFormErrors({ general: error.message });
           }
@@ -147,7 +153,7 @@ export default function NovoMinisterioPage() {
       }
     }
 
-    // Lider existente selecionado
+    // Líder existente selecionado
     if (leaderId && leaderId !== "none") {
       finalLeaderId = leaderId;
     }
@@ -156,6 +162,7 @@ export default function NovoMinisterioPage() {
       name: name.trim(),
       description: description.trim() || undefined,
       leaderId: finalLeaderId,
+      permissions: permissions as unknown as Record<string, Record<string, string>>,
     });
 
     router.push(`/ministerios/${ministry.id}`);
@@ -163,8 +170,8 @@ export default function NovoMinisterioPage() {
 
   if (status === "loading") {
     return (
-      <div className="container mx-auto max-w-2xl px-4 py-8">
-        <div className="mb-6">
+      <div className="space-y-6 max-w-2xl">
+        <div>
           <Skeleton className="h-10 w-32" />
         </div>
         <Card className="border-border">
@@ -184,43 +191,29 @@ export default function NovoMinisterioPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
-      {/* Back button */}
-      <div className="mb-6">
-        <Button asChild variant="ghost" className="text-muted-foreground hover:text-foreground">
-          <Link href="/ministerios">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para ministerios
-          </Link>
-        </Button>
-      </div>
+    <div className="space-y-6 max-w-2xl">
+      {/* Header */}
+      <PageHeader
+        backHref="/ministerios"
+        backLabel="Voltar para ministérios"
+        icon={Church}
+        title="Novo Ministério"
+        description="Preencha as informações para criar um novo ministério"
+      />
 
       <Card className="border-border bg-card">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Church className="h-5 w-5 text-primary" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Novo Ministerio
-            </CardTitle>
-          </div>
-          <p className="text-sm text-muted-foreground pl-13">
-            Preencha as informacoes para criar um novo ministerio
-          </p>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-foreground">
-                Nome do ministerio <span className="text-red-500">*</span>
+                Nome do ministério <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Ministerio de Louvor"
+                placeholder="Ex: Ministério de Louvor"
                 required
                 className="border-border focus:border-primary"
               />
@@ -229,13 +222,13 @@ export default function NovoMinisterioPage() {
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description" className="text-foreground">
-                Descricao
+                Descrição
               </Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descreva o proposito e atividades deste ministerio..."
+                placeholder="Descreva o propósito e atividades deste ministério..."
                 rows={4}
                 className="border-border focus:border-primary"
               />
@@ -245,18 +238,20 @@ export default function NovoMinisterioPage() {
             <div className="space-y-3">
               <Label className="text-foreground flex items-center gap-2">
                 <Crown className="h-4 w-4 text-primary" />
-                Lider do ministerio
+                Líder do ministério
               </Label>
 
               <Tabs value={leaderTab} onValueChange={(v) => setLeaderTab(v as "existing" | "new")}>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing" className="gap-2">
+                  <TabsTrigger value="existing" className="gap-2 whitespace-nowrap">
                     <User className="h-4 w-4" />
-                    Selecionar Existente
+                    <span className="hidden sm:inline">Selecionar Existente</span>
+                    <span className="sm:hidden">Existente</span>
                   </TabsTrigger>
-                  <TabsTrigger value="new" className="gap-2">
+                  <TabsTrigger value="new" className="gap-2 whitespace-nowrap">
                     <UserPlus className="h-4 w-4" />
-                    Criar Novo
+                    <span className="hidden sm:inline">Criar Novo</span>
+                    <span className="sm:hidden">Novo</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -267,11 +262,11 @@ export default function NovoMinisterioPage() {
                   ) : (
                     <Select value={leaderId} onValueChange={setLeaderId}>
                       <SelectTrigger className="border-border focus:border-primary">
-                        <SelectValue placeholder="Selecione um lider (opcional)" />
+                        <SelectValue placeholder="Selecione um líder (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">
-                          <span className="text-muted-foreground">Sem lider</span>
+                          <span className="text-muted-foreground">Sem líder</span>
                         </SelectItem>
                         {users?.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
@@ -403,25 +398,40 @@ export default function NovoMinisterioPage() {
 
                   {/* Info */}
                   <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-                    Um email de convite sera enviado para o lider definir sua senha e acessar o sistema.
+                    Um email de convite será enviado para o líder definir sua senha e acessar o sistema.
                   </div>
                 </TabsContent>
               </Tabs>
 
               <p className="text-xs text-muted-foreground">
-                O lider tera permissoes para gerenciar membros e escalas
+                O líder terá permissões para gerenciar membros e escalas
               </p>
             </div>
 
+            {/* Permissions Matrix */}
+            <div className="space-y-3">
+              <Label className="text-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Permissões do ministério
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Configure o que o líder e os membros deste ministério podem acessar no sistema.
+              </p>
+              <PermissionMatrixEditor
+                value={permissions}
+                onChange={setPermissions}
+              />
+            </div>
+
             {/* Actions */}
-            <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" asChild>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/ministerios">Cancelar</Link>
               </Button>
               <Button
                 type="submit"
                 disabled={!name.trim() || createMinistry.isPending || inviteMember.isPending}
-                className="bg-primary hover:bg-primary-hover"
+                className="w-full sm:w-auto"
               >
                 {createMinistry.isPending || inviteMember.isPending ? (
                   <>
@@ -429,14 +439,14 @@ export default function NovoMinisterioPage() {
                     Criando...
                   </>
                 ) : (
-                  "Criar Ministerio"
+                  "Criar Ministério"
                 )}
               </Button>
             </div>
 
             {/* Error message */}
             {createMinistry.error && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+              <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
                 {createMinistry.error.message}
               </div>
             )}

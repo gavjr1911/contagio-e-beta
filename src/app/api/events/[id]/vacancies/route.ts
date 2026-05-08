@@ -79,9 +79,9 @@ export async function POST(
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem gerenciar vagas." },
+        { error: "Acesso negado. Apenas ADMIN pode gerenciar vagas." },
         { status: 403 }
       )
     }
@@ -225,7 +225,11 @@ export async function POST(
 
     if (!parseResult.success) {
       return Response.json(
-        { error: "Dados invalidos", details: parseResult.error.flatten() },
+        {
+          error: "Dados invalidos",
+          details: parseResult.error.flatten(),
+          bulkDetails: bulkParseResult.error?.flatten(),
+        },
         { status: 400 }
       )
     }

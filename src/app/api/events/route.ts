@@ -10,8 +10,10 @@ import {
   createRecurringEvents,
   copyVacanciesToEvent,
 } from "@/lib/scheduling/recurrence"
-import { transformEventForResponse } from "@/lib/date-utils"
+import { transformEventForResponse, parseLocalDate } from "@/lib/date-utils"
 import type { RecurrencePattern } from "@/generated/prisma/client"
+import { resolveUserPermissions } from "@/lib/permissions/resolver"
+import { hasPermission } from "@/lib/permissions/check"
 
 // GET /api/events - List events with filters
 export async function GET(request: NextRequest) {
@@ -44,7 +46,23 @@ export async function GET(request: NextRequest) {
     const { startDate, endDate, status, type, page, limit } = parseResult.data
     const skip = (page - 1) * limit
 
+    // Verificar se o usuário tem permissão para ver todos os eventos
+    const userRole = session.user.role as string
+    const isAdmin = userRole === "ADMIN"
+    let canViewAllEvents = isAdmin
+
+    if (!isAdmin) {
+      const permissions = await resolveUserPermissions(session.user.id!, userRole)
+      canViewAllEvents = hasPermission(permissions, "events", "view")
+    }
+
+    // Se não tem events:view, filtrar apenas eventos onde está escalado
+    const scheduleFilter = !canViewAllEvents
+      ? { schedules: { some: { userId: session.user.id! } } }
+      : {}
+
     const where = {
+      ...scheduleFilter,
       ...(startDate && { date: { gte: startDate } }),
       ...(endDate && { date: { lte: endDate } }),
       ...(status && { status }),
@@ -88,7 +106,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/events - Create event (ADMIN, COORDINATOR only)
+// POST /api/events - Create event (ADMIN only)
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -98,9 +116,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = session.user.role
-    if (!userRole || !["ADMIN", "COORDINATOR"].includes(userRole)) {
+    if (userRole !== "ADMIN") {
       return Response.json(
-        { error: "Acesso negado. Apenas ADMIN e COORDINATOR podem criar eventos." },
+        { error: "Acesso negado. Apenas ADMIN pode criar eventos." },
         { status: 403 }
       )
     }
@@ -123,6 +141,7 @@ export async function POST(request: NextRequest) {
       endTime,
       status,
       templateId,
+      checklistTemplateId,
       isRecurring,
       recurrencePattern,
       recurrenceEndDate,
@@ -141,6 +160,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate checklistTemplateId if provided
+    if (checklistTemplateId) {
+      const checklistTemplateExists = await prisma.checklistTemplate.findUnique({
+        where: { id: checklistTemplateId },
+      })
+      if (!checklistTemplateExists) {
+        return Response.json(
+          { error: "Template de checklist nao encontrado" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Create the parent event
     const event = await prisma.event.create({
       data: {
@@ -151,16 +183,18 @@ export async function POST(request: NextRequest) {
         endTime,
         status,
         templateId,
+        checklistTemplateId,
         isRecurring: isRecurring ?? false,
         recurrencePattern: isRecurring
           ? (recurrencePattern as RecurrencePattern)
           : null,
         recurrenceEndDate: isRecurring && recurrenceEndDate
-          ? new Date(recurrenceEndDate)
+          ? parseLocalDate(recurrenceEndDate)
           : null,
       },
       include: {
         template: { select: { id: true, name: true } },
+        checklistTemplate: { select: { id: true, name: true } },
       },
     })
 
@@ -176,10 +210,11 @@ export async function POST(request: NextRequest) {
           startTime: event.startTime,
           endTime: event.endTime,
           templateId: event.templateId,
+          checklistTemplateId: event.checklistTemplateId,
         },
         {
           pattern: recurrencePattern as RecurrencePattern,
-          endDate: new Date(recurrenceEndDate),
+          endDate: parseLocalDate(recurrenceEndDate),
         }
       )
 

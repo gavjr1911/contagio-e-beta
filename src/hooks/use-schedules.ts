@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 import { vacancyKeys } from "./use-vacancies";
+import { formatDateToISO } from "@/lib/date-utils";
 
 // Types
 export interface Schedule {
@@ -10,7 +11,13 @@ export interface Schedule {
   eventId: string;
   ministryId: string;
   userId: string;
+  /** @deprecated — usar `vacancy.position.name`. */
   position: string | null;
+  vacancy?: {
+    id: string;
+    positionId: string;
+    position: { id: string; name: string };
+  } | null;
   status: ScheduleStatus;
   confirmedAt: Date | string | null;
   declinedReason: string | null;
@@ -159,7 +166,11 @@ async function addBlockedDate(data: {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      startDate: formatDateToISO(data.startDate),
+      endDate: formatDateToISO(data.endDate),
+      reason: data.reason,
+    }),
   });
   if (!response.ok) {
     throw new Error("Erro ao adicionar data bloqueada");
@@ -187,8 +198,15 @@ async function fetchEventSchedules(eventId: string): Promise<EventScheduleGroup[
   return result.data || [];
 }
 
+// Schedule creation response with optional warnings
+export interface CreateScheduleResponse {
+  schedule: Schedule;
+  warnings?: string[];
+  timeConflicts?: TimeConflict[];
+}
+
 // Create schedule (assign member to event)
-async function createSchedule(data: CreateScheduleInput): Promise<Schedule> {
+async function createSchedule(data: CreateScheduleInput): Promise<CreateScheduleResponse> {
   const { eventId, ...body } = data;
   const response = await fetch(`/api/events/${eventId}/schedules`, {
     method: "POST",
@@ -202,7 +220,11 @@ async function createSchedule(data: CreateScheduleInput): Promise<Schedule> {
     throw new Error(error.error || "Erro ao criar escala");
   }
   const result = await response.json();
-  return result.data;
+  return {
+    schedule: result.data,
+    warnings: result.warnings,
+    timeConflicts: result.timeConflicts,
+  };
 }
 
 // Delete schedule
@@ -317,5 +339,125 @@ export function useRemoveBlockedDate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.blocked() });
     },
+  });
+}
+
+// ============================================
+// Bulk Scheduling Types and Functions
+// ============================================
+
+export interface BulkScheduleItem {
+  userId: string;
+  ministryId: string;
+  vacancyId?: string;
+  position?: string;
+}
+
+export interface BulkScheduleResult {
+  userId: string;
+  ministryId: string;
+  success: boolean;
+  scheduleId?: string;
+  error?: string;
+  warnings?: string[];
+}
+
+export interface TimeConflict {
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string | null;
+  ministryName: string;
+  conflictType: "same_event" | "overlapping" | "close_proximity";
+}
+
+export interface BulkScheduleResponse {
+  results: BulkScheduleResult[];
+  summary: {
+    total: number;
+    success: number;
+    failed: number;
+    withWarnings: number;
+  };
+  notificationsSent: boolean;
+}
+
+export interface CreateBulkSchedulesInput {
+  eventId: string;
+  schedules: BulkScheduleItem[];
+  sendNotifications?: boolean;
+}
+
+export interface CheckConflictsInput {
+  eventId: string;
+  userIds: string[];
+}
+
+// API function: Create bulk schedules
+async function createBulkSchedules(
+  data: CreateBulkSchedulesInput
+): Promise<BulkScheduleResponse> {
+  const { eventId, ...body } = data;
+  const response = await fetch(`/api/events/${eventId}/schedules/bulk`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Erro ao criar escalas em lote");
+  }
+
+  return result.data;
+}
+
+// API function: Check conflicts for multiple users
+async function checkBulkConflicts(
+  data: CheckConflictsInput
+): Promise<Record<string, TimeConflict[]>> {
+  const { eventId, userIds } = data;
+  const params = new URLSearchParams();
+  params.set("userIds", userIds.join(","));
+
+  const response = await fetch(
+    `/api/events/${eventId}/schedules/bulk?${params.toString()}`
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Erro ao verificar conflitos");
+  }
+
+  return result.data;
+}
+
+// Hook: useBulkSchedule
+export function useBulkSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createBulkSchedules,
+    onSuccess: (_, variables) => {
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.event(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+      queryClient.invalidateQueries({ queryKey: vacancyKeys.list(variables.eventId) });
+    },
+  });
+}
+
+// Hook: useCheckBulkConflicts
+export function useCheckBulkConflicts(eventId: string, userIds: string[]) {
+  return useQuery({
+    queryKey: [...scheduleKeys.event(eventId), "conflicts", userIds],
+    queryFn: () => checkBulkConflicts({ eventId, userIds }),
+    enabled: !!eventId && userIds.length > 0,
+    staleTime: 1000 * 60 * 1, // 1 minute
   });
 }

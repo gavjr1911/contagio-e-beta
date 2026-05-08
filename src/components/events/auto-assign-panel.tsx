@@ -92,7 +92,7 @@ function VacancyItem({ vacancy }: { vacancy: AutoAssignVacancy }) {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground italic">
-          Nenhum candidato disponivel
+          Nenhum candidato disponível
         </p>
       )}
     </div>
@@ -208,14 +208,14 @@ export function AutoAssignPanel({
       });
 
       toast({
-        title: "Distribuicao concluida",
-        description: `${result.totalAssigned} membro${result.totalAssigned !== 1 ? "s" : ""} atribuido${result.totalAssigned !== 1 ? "s" : ""} com sucesso.`,
+        title: "Distribuição concluída",
+        description: `${result.totalAssigned} membro${result.totalAssigned !== 1 ? "s" : ""} atribuído${result.totalAssigned !== 1 ? "s" : ""} com sucesso.`,
       });
 
       onAssigned?.();
     } catch (err) {
       toast({
-        title: "Erro na distribuicao",
+        title: "Erro na distribuição",
         description:
           err instanceof Error ? err.message : "Erro ao distribuir membros",
         variant: "destructive",
@@ -230,7 +230,7 @@ export function AutoAssignPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Distribuicao Automatica</h2>
+              <h2 className="text-xl font-semibold">Distribuição Automática</h2>
             </div>
           </div>
         </CardHeader>
@@ -251,7 +251,7 @@ export function AutoAssignPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Distribuicao Automatica</h2>
+            <h2 className="text-xl font-semibold">Distribuição Automática</h2>
           </div>
           <Button
             onClick={handleExecute}
@@ -274,8 +274,8 @@ export function AutoAssignPanel({
         </div>
         {!isLoading && totalVacancies > 0 && (
           <p className="text-sm text-muted-foreground mt-1">
-            {totalVacancies} vaga{totalVacancies !== 1 ? "s" : ""} disponive
-            {totalVacancies !== 1 ? "is" : "l"} para distribuicao
+            {totalVacancies} vaga{totalVacancies !== 1 ? "s" : ""} disponíve
+            {totalVacancies !== 1 ? "is" : "l"} para distribuição
           </p>
         )}
       </CardHeader>
@@ -288,7 +288,7 @@ export function AutoAssignPanel({
           <div className="text-center py-8">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">
-              Todas as vagas ja foram preenchidas
+              Todas as vagas já foram preenchidas
             </p>
           </div>
         ) : (

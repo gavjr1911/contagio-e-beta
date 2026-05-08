@@ -48,11 +48,11 @@ export async function GET(request: NextRequest) {
 
     // Regular users can only see their own schedules
     const userRole = session.user.role
-    const isAdminOrCoordinator =
-      userRole && ["ADMIN", "COORDINATOR", "LEADER"].includes(userRole)
+    const isAdminOrLeader =
+      userRole && ["ADMIN", "LEADER"].includes(userRole)
 
     let effectiveUserId = userId
-    if (!isAdminOrCoordinator && userId !== session.user.id) {
+    if (!isAdminOrLeader && userId !== session.user.id) {
       // Non-admin users can only query their own schedules
       effectiveUserId = session.user.id
     }

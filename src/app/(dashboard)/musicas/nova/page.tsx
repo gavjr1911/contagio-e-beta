@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Music, Plus, X, Loader2 } from "lucide-react";
+import { Music, Plus, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import { useCreateSong } from "@/hooks/use-songs";
 import { MUSICAL_KEYS, COMMON_SONG_TAGS, type CreateSongInput } from "@/types/music";
 
@@ -22,6 +23,8 @@ export default function NovaMusicaPage() {
     defaultKey: "C",
     lyrics: "",
     chordLink: "",
+    spotifyUrl: "",
+    youtubeUrl: "",
     tags: [],
   });
 
@@ -32,15 +35,23 @@ export default function NovaMusicaPage() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Nome da musica e obrigatorio";
+      newErrors.name = "Nome da música é obrigatório";
     }
 
     if (!formData.artist.trim()) {
-      newErrors.artist = "Artista e obrigatorio";
+      newErrors.artist = "Artista é obrigatório";
     }
 
     if (formData.chordLink && !isValidUrl(formData.chordLink)) {
-      newErrors.chordLink = "URL invalida";
+      newErrors.chordLink = "URL inválida";
+    }
+
+    if (formData.spotifyUrl && !isValidUrl(formData.spotifyUrl)) {
+      newErrors.spotifyUrl = "URL inválida";
+    }
+
+    if (formData.youtubeUrl && !isValidUrl(formData.youtubeUrl)) {
+      newErrors.youtubeUrl = "URL inválida";
     }
 
     setErrors(newErrors);
@@ -104,46 +115,35 @@ export default function NovaMusicaPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/musicas">
-            <ArrowLeft className="h-5 w-5" />
-            <span className="sr-only">Voltar</span>
-          </Link>
-        </Button>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/20">
-          <Music className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">
-            Nova Musica
-          </h1>
-          <p className="text-muted-foreground">
-            Adicione uma nova musica a biblioteca
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/musicas"
+        backLabel="Voltar"
+        icon={Music}
+        iconClassName="bg-primary/20"
+        title="Nova Música"
+        description="Adicione uma nova música à biblioteca"
+      />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle>Informacoes da Musica</CardTitle>
+            <CardTitle>Informações da Música</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
-                Nome da Musica <span className="text-destructive">*</span>
+                Nome da Música <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Ex: Quao Grande E O Meu Deus"
+                placeholder="Ex: Quão Grande É O Meu Deus"
                 className={errors.name ? "border-destructive" : ""}
               />
               {errors.name && (
@@ -171,7 +171,7 @@ export default function NovaMusicaPage() {
 
             {/* Default Key */}
             <div className="space-y-2">
-              <Label htmlFor="defaultKey">Tom Padrao</Label>
+              <Label htmlFor="defaultKey">Tom Padrão</Label>
               <select
                 id="defaultKey"
                 name="defaultKey"
@@ -205,6 +205,55 @@ export default function NovaMusicaPage() {
               <p className="text-xs text-muted-foreground">
                 Cole o link do CifraClub, Cifras.com ou similar
               </p>
+            </div>
+
+            {/* Streaming Links */}
+            <div className="space-y-4 rounded-lg border border-border p-4">
+              <Label className="text-base font-medium">Links de Streaming</Label>
+
+              {/* Spotify */}
+              <div className="space-y-2">
+                <Label htmlFor="spotifyUrl" className="flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  </svg>
+                  Spotify
+                </Label>
+                <Input
+                  id="spotifyUrl"
+                  name="spotifyUrl"
+                  type="url"
+                  value={formData.spotifyUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://open.spotify.com/track/..."
+                  className={errors.spotifyUrl ? "border-destructive" : ""}
+                />
+                {errors.spotifyUrl && (
+                  <p className="text-sm text-destructive">{errors.spotifyUrl}</p>
+                )}
+              </div>
+
+              {/* YouTube */}
+              <div className="space-y-2">
+                <Label htmlFor="youtubeUrl" className="flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  YouTube
+                </Label>
+                <Input
+                  id="youtubeUrl"
+                  name="youtubeUrl"
+                  type="url"
+                  value={formData.youtubeUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className={errors.youtubeUrl ? "border-destructive" : ""}
+                />
+                {errors.youtubeUrl && (
+                  <p className="text-sm text-destructive">{errors.youtubeUrl}</p>
+                )}
+              </div>
             </div>
 
             {/* Tags */}
@@ -266,6 +315,7 @@ export default function NovaMusicaPage() {
                   variant="outline"
                   onClick={addCustomTag}
                   disabled={!customTag.trim()}
+                  aria-label="Adicionar tag"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -280,24 +330,24 @@ export default function NovaMusicaPage() {
                 name="lyrics"
                 value={formData.lyrics}
                 onChange={handleInputChange}
-                placeholder="Cole a letra da musica aqui...&#10;&#10;Dica: Voce pode incluir acordes entre colchetes [G] ou em linhas separadas"
+                placeholder="Cole a letra da música aqui...&#10;&#10;Dica: Você pode incluir acordes entre colchetes [G] ou em linhas separadas"
                 rows={12}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono leading-relaxed placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <p className="text-xs text-muted-foreground">
                 Inclua acordes entre colchetes [Am] ou em linhas separadas acima das
-                estrofes. O sistema ira destaca-los e permitir transposicao.
+                estrofes. O sistema irá destacá-los e permitir transposição.
               </p>
             </div>
           </CardContent>
         </Card>
 
         {/* Submit buttons */}
-        <div className="mt-6 flex gap-3">
-          <Button variant="outline" type="button" asChild>
+        <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button variant="outline" type="button" asChild className="w-full sm:w-auto">
             <Link href="/musicas">Cancelar</Link>
           </Button>
-          <Button type="submit" disabled={createMutation.isPending}>
+          <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto">
             {createMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -306,7 +356,7 @@ export default function NovaMusicaPage() {
             ) : (
               <>
                 <Plus className="mr-2 h-4 w-4" />
-                Criar Musica
+                Criar Música
               </>
             )}
           </Button>

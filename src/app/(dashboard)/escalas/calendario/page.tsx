@@ -5,7 +5,6 @@ import Link from "next/link";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowLeft,
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
@@ -16,11 +15,13 @@ import {
 
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,11 +29,7 @@ import { cn } from "@/lib/utils";
 import { useMySchedules, type Schedule } from "@/hooks/use-schedules";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 
-// Parse date string (YYYY-MM-DD) to Date object in local timezone
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
-}
+import { parseLocalDate, getTodayLocal } from "@/lib/date-utils";
 
 const statusColors: Record<ScheduleStatus, string> = {
   [ScheduleStatus.PENDING]: "bg-amber-500",
@@ -92,34 +89,17 @@ export default function CalendarioEscalasPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/escalas">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-foreground font-display">
-                Calendario de Escalas
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Visualize suas escalas no calendario
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/escalas"
+        backLabel="Voltar para escalas"
+        title="Calendário de Escalas"
+        description="Visualize suas escalas no calendário"
+      />
 
       {/* Legend */}
-      <div className="px-4 py-3 flex items-center gap-4 border-b border-border">
+      <div className="flex flex-wrap items-center gap-4">
         <span className="text-xs text-muted-foreground">Legenda:</span>
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 rounded-full bg-amber-500" />
@@ -136,7 +116,7 @@ export default function CalendarioEscalasPage() {
       </div>
 
       {/* Calendar */}
-      <div className="px-4 pt-4">
+      <div>
         <Card className="bg-secondary border-border">
           <CardContent className="p-2">
             {isLoading ? (
@@ -168,9 +148,9 @@ export default function CalendarioEscalasPage() {
       </div>
 
       {/* Upcoming schedules list */}
-      <div className="px-4 pt-6">
+      <div>
         <h2 className="text-lg font-semibold text-foreground mb-3">
-          Proximas escalas
+          Próximas escalas
         </h2>
         {isLoading ? (
           <div className="space-y-2">
@@ -184,7 +164,7 @@ export default function CalendarioEscalasPage() {
         ) : schedules && schedules.length > 0 ? (
           <div className="space-y-2">
             {schedules
-              .filter((s) => parseLocalDate(s.event.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
+              .filter((s) => parseLocalDate(s.event.date) >= getTodayLocal())
               .slice(0, 5)
               .map((schedule) => (
                 <Card
@@ -265,6 +245,9 @@ export default function CalendarioEscalasPage() {
               {selectedDate &&
                 format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </DialogTitle>
+            <DialogDescription>
+              Veja as escalas em que você está envolvido neste dia.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -313,9 +296,9 @@ export default function CalendarioEscalasPage() {
                           M
                         </span>
                         <span>{schedule.ministry.name}</span>
-                        {schedule.position && (
+                        {(schedule.vacancy?.position?.name ?? schedule.position) && (
                           <span className="text-primary">
-                            ({schedule.position})
+                            ({schedule.vacancy?.position?.name ?? schedule.position})
                           </span>
                         )}
                       </div>
@@ -333,7 +316,7 @@ export default function CalendarioEscalasPage() {
             )}
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Link href="/escalas">
               <Button
                 variant="outline"

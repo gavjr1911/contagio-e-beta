@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Dialog,
   DialogContent,
@@ -114,14 +115,14 @@ function AddMemberDialog({
         <DialogHeader>
           <DialogTitle>Adicionar Membro</DialogTitle>
           <DialogDescription>
-            Selecione um membro para adicionar a banda
+            Selecione um membro para adicionar à banda
           </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-64 overflow-auto py-4">
           {availableMembers?.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-4">
-              Todos os membros ja fazem parte desta banda
+              Todos os membros já fazem parte desta banda
             </p>
           ) : (
             <div className="space-y-2">
@@ -148,7 +149,7 @@ function AddMemberDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Fechar
           </Button>
@@ -171,6 +172,7 @@ export default function BandaDetailPage({ params }: PageProps) {
       day: "2-digit",
       month: "long",
       year: "numeric",
+      timeZone: "America/Sao_Paulo",
     }).format(new Date(date));
   };
 
@@ -185,7 +187,7 @@ export default function BandaDetailPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
           <div className="space-y-2">
@@ -208,7 +210,7 @@ export default function BandaDetailPage({ params }: PageProps) {
       <div className="flex flex-col items-center justify-center p-12">
         <Users className="mb-4 h-16 w-16 text-muted-foreground/50" />
         <h2 className="text-lg font-medium text-muted-foreground">
-          Banda nao encontrada
+          Banda não encontrada
         </h2>
         <Button asChild className="mt-4">
           <Link href="/bandas">
@@ -223,66 +225,56 @@ export default function BandaDetailPage({ params }: PageProps) {
   const uniqueInstruments = [...new Set(band.members.flatMap((m) => m.instruments))];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/bandas">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Voltar</span>
-            </Link>
-          </Button>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/20">
-            <Users className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
-              {band.name}
-            </h1>
-            <p className="text-muted-foreground">
-              {band.members.length} {band.members.length === 1 ? "membro" : "membros"}
-            </p>
-            {band.description && (
-              <p className="mt-2 text-sm text-muted-foreground">{band.description}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <AddMemberDialog
-            bandId={id}
-            currentMemberIds={band.members.map((m) => m.id)}
-          />
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Excluir banda</DialogTitle>
-                <DialogDescription>
-                  Tem certeza que deseja excluir &quot;{band.name}&quot;? Esta acao nao
-                  pode ser desfeita.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline">Cancelar</Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+      <PageHeader
+        backHref="/bandas"
+        backLabel="Voltar"
+        icon={Users}
+        iconClassName="bg-primary/20"
+        title={band.name}
+        description={`${band.members.length} ${band.members.length === 1 ? "membro" : "membros"}`}
+        meta={
+          band.description ? (
+            <p className="text-sm text-muted-foreground">{band.description}</p>
+          ) : undefined
+        }
+        actions={
+          <>
+            <AddMemberDialog
+              bandId={id}
+              currentMemberIds={band.members.map((m) => m.id)}
+            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Excluir banda</DialogTitle>
+                  <DialogDescription>
+                    Tem certeza que deseja excluir &quot;{band.name}&quot;? Esta ação não
+                    pode ser desfeita.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <Button variant="outline">Cancelar</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        }
+      />
 
       {/* Content */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -303,7 +295,7 @@ export default function BandaDetailPage({ params }: PageProps) {
                     Nenhum membro na banda
                   </p>
                   <p className="text-xs text-muted-foreground/70">
-                    Adicione membros usando o botao acima
+                    Adicione membros usando o botão acima
                   </p>
                 </div>
               ) : (
@@ -360,7 +352,7 @@ export default function BandaDetailPage({ params }: PageProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5 text-primary" />
-                Historico de Eventos
+                Histórico de Eventos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -396,7 +388,7 @@ export default function BandaDetailPage({ params }: PageProps) {
           {/* Band info */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Informacoes</CardTitle>
+              <CardTitle className="text-lg">Informações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">

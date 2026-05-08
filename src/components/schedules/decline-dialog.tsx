@@ -61,17 +61,17 @@ export function DeclineDialog({
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {showConfirmation ? (
-              "Esta acao nao pode ser desfeita. O lider do ministerio sera notificado."
+              "Esta ação não pode ser desfeita. O líder do ministério será notificado."
             ) : eventName ? (
               <>
-                Voce esta recusando sua participacao em{" "}
+                Você está recusando sua participação em{" "}
                 <span className="text-primary font-medium">
                   {eventName}
                 </span>
                 .
               </>
             ) : (
-              "Voce esta recusando sua participacao nesta escala."
+              "Você está recusando sua participação nesta escala."
             )}
           </DialogDescription>
         </DialogHeader>
@@ -93,7 +93,7 @@ export function DeclineDialog({
               disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
-              Isso ajuda os lideres a entenderem sua disponibilidade.
+              Isso ajuda os líderes a entenderem sua disponibilidade.
             </p>
           </div>
         )}
@@ -101,8 +101,8 @@ export function DeclineDialog({
         {showConfirmation && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-center">
             <p className="text-red-400 text-sm">
-              Ao confirmar, voce sera removido desta escala e o lider podera
-              escalar outro voluntario.
+              Ao confirmar, você será removido desta escala e o líder poderá
+              escalar outro voluntário.
             </p>
           </div>
         )}
