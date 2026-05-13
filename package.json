@@ -65,19 +65,19 @@
     "serwist": "^9.5.7",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "typescript": "^5",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.2.6",
-    "tailwindcss": "^4",
-    "tsx": "^4.21.0",
-    "typescript": "^5"
+    "tsx": "^4.21.0"
   }
 }
