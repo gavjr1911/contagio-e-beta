@@ -174,8 +174,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (format === "excel") {
-      const excelBlob = generateSchedulesExcel(report)
-      const excelBuffer = await excelBlob.arrayBuffer()
+      const excelBuffer = await generateSchedulesExcel(report)
 
       return new NextResponse(excelBuffer, {
         headers: {

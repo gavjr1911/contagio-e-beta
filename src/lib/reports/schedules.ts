@@ -1,12 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-// SEGURANÇA — `xlsx` tem advisories HIGH (prototype pollution / ReDoS) sem fix
-// no npm. Aqui ele é usado APENAS para GERAR planilhas (aoa_to_sheet/write) a
-// partir de dados do próprio banco; NÃO há parsing de arquivos enviados por
-// usuário (XLSX.read/readFile), que é o vetor das vulnerabilidades. Risco
-// efetivo ~nulo. Migrar para `exceljs` (ou pinar o tarball oficial da SheetJS)
-// é o caminho para zerar o finding do `npm audit` — follow-up documentado.
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { parseLocalDate } from "@/lib/date-utils"
@@ -186,11 +180,12 @@ export function generateSchedulesPDF(report: ScheduleReport): Blob {
 /**
  * Generate Excel report for schedules
  */
-export function generateSchedulesExcel(report: ScheduleReport): Blob {
-  const wb = XLSX.utils.book_new()
+export async function generateSchedulesExcel(report: ScheduleReport): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook()
 
   // Sheet 1: Statistics
-  const statsData = [
+  const wsStats = wb.addWorksheet("Resumo")
+  wsStats.addRows([
     ["Relatorio de Escalas"],
     [],
     ["Periodo", buildPeriodText(report.period)],
@@ -205,22 +200,17 @@ export function generateSchedulesExcel(report: ScheduleReport): Blob {
     ["Voluntarios Unicos", report.statistics.uniqueVolunteers],
     ["Eventos Unicos", report.statistics.uniqueEvents],
     ["Ministerios Unicos", report.statistics.uniqueMinistries],
-  ]
-
-  const wsStats = XLSX.utils.aoa_to_sheet(statsData)
-
-  // Set column widths
-  wsStats["!cols"] = [
-    { wch: 25 },
-    { wch: 40 },
-  ]
-
-  XLSX.utils.book_append_sheet(wb, wsStats, "Resumo")
+  ])
+  wsStats.getColumn(1).width = 25
+  wsStats.getColumn(2).width = 40
 
   // Sheet 2: Detailed data
-  const detailedData = [
-    ["Data", "Evento", "Tipo", "Voluntario", "Email", "Ministerio", "Posicao", "Status", "Confirmado em", "Motivo Recusa"],
-    ...report.data.map((schedule) => [
+  const wsDetailed = wb.addWorksheet("Detalhamento")
+  wsDetailed.addRow([
+    "Data", "Evento", "Tipo", "Voluntario", "Email", "Ministerio", "Posicao", "Status", "Confirmado em", "Motivo Recusa",
+  ])
+  for (const schedule of report.data) {
+    wsDetailed.addRow([
       formatDateForTable(schedule.date),
       schedule.eventName,
       schedule.eventType,
@@ -231,30 +221,16 @@ export function generateSchedulesExcel(report: ScheduleReport): Blob {
       statusTranslations[schedule.status] || schedule.status,
       schedule.confirmedAt ? format(new Date(schedule.confirmedAt), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "",
       schedule.declinedReason || "",
-    ]),
-  ]
+    ])
+  }
+  const detailedWidths = [12, 30, 12, 25, 30, 20, 18, 12, 18, 40]
+  detailedWidths.forEach((width, i) => {
+    wsDetailed.getColumn(i + 1).width = width
+  })
 
-  const wsDetailed = XLSX.utils.aoa_to_sheet(detailedData)
-
-  // Set column widths
-  wsDetailed["!cols"] = [
-    { wch: 12 },
-    { wch: 30 },
-    { wch: 12 },
-    { wch: 25 },
-    { wch: 30 },
-    { wch: 20 },
-    { wch: 18 },
-    { wch: 12 },
-    { wch: 18 },
-    { wch: 40 },
-  ]
-
-  XLSX.utils.book_append_sheet(wb, wsDetailed, "Detalhamento")
-
-  // Generate buffer
-  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-  return new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  // Generate buffer (exceljs retorna um ArrayBuffer)
+  const buffer = await wb.xlsx.writeBuffer()
+  return buffer as ArrayBuffer
 }
 
 // Helper functions

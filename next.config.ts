@@ -1,10 +1,15 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
+// PWA/service worker DESABILITADO: o @serwist/next não suporta o build
+// Turbopack do Next 16 (não gerava o sw.js → /sw.js dava 404 em produção).
+// public/sw.js agora é um kill-switch estático que remove SWs antigos presos.
+// Para reativar o PWA de verdade no futuro: migrar para @serwist/turbopack
+// ou buildar com webpack, e remover o public/sw.js estático.
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
+  disable: true,
 });
 
 const nextConfig: NextConfig = {
