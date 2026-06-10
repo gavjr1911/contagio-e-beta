@@ -1,5 +1,11 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+// SEGURANÇA — `xlsx` tem advisories HIGH (prototype pollution / ReDoS) sem fix
+// no npm. Aqui ele é usado APENAS para GERAR planilhas (aoa_to_sheet/write) a
+// partir de dados do próprio banco; NÃO há parsing de arquivos enviados por
+// usuário (XLSX.read/readFile), que é o vetor das vulnerabilidades. Risco
+// efetivo ~nulo. Migrar para `exceljs` (ou pinar o tarball oficial da SheetJS)
+// é o caminho para zerar o finding do `npm audit` — follow-up documentado.
 import * as XLSX from "xlsx"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
