@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, NetworkFirst, CacheFirst } from "serwist";
+import { Serwist, NetworkFirst, CacheFirst, NetworkOnly } from "serwist";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that will be replaced by the
@@ -19,6 +19,13 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    // NUNCA cachear rotas de autenticação/sessão. Servir /api/auth/session
+    // de cache causa estados de sessão "piscando" (logado/deslogado) e
+    // comportamento de login imprevisível. Sempre rede.
+    {
+      matcher: ({ url }) => url.pathname.startsWith("/api/auth"),
+      handler: new NetworkOnly(),
+    },
     // Cache API responses for user schedules (escalas)
     {
       matcher: ({ url }) => {
@@ -38,7 +45,7 @@ const serwist = new Serwist({
             },
           },
         ],
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 3,
       }),
     },
     // Cache API responses for events
@@ -59,7 +66,7 @@ const serwist = new Serwist({
             },
           },
         ],
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 3,
       }),
     },
     // Cache other API responses
@@ -79,7 +86,7 @@ const serwist = new Serwist({
             },
           },
         ],
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 3,
       }),
     },
     // Cache static assets (images, fonts, etc.)
