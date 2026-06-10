@@ -10,8 +10,11 @@ import { prisma } from "@/lib/prisma"
 import { createHmac } from "crypto"
 import { format } from "date-fns"
 
-// Base URL da aplicacao
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://app.beta.church"
+// Base URL da aplicacao — prioriza NEXT_PUBLIC_APP_URL, cai para NEXTAUTH_URL (sempre setado em prod)
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "http://localhost:3005"
 
 // Dias de antecedencia para lembrete
 const REMINDER_DAYS_BEFORE = [7, 3, 1]
@@ -58,7 +61,7 @@ function generateActionUrls(scheduleId: string) {
   return {
     confirmUrl: `${APP_URL}/api/email/confirm/${scheduleId}?action=confirm&token=${confirmToken}`,
     declineUrl: `${APP_URL}/api/email/confirm/${scheduleId}?action=decline&token=${declineToken}`,
-    eventUrl: `${APP_URL}/events/${scheduleId}`,
+    eventUrl: `${APP_URL}/eventos/${scheduleId}`,
   }
 }
 
@@ -278,7 +281,7 @@ export async function sendSetlistUpdate(
     notes: s.notes || undefined,
   }))
 
-  const eventUrl = `${APP_URL}/events/${event.id}`
+  const eventUrl = `${APP_URL}/eventos/${event.id}`
 
   const emails = await Promise.all(
     musicians

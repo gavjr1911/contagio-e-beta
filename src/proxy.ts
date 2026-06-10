@@ -8,12 +8,15 @@ const publicRoutes = [
   "/",
   "/login",
   "/register",
+  "/set-password", // definir senha via token de convite (valida em /api/auth/verify-invite)
 ]
 
 // Routes that start with these prefixes are public
 const publicPrefixes = [
   "/auth/",
   "/api/auth/",
+  "/api/cron/", // protegidas pelo CRON_SECRET na própria rota
+  "/api/email/confirm/", // links de email (confirm/decline) — protegidas por token HMAC na própria rota
 ]
 
 function isPublicRoute(pathname: string): boolean {

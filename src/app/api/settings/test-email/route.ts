@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server"
 import { Resend } from "resend"
-import { createDecipheriv, scryptSync } from "crypto"
 
 import {
   apiError,
@@ -8,26 +7,9 @@ import {
   validateBody,
   withRole,
 } from "@/lib/api-utils"
+import { decrypt } from "@/lib/crypto"
 import { prisma } from "@/lib/prisma"
 import { testEmailSchema } from "@/lib/validations/settings"
-
-// Chave para criptografia
-const ENCRYPTION_KEY = process.env.SETTINGS_ENCRYPTION_KEY || "contagie-beta-settings-key-32ch"
-
-function decrypt(encryptedText: string): string {
-  try {
-    const key = scryptSync(ENCRYPTION_KEY, "salt", 32)
-    const [ivHex, encrypted] = encryptedText.split(":")
-    if (!ivHex || !encrypted) return ""
-    const iv = Buffer.from(ivHex, "hex")
-    const decipher = createDecipheriv("aes-256-cbc", key, iv)
-    let decrypted = decipher.update(encrypted, "hex", "utf8")
-    decrypted += decipher.final("utf8")
-    return decrypted
-  } catch {
-    return ""
-  }
-}
 
 // POST /api/settings/test-email - Enviar email de teste (apenas admin)
 export async function POST(request: NextRequest) {

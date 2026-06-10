@@ -4,8 +4,11 @@ import { sendScheduleConfirmation, TOKEN_EXPIRATION_MS } from "@/lib/email/send"
 import { createHmac } from "crypto"
 import { formatDateToISO, getTodayLocal } from "@/lib/date-utils"
 
-// URL de redirecionamento
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://app.beta.church"
+// URL de redirecionamento — prioriza NEXT_PUBLIC_APP_URL, cai para NEXTAUTH_URL (sempre setado em prod)
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "http://localhost:3005"
 
 // ============================================
 // RATE LIMITING (em memoria - para dev)
@@ -304,7 +307,7 @@ function redirectWithMessage(
     message,
   })
 
-  const path = eventId ? `/events/${eventId}` : "/"
+  const path = eventId ? `/eventos/${eventId}` : "/"
   const url = `${APP_URL}${path}?${params.toString()}`
 
   return NextResponse.redirect(url)
