@@ -36,9 +36,10 @@ interface MemberListProps {
   members: MinistryMember[];
   canEdit: boolean;
   ministryId?: string;
+  leaderId?: string;
 }
 
-export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
+export function MemberList({ members, canEdit, ministryId, leaderId }: MemberListProps) {
   const [editingMember, setEditingMember] = useState<MinistryMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<MinistryMember | null>(null);
   const [selectedPositionIds, setSelectedPositionIds] = useState<string[]>([]);
@@ -140,9 +141,14 @@ export function MemberList({ members, canEdit, ministryId }: MemberListProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">
-                    {member.user.name || member.user.email}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium text-foreground">
+                      {member.user.name || member.user.email}
+                    </p>
+                    {leaderId && member.user.id === leaderId && (
+                      <Badge className="shrink-0 text-xs">Líder</Badge>
+                    )}
+                  </div>
                   {memberPositions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {memberPositions.map((pos, idx) => (

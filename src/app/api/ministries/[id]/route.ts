@@ -144,6 +144,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       })
 
+      // Garante que o líder também seja membro ativo do ministério, para que
+      // apareça na lista de membros e possa receber funções (idempotente).
+      if (leaderId) {
+        await prisma.ministryMember.upsert({
+          where: { userId_ministryId: { userId: leaderId, ministryId: id } },
+          update: { active: true },
+          create: { userId: leaderId, ministryId: id, active: true },
+        })
+      }
+
       return apiSuccess(updatedMinistry)
     } catch (error) {
       console.error("Erro ao atualizar ministerio:", error)

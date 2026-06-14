@@ -123,6 +123,14 @@ export async function POST(request: NextRequest) {
         if (!leader) {
           return apiError("Lider nao encontrado", 404)
         }
+
+        // Promove o papel para LEADER se ainda nao for ADMIN ou LEADER
+        if (leader.role !== "ADMIN" && leader.role !== "LEADER") {
+          await prisma.user.update({
+            where: { id: leaderId },
+            data: { role: "LEADER" },
+          })
+        }
       }
 
       const ministry = await prisma.ministry.create({
@@ -142,6 +150,16 @@ export async function POST(request: NextRequest) {
           },
         },
       })
+
+      // Garante que o líder também seja membro ativo do ministério, para que
+      // apareça na lista de membros e possa receber funções (idempotente).
+      if (leaderId) {
+        await prisma.ministryMember.upsert({
+          where: { userId_ministryId: { userId: leaderId, ministryId: ministry.id } },
+          update: { active: true },
+          create: { userId: leaderId, ministryId: ministry.id, active: true },
+        })
+      }
 
       return apiSuccess(ministry, 201)
     } catch (error) {

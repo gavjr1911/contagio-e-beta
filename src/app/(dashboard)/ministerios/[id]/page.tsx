@@ -264,7 +264,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <MemberList members={activeMembers} canEdit={canEdit} ministryId={ministry.id} />
+              <MemberList members={activeMembers} canEdit={canEdit} ministryId={ministry.id} leaderId={ministry.leaderId ?? undefined} />
             </CardContent>
           </Card>
 
@@ -277,7 +277,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <MemberList members={inactiveMembers} canEdit={canEdit} ministryId={ministry.id} />
+                <MemberList members={inactiveMembers} canEdit={canEdit} ministryId={ministry.id} leaderId={ministry.leaderId ?? undefined} />
               </CardContent>
             </Card>
           )}
