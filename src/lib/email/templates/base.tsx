@@ -13,23 +13,35 @@ import {
 } from "@react-email/components"
 import * as React from "react"
 
-// Cores da identidade Beta
+// URL base para assets/links (logo servida em /logos do app)
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://contagie.igrejabeta.com.br"
+
+// Identidade visual Beta (espelha o design system do app — globals.css)
 const colors = {
-  primary: "#6366f1", // Indigo-500 - cor principal Beta
-  primaryDark: "#4f46e5", // Indigo-600
-  secondary: "#8b5cf6", // Violet-500
-  background: "#f8fafc", // Slate-50
-  surface: "#ffffff",
-  text: "#1e293b", // Slate-800
-  textMuted: "#64748b", // Slate-500
-  border: "#e2e8f0", // Slate-200
-  success: "#22c55e", // Green-500
-  error: "#ef4444", // Red-500
-  warning: "#f59e0b", // Amber-500
+  primary: "#D45A00", // terracotta (--primary)
+  primaryDark: "#B84D00", // --primary-hover
+  terracotta: "#BF531A", // --beta-terracotta
+  black: "#1B1B1B", // --beta-black
+  cream: "#F5E7D7", // --beta-cream
+  background: "#FAFAFA", // página
+  surface: "#FFFFFF",
+  text: "#1A1A1A", // --foreground
+  textMuted: "#737373", // neutral-500
+  border: "#ECE7E0", // borda quente clara
+  success: "#15803D",
+  error: "#B91C1C",
+  warning: "#C2410C",
 }
 
+// Fontes do sistema: DM Sans (títulos) e Inter (corpo), com fallbacks seguros
+// para clientes de email que não carregam web fonts.
 const fontFamily = {
-  sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  sans: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  display:
+    '"DM Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 }
 
 interface BaseEmailProps {
@@ -44,13 +56,15 @@ export function BaseEmail({ preview, children }: BaseEmailProps) {
       <Preview>{preview}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          {/* Header */}
+          {/* Faixa de destaque terracotta no topo */}
+          <Section style={styles.accentBar} />
+
+          {/* Header com a logo Beta sobre o creme da marca */}
           <Section style={styles.header}>
             <Img
-              src="https://beta.church/logo.png"
-              width="120"
-              height="40"
-              alt="Beta Church"
+              src={`${APP_URL}/logos/Beta-Logo-Orange.png`}
+              width="116"
+              alt="Beta"
               style={styles.logo}
             />
           </Section>
@@ -61,24 +75,20 @@ export function BaseEmail({ preview, children }: BaseEmailProps) {
           {/* Footer */}
           <Section style={styles.footer}>
             <Hr style={styles.hr} />
-            <Text style={styles.footerText}>
-              Este email foi enviado automaticamente pelo sistema Beta Church.
+            <Text style={styles.slogan}>
+              Impactar pra transformar. Conectar pra avançar.
             </Text>
             <Text style={styles.footerLinks}>
-              <Link href="https://app.beta.church" style={styles.footerLink}>
-                Acessar Sistema
+              <Link href={APP_URL} style={styles.footerLink}>
+                Acessar o sistema
               </Link>
-              {" | "}
-              <Link href="https://beta.church" style={styles.footerLink}>
-                Site Oficial
-              </Link>
-              {" | "}
-              <Link href="https://instagram.com/betachurchbr" style={styles.footerLink}>
-                Instagram
+              {"  •  "}
+              <Link href="https://igrejabeta.com.br" style={styles.footerLink}>
+                Site da Igreja
               </Link>
             </Text>
             <Text style={styles.copyright}>
-              Beta Church - Transformando vidas pelo evangelho
+              Este email foi enviado automaticamente pelo sistema da Igreja Beta.
             </Text>
           </Section>
         </Container>
@@ -111,7 +121,7 @@ export function EmailButton({
       variant === "primary"
         ? colors.primary
         : variant === "secondary"
-        ? colors.secondary
+        ? colors.black
         : variant === "success"
         ? colors.success
         : colors.error,
@@ -144,10 +154,10 @@ export function EmailBadge({
   color?: "primary" | "success" | "warning" | "error"
 }) {
   const badgeColors = {
-    primary: { bg: "#eef2ff", text: colors.primary },
-    success: { bg: "#dcfce7", text: "#166534" },
-    warning: { bg: "#fef3c7", text: "#92400e" },
-    error: { bg: "#fee2e2", text: "#991b1b" },
+    primary: { bg: colors.cream, text: colors.terracotta },
+    success: { bg: "#DCFCE7", text: "#166534" },
+    warning: { bg: "#FEEAD9", text: colors.warning },
+    error: { bg: "#FEE2E2", text: "#991B1B" },
   }
 
   return (
@@ -169,29 +179,38 @@ const styles = {
     backgroundColor: colors.background,
     fontFamily: fontFamily.sans,
     margin: 0,
-    padding: 0,
+    padding: "24px 0",
   },
   container: {
     backgroundColor: colors.surface,
     margin: "0 auto",
     maxWidth: "600px",
-    borderRadius: "12px",
+    borderRadius: "14px",
     overflow: "hidden" as const,
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    border: `1px solid ${colors.border}`,
+    boxShadow: "0 4px 16px rgba(27, 27, 27, 0.06)",
+  },
+  accentBar: {
+    backgroundColor: colors.terracotta,
+    height: "4px",
+    lineHeight: "4px",
+    fontSize: "4px",
   },
   header: {
-    backgroundColor: colors.primary,
-    padding: "24px 32px",
+    backgroundColor: colors.cream,
+    padding: "28px 32px",
     textAlign: "center" as const,
   },
   logo: {
     margin: "0 auto",
+    height: "auto",
   },
   content: {
     padding: "32px",
   },
   heading: {
-    color: colors.text,
+    color: colors.black,
+    fontFamily: fontFamily.display,
     fontSize: "24px",
     fontWeight: "700",
     lineHeight: "32px",
@@ -200,31 +219,31 @@ const styles = {
   text: {
     color: colors.text,
     fontSize: "16px",
-    lineHeight: "24px",
+    lineHeight: "26px",
     margin: "0 0 16px 0",
   },
   textMuted: {
     color: colors.textMuted,
     fontSize: "14px",
-    lineHeight: "20px",
+    lineHeight: "22px",
     margin: "0 0 16px 0",
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: "8px",
+    borderRadius: "10px",
     color: "#ffffff",
     display: "inline-block",
     fontSize: "16px",
     fontWeight: "600",
     lineHeight: "1",
-    padding: "14px 28px",
+    padding: "15px 30px",
     textAlign: "center" as const,
     textDecoration: "none",
     margin: "8px 8px 8px 0",
   },
   card: {
-    backgroundColor: colors.background,
-    borderRadius: "8px",
+    backgroundColor: colors.cream,
+    borderRadius: "10px",
     padding: "20px",
     margin: "16px 0",
   },
@@ -235,49 +254,52 @@ const styles = {
     margin: "24px 0",
   },
   highlight: {
-    backgroundColor: "#fef3c7",
-    borderLeft: `4px solid ${colors.warning}`,
+    backgroundColor: colors.cream,
+    borderLeft: `4px solid ${colors.terracotta}`,
     borderRadius: "0 8px 8px 0",
     color: colors.text,
     fontSize: "14px",
-    lineHeight: "20px",
+    lineHeight: "22px",
     margin: "16px 0",
     padding: "12px 16px",
   },
   badge: {
-    borderRadius: "4px",
+    borderRadius: "6px",
     display: "inline-block",
     fontSize: "12px",
     fontWeight: "600",
-    padding: "4px 8px",
+    padding: "4px 10px",
     textTransform: "uppercase" as const,
   },
   footer: {
     padding: "0 32px 32px 32px",
   },
-  footerText: {
-    color: colors.textMuted,
-    fontSize: "12px",
-    lineHeight: "18px",
-    margin: "0 0 8px 0",
+  slogan: {
+    color: colors.black,
+    fontFamily: fontFamily.display,
+    fontSize: "14px",
+    fontWeight: "600",
+    lineHeight: "20px",
+    margin: "0 0 10px 0",
     textAlign: "center" as const,
   },
   footerLinks: {
     color: colors.textMuted,
-    fontSize: "12px",
+    fontSize: "13px",
     lineHeight: "18px",
-    margin: "0 0 8px 0",
+    margin: "0 0 12px 0",
     textAlign: "center" as const,
   },
   footerLink: {
-    color: colors.primary,
+    color: colors.terracotta,
+    fontWeight: "600",
     textDecoration: "none",
   },
   copyright: {
     color: colors.textMuted,
     fontSize: "11px",
     lineHeight: "16px",
-    margin: "16px 0 0 0",
+    margin: "0",
     textAlign: "center" as const,
   },
 } as const

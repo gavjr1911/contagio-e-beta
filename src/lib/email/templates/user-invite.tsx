@@ -25,31 +25,34 @@ export function UserInviteEmail({
   expiresAt,
 }: UserInviteEmailProps) {
   return (
-    <BaseEmail preview={`Voce foi convidado para a Igreja Beta`}>
-      <EmailHeading>Bem-vindo a Igreja Beta!</EmailHeading>
+    <BaseEmail preview={`Você foi convidado para a Igreja Beta`}>
+      <EmailHeading>Bem-vindo!</EmailHeading>
       <EmailText>
-        Ola {userName}, voce foi convidado para fazer parte do ministerio {ministryName}
+        Bem-vindo ao sistema de gestão de eventos e escalas de serviço da Igreja Beta.
+      </EmailText>
+      <EmailText>
+        Olá {userName}, você foi convidado para fazer parte do ministério {ministryName}
         {position && ` como ${position}`}.
       </EmailText>
-      
+
       <EmailCard>
         <EmailText>
-          Para completar seu cadastro e acessar o sistema, clique no botao abaixo e defina sua senha:
+          Para completar seu cadastro e acessar o sistema, clique no botão abaixo e defina sua senha:
         </EmailText>
-        
+
         <div style={{ textAlign: "center", margin: "24px 0" }}>
           <EmailButton href={inviteUrl}>Criar minha senha</EmailButton>
         </div>
-        
+
         <EmailText muted>
           Este link expira em {format(expiresAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}.
         </EmailText>
       </EmailCard>
-      
+
       <EmailDivider />
-      
+
       <EmailText muted>
-        Se voce nao solicitou este convite, pode ignorar este email.
+        Se você não solicitou este convite, pode ignorar este email.
       </EmailText>
     </BaseEmail>
   )
