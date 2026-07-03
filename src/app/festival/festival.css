@@ -1,0 +1,187 @@
+/* ============================================================
+   Festival Gastronômico — tema festivo isolado.
+   Não usa os tokens semânticos do app (para não sofrer com o
+   dark/light global). Paleta própria inspirada no material do evento:
+   verde-bandeira + amarelo + bandeirolas juninas.
+   ============================================================ */
+
+.festival-root {
+  /* Paleta */
+  --fest-green-950: #08321f;
+  --fest-green-900: #0e4a34;
+  --fest-green-800: #12583d;
+  --fest-green-700: #1a6b4a;
+  --fest-green-600: #1f875b;
+  --fest-yellow: #ffce1f;
+  --fest-yellow-deep: #f5a623;
+  --fest-cream: #f7ecd9;
+  --fest-cream-dim: #d9d3c2;
+  --fest-red: #c53a34;
+  --fest-blue: #2f5fb0;
+
+  --fest-font: var(--font-fredoka), "Fredoka", system-ui, sans-serif;
+
+  min-height: 100svh;
+  overflow-x: hidden; /* trava rolagem horizontal em telas pequenas */
+  font-family: var(--fest-font);
+  color: var(--fest-cream);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(31, 135, 91, 0.35), transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(47, 95, 176, 0.22), transparent 40%),
+    linear-gradient(160deg, var(--fest-green-900) 0%, var(--fest-green-950) 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.festival-root *,
+.festival-root *::before,
+.festival-root *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Tipografia utilitária ---------- */
+.fest-title {
+  font-family: var(--fest-font);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  color: var(--fest-yellow);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.fest-kicker {
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--fest-cream);
+}
+
+.fest-tagline {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--fest-yellow);
+}
+
+/* ---------- Bandeirolas (bandeirinhas juninas) ---------- */
+.fest-banner {
+  --flag-size: 26px;
+  position: relative;
+  width: 100%;
+  height: var(--flag-size);
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fest-banner::before {
+  /* cordão */
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(247, 236, 217, 0.5);
+}
+.fest-flag {
+  width: 0;
+  height: 0;
+  border-left: calc(var(--flag-size) * 0.62) solid transparent;
+  border-right: calc(var(--flag-size) * 0.62) solid transparent;
+  border-top: var(--flag-size) solid var(--fest-yellow);
+  transform-origin: top center;
+  animation: fest-flag-sway 3.2s ease-in-out infinite;
+}
+.fest-flag:nth-child(4n + 1) { border-top-color: var(--fest-yellow); animation-delay: 0s; }
+.fest-flag:nth-child(4n + 2) { border-top-color: var(--fest-blue); animation-delay: 0.2s; }
+.fest-flag:nth-child(4n + 3) { border-top-color: var(--fest-red); animation-delay: 0.4s; }
+.fest-flag:nth-child(4n + 4) { border-top-color: var(--fest-green-600); animation-delay: 0.6s; }
+
+@keyframes fest-flag-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* ---------- Cartões / superfícies ---------- */
+.fest-card {
+  background: rgba(247, 236, 217, 0.06);
+  border: 1px solid rgba(247, 236, 217, 0.14);
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+
+.fest-btn {
+  font-family: var(--fest-font);
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  background: var(--fest-yellow);
+  color: var(--fest-green-950);
+  box-shadow: 0 6px 0 var(--fest-yellow-deep);
+}
+.fest-btn:hover { filter: brightness(1.03); }
+.fest-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--fest-yellow-deep); }
+.fest-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+.fest-btn-ghost {
+  background: transparent;
+  color: var(--fest-cream);
+  border: 2px solid rgba(247, 236, 217, 0.35);
+  box-shadow: none;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.fest-btn-ghost:hover { background: rgba(247, 236, 217, 0.1); border-color: var(--fest-cream); }
+
+/* ---------- Animações reutilizáveis ---------- */
+@keyframes fest-pop-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.fest-pop-in { animation: fest-pop-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes fest-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.fest-float { animation: fest-float 4s ease-in-out infinite; }
+
+@keyframes fest-fade-up {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fest-fade-up { animation: fest-fade-up 0.5s ease both; }
+
+@keyframes fest-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* Confete (usado na tela de agradecimento) */
+@keyframes fest-confetti-fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
+}
+
+/* Barras do ranking (painel) */
+@keyframes fest-bar-grow {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+/* Respeita quem prefere menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .festival-root *,
+  .festival-root *::before,
+  .festival-root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

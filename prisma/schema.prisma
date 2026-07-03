@@ -751,3 +751,27 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ============================================
+// FESTIVAL GASTRONÔMICO (votação pública)
+// TABELA TEMPORÁRIA — criada para o evento de 04/07/2026.
+// Pode ser removida após o uso: `DROP TABLE festival_votes;`
+// Votação anônima; `phone` (só dígitos) garante 1 voto por pessoa.
+// ============================================
+
+model FestivalVote {
+  id                 String   @id @default(cuid())
+  fullName           String
+  phone              String   @unique // apenas dígitos — garante 1 voto por telefone
+  barracaBonita      String // key do estado (ex.: "BA")
+  melhorAtendimento  String
+  gastronomiaSalgada String
+  gastronomiaDoce    String
+  espiritoBeta       String
+  ipAddress          String?
+  userAgent          String?
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("festival_votes")
+}

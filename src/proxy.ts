@@ -12,6 +12,7 @@ const publicRoutes = [
   "/offline", // fallback do service worker (PWA)
   "/sw.js", // service worker — NUNCA redirecionar (senão o SW recebe HTML e quebra)
   "/manifest.webmanifest", // manifest do PWA
+  "/festival", // votação pública do Festival Gastronômico (sem login)
 ]
 
 // Routes that start with these prefixes are public
@@ -20,6 +21,8 @@ const publicPrefixes = [
   "/api/auth/",
   "/api/cron/", // protegidas pelo CRON_SECRET na própria rota
   "/api/email/confirm/", // links de email (confirm/decline) — protegidas por token HMAC na própria rota
+  "/festival/", // subrotas públicas (ex.: /festival/painel — este protegido por código na página/API)
+  "/api/festival/", // voto (público) e resultados (protegido por código na própria rota)
 ]
 
 function isPublicRoute(pathname: string): boolean {
