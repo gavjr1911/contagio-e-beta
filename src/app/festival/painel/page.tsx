@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { Bandeirolas } from "@/components/festival/bandeirolas"
-import { Logo } from "@/components/ui/logo"
+import { BetaLogo } from "@/components/festival/beta-logo"
 import { FESTIVAL_TAGLINE, festivalFlagSrc } from "@/lib/festival/data"
 
 import styles from "./painel.module.css"
@@ -116,7 +116,7 @@ function CodeGate({
     <div className={styles.gateWrap}>
       <Bandeirolas count={20} />
       <div className={`fest-card fest-pop-in ${styles.gateCard}`}>
-        <Logo variant="silver" size="lg" />
+        <BetaLogo height={54} />
         <div>
           <p className={`fest-kicker ${styles.headerKicker}`}>Igreja Beta</p>
           <h1 className="fest-title" style={{ fontSize: "clamp(1.6rem, 6vw, 2.4rem)" }}>
@@ -262,7 +262,7 @@ function Panel({
 
       <header className={styles.header}>
         <div className={styles.headerId}>
-          <Logo variant="silver" size="lg" />
+          <BetaLogo height={54} />
           <div>
             <p className={`fest-kicker ${styles.headerKicker}`}>
               Festival Gastronômico

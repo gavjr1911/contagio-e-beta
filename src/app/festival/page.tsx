@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Bandeirolas } from "@/components/festival/bandeirolas"
-import { Logo } from "@/components/ui/logo"
+import { BetaLogo } from "@/components/festival/beta-logo"
 import {
   FESTIVAL_CATEGORIES,
   FESTIVAL_STATES,
@@ -306,7 +306,7 @@ export default function FestivalVotePage() {
 function IntroStep({ onStart }: { onStart: () => void }) {
   return (
     <section className="fest-fade-up flex flex-1 flex-col items-center justify-center gap-5 py-10 text-center">
-      <Logo variant="silver" size="lg" className="fest-float" />
+      <BetaLogo height={54} className="fest-float" />
 
       <div>
         <p
@@ -768,7 +768,7 @@ function ThankYouScreen({ outcome }: { outcome: "success" | "already" }) {
       )}
 
       <section className="fest-pop-in relative z-10 flex flex-1 flex-col items-center justify-center gap-5 text-center">
-        <Logo variant="silver" size="lg" className="fest-float" />
+        <BetaLogo height={54} className="fest-float" />
 
         <div style={{ fontSize: "3.5rem", lineHeight: 1 }} aria-hidden="true">
           {isSuccess ? "🎉" : "🙌"}
