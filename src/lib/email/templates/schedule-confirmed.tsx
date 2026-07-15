@@ -8,8 +8,7 @@ import {
   EmailCard,
   colors,
 } from "./base"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { formatEventDateLongPtBR } from "@/lib/date-utils"
 
 export interface ScheduleConfirmedEmailProps {
   userName: string
@@ -37,9 +36,7 @@ export function ScheduleConfirmedEmail({
   eventLocation,
   teamMembers,
 }: ScheduleConfirmedEmailProps) {
-  const formattedDate = format(new Date(eventDate), "EEEE, dd 'de' MMMM", {
-    locale: ptBR,
-  })
+  const formattedDate = formatEventDateLongPtBR(eventDate)
 
   return (
     <BaseEmail preview={`Presenca confirmada: ${eventName}`}>

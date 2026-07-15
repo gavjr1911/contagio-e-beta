@@ -8,7 +8,7 @@ import { SetlistUpdateEmail, SetlistUpdateEmailProps } from "./templates/setlist
 import { UserInviteEmail, UserInviteEmailProps } from "./templates/user-invite"
 import { prisma } from "@/lib/prisma"
 import { createHmac } from "crypto"
-import { format } from "date-fns"
+import { formatTimeToHHMM } from "@/lib/date-utils"
 
 // Base URL da aplicacao — prioriza NEXT_PUBLIC_APP_URL, cai para NEXTAUTH_URL (sempre setado em prod)
 const APP_URL =
@@ -23,7 +23,8 @@ const REMINDER_DAYS_BEFORE = [7, 3, 1]
  * Formata o horario de um evento a partir de startTime (Date)
  */
 function formatEventTime(startTime: Date): string {
-  return format(new Date(startTime), "HH:mm")
+  // @db.Time é wall-clock ancorado em UTC — ler com getUTC* (via formatTimeToHHMM)
+  return formatTimeToHHMM(new Date(startTime))
 }
 
 // Expiracao do token em 24 horas (em milissegundos)

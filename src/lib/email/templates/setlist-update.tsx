@@ -9,8 +9,7 @@ import {
   EmailDivider,
   colors,
 } from "./base"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { formatEventDateLongPtBR } from "@/lib/date-utils"
 
 export interface SetlistSong {
   order: number
@@ -42,9 +41,7 @@ export function SetlistUpdateEmail({
   updatedBy,
   isNewSetlist = false,
 }: SetlistUpdateEmailProps) {
-  const formattedDate = format(new Date(eventDate), "EEEE, dd 'de' MMMM", {
-    locale: ptBR,
-  })
+  const formattedDate = formatEventDateLongPtBR(eventDate)
 
   return (
     <BaseEmail

@@ -1,124 +1,126 @@
 /**
- * Utilitarios de data/hora com suporte a timezone
+ * Utilitários de data/hora — modelo "wall-clock ancorado em UTC".
  *
- * O sistema usa o timezone de Sao Paulo (America/Sao_Paulo) como padrao.
- * Todas as datas sao armazenadas de forma que representem corretamente
- * o momento local, independente do timezone do servidor.
+ * Os campos `@db.Date` (date, recurrenceEndDate) e `@db.Time` (startTime,
+ * endTime) do PostgreSQL representam APENAS um dia-do-calendário ou uma
+ * hora-do-relógio — não um instante com fuso. Para que o valor sobreviva a
+ * qualquer fuso de servidor e ao horário de verão, tratamos esses valores
+ * SEMPRE em UTC: gravamos com `Date.UTC(...)` e lemos com `getUTC*()`.
+ *
+ * ⚠️ Regra de ouro: NUNCA use `getHours()/getDate()/getFullYear()` (locais)
+ * para ler `@db.Time`/`@db.Date`. Use os getters UTC (getUTCHours, etc.) ou
+ * as funções deste módulo. Getters locais reintroduzem o bug de -1h/-1dia.
+ *
+ * Datas usam âncora meio-dia UTC (12:00Z) — assim, mesmo lidas por engano com
+ * getters locais em São Paulo (UTC-3 → 09:00), continuam no dia certo, e a
+ * aritmética de recorrência (setDate local) não cruza a fronteira do dia.
  */
 
-// Timezone padrao do sistema
+// Timezone de exibição do sistema (para instantes reais, ex.: createdAt)
 export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 
 /**
- * Cria um objeto Date a partir de uma string de data (YYYY-MM-DD)
- * garantindo que represente o dia correto no timezone local.
- *
- * Quando usamos new Date("2024-03-22"), JavaScript interpreta como UTC meia-noite,
- * que no horario de Sao Paulo e na verdade dia 21 as 21:00.
- * Esta funcao corrige isso.
+ * "YYYY-MM-DD" -> Date ancorado ao meio-dia UTC do dia informado.
  */
 export function parseLocalDate(dateString: string): Date {
-  // dateString: "2024-03-22"
   const [year, month, day] = dateString.split("-").map(Number);
-  // Criar a data com os componentes locais (mes e 0-indexed)
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
 }
 
 /**
- * Cria um objeto Date a partir de uma string de hora (HH:MM)
- * usando uma data base fixa para evitar problemas de timezone.
- *
- * Para campos @db.Time() no PostgreSQL, apenas o componente de hora importa.
- * Usamos uma data fixa (2000-01-01) para garantir consistencia.
+ * "HH:MM" -> Date ancorado em 1970-01-01 UTC com a hora informada.
+ * Para @db.Time só a hora-do-relógio importa; a âncora em UTC a torna
+ * imune a fuso/DST no round-trip com o banco.
  */
 export function parseLocalTime(timeString: string): Date {
-  // timeString: "09:00" ou "19:30"
   const [hours, minutes] = timeString.split(":").map(Number);
-  // Usar data fixa para evitar problemas de DST
-  return new Date(2000, 0, 1, hours, minutes, 0, 0);
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0, 0));
 }
 
 /**
- * Cria um objeto Date combinando data e hora.
- * Util quando precisamos do momento exato de um evento.
+ * Combina data e hora num Date ancorado em UTC.
  */
 export function parseLocalDateTime(dateString: string, timeString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number);
   const [hours, minutes] = timeString.split(":").map(Number);
-  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
 }
 
 /**
- * Formata uma data para string ISO no formato YYYY-MM-DD
- * usando os componentes locais (nao UTC).
+ * Date -> "YYYY-MM-DD" (componentes UTC).
  */
 export function formatDateToISO(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
 /**
- * Formata uma data/hora para string de hora no formato HH:MM
- * usando os componentes locais (nao UTC).
+ * Date -> "HH:MM" (componentes UTC).
  */
 export function formatTimeToHHMM(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
 /**
- * Retorna a data atual no timezone de Sao Paulo.
- * Util para comparacoes de "hoje".
- */
-export function getTodayLocal(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-}
-
-/**
- * Retorna o inicio do dia para uma data especifica.
+ * Início do dia (00:00 UTC) do dia-calendário representado pelo Date (em UTC).
  */
 export function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-}
-
-/**
- * Retorna o fim do dia para uma data especifica.
- */
-export function endOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-}
-
-/**
- * Compara se duas datas sao o mesmo dia (ignora hora).
- */
-export function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0),
   );
 }
 
 /**
- * Verifica se uma data e hoje ou futura.
+ * Fim do dia (23:59:59.999 UTC) do dia-calendário representado pelo Date.
  */
-export function isTodayOrFuture(date: Date): boolean {
-  const today = getTodayLocal();
-  const targetDay = startOfDay(date);
-  return targetDay >= today;
+export function endOfDay(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999),
+  );
 }
 
 /**
- * Converte um valor de data (string YYYY-MM-DD, ISO ou Date) para Date
- * representando o dia correto no timezone local de Sao Paulo.
- *
- * - "YYYY-MM-DD" -> usa parseLocalDate (meio-dia local)
- * - ISO string ou Date -> retorna Date diretamente (assume que o backend
- *   ja entregou o instante correto)
+ * Data de "hoje" no calendário de São Paulo, ancorada à meia-noite UTC.
+ * Serve para comparar com colunas @db.Date (gravadas à meia-noite UTC):
+ * eventos de hoje satisfazem `date >= getTodayLocal()`.
+ */
+export function getTodayLocal(): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [year, month, day] = parts.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+}
+
+/**
+ * Compara se dois Date representam o mesmo dia-calendário (em UTC).
+ */
+export function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getUTCFullYear() === date2.getUTCFullYear() &&
+    date1.getUTCMonth() === date2.getUTCMonth() &&
+    date1.getUTCDate() === date2.getUTCDate()
+  );
+}
+
+/**
+ * Verifica se uma data é hoje ou futura (comparação por dia-calendário).
+ */
+export function isTodayOrFuture(date: Date): boolean {
+  return startOfDay(date).getTime() >= getTodayLocal().getTime();
+}
+
+/**
+ * Converte um valor de data para Date representando o dia-calendário correto.
+ * - "YYYY-MM-DD"  -> parseLocalDate (meio-dia UTC)
+ * - ISO / Date    -> retorna o Date direto (instante já resolvido pelo backend)
  */
 export function toLocalDate(value: string | Date): Date {
   if (value instanceof Date) return value;
@@ -129,21 +131,37 @@ export function toLocalDate(value: string | Date): Date {
 }
 
 /**
- * Formata data para exibicao amigavel em portugues.
- * Ex: "Dom, 22 de marco"
+ * Data por extenso em pt-BR para um valor date-only (@db.Date ou "YYYY-MM-DD").
+ * Ex.: "sábado, 16 de agosto de 2026". Lida em UTC (a âncora dos valores).
  */
-export function formatDateDisplay(date: Date): string {
-  return date.toLocaleDateString("pt-BR", {
-    weekday: "short",
-    day: "numeric",
+export function formatEventDateLongPtBR(value: string | Date): string {
+  const date = toLocalDate(value);
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
     month: "long",
-    timeZone: DEFAULT_TIMEZONE,
-  });
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 /**
- * Formata data e hora para exibicao.
- * Ex: "22/03/2024 09:00"
+ * Formata um valor date-only para exibição curta em pt-BR.
+ * Ex.: "sáb, 16 de agosto". Lida em UTC.
+ */
+export function formatDateDisplay(value: string | Date): string {
+  const date = toLocalDate(value);
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+/**
+ * Formata um INSTANTE real (ex.: createdAt) para data+hora em São Paulo.
+ * Use apenas com timestamps completos — não com @db.Date/@db.Time.
  */
 export function formatDateTimeDisplay(date: Date): string {
   return date.toLocaleString("pt-BR", {
@@ -157,8 +175,8 @@ export function formatDateTimeDisplay(date: Date): string {
 }
 
 /**
- * Transforma um objeto de evento para resposta da API,
- * convertendo datas para strings no formato correto.
+ * Transforma um objeto de evento para resposta da API, convertendo os campos
+ * de data/hora para strings ("YYYY-MM-DD" / "HH:MM") lidas em UTC.
  */
 export function transformEventForResponse<T extends {
   date: Date;

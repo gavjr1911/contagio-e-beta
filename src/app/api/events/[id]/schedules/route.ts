@@ -30,17 +30,17 @@ async function checkTimeConflicts(
 
   // Calculate time window: 1 hour before and after
   const eventStart = new Date(eventDate)
-  eventStart.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0)
+  eventStart.setUTCHours(startTime.getUTCHours(), startTime.getUTCMinutes(), 0, 0)
 
   const eventEnd = endTime
-    ? new Date(eventDate).setHours(endTime.getHours(), endTime.getMinutes(), 0, 0)
+    ? new Date(eventDate).setUTCHours(endTime.getUTCHours(), endTime.getUTCMinutes(), 0, 0)
     : new Date(eventStart.getTime() + 2 * 60 * 60 * 1000) // Default 2 hours if no end time
 
   // Get all schedules for the user on the same date
   const dateStart = new Date(eventDate)
-  dateStart.setHours(0, 0, 0, 0)
+  dateStart.setUTCHours(0, 0, 0, 0)
   const dateEnd = new Date(eventDate)
-  dateEnd.setHours(23, 59, 59, 999)
+  dateEnd.setUTCHours(23, 59, 59, 999)
 
   const existingSchedules = await prisma.schedule.findMany({
     where: {
@@ -61,17 +61,17 @@ async function checkTimeConflicts(
   for (const schedule of existingSchedules) {
     const scheduleEventDate = new Date(schedule.event.date)
     const scheduleStart = new Date(scheduleEventDate)
-    scheduleStart.setHours(
-      schedule.event.startTime.getHours(),
-      schedule.event.startTime.getMinutes(),
+    scheduleStart.setUTCHours(
+      schedule.event.startTime.getUTCHours(),
+      schedule.event.startTime.getUTCMinutes(),
       0,
       0
     )
 
     const scheduleEnd = schedule.event.endTime
-      ? new Date(scheduleEventDate).setHours(
-          schedule.event.endTime.getHours(),
-          schedule.event.endTime.getMinutes(),
+      ? new Date(scheduleEventDate).setUTCHours(
+          schedule.event.endTime.getUTCHours(),
+          schedule.event.endTime.getUTCMinutes(),
           0,
           0
         )

@@ -153,9 +153,10 @@ export function formatTimeFromDate(dateOrString: string | Date | null): string {
     return dateOrString;
   }
 
+  // @db.Time é wall-clock ancorado em UTC — ler com getUTC* (ver date-utils.ts)
   const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
@@ -168,10 +169,11 @@ export function formatDateFromDate(dateOrString: string | Date): string {
     return dateOrString;
   }
 
+  // @db.Date é wall-clock ancorado em UTC — ler com getUTC* (ver date-utils.ts)
   const date = typeof dateOrString === "string" ? new Date(dateOrString) : dateOrString;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 

@@ -9,8 +9,7 @@ import {
   EmailDivider,
   colors,
 } from "./base"
-import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { formatEventDateLongPtBR } from "@/lib/date-utils"
 
 export interface ScheduleChange {
   field: string
@@ -45,9 +44,7 @@ export function ScheduleChangedEmail({
   requiresReconfirmation = false,
   confirmUrl,
 }: ScheduleChangedEmailProps) {
-  const formattedDate = format(new Date(eventDate), "EEEE, dd 'de' MMMM", {
-    locale: ptBR,
-  })
+  const formattedDate = formatEventDateLongPtBR(eventDate)
 
   return (
     <BaseEmail preview={`Alteracao na escala: ${eventName}`}>

@@ -9,8 +9,9 @@ import {
   EmailHighlight,
   colors,
 } from "./base"
-import { format, formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { formatEventDateLongPtBR } from "@/lib/date-utils"
 
 export interface ScheduleReminderEmailProps {
   userName: string
@@ -37,9 +38,7 @@ export function ScheduleReminderEmail({
   eventLocation,
   checklistItems,
 }: ScheduleReminderEmailProps) {
-  const formattedDate = format(new Date(eventDate), "EEEE, dd 'de' MMMM", {
-    locale: ptBR,
-  })
+  const formattedDate = formatEventDateLongPtBR(eventDate)
 
   const timeUntil = formatDistanceToNow(new Date(eventDate), {
     locale: ptBR,
