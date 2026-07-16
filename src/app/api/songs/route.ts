@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { search, tag, orderBy, order, page, limit } = queryResult.data
+    const { search, tag, orderBy, order, page, limit, all } = queryResult.data
+    const fetchAll = all === "true"
     const skip = (page - 1) * limit
 
     const where: Record<string, unknown> = {}
@@ -47,8 +48,7 @@ export async function GET(request: NextRequest) {
       prisma.song.findMany({
         where,
         orderBy: { [orderBy]: order },
-        skip,
-        take: limit,
+        ...(fetchAll ? {} : { skip, take: limit }),
       }),
       prisma.song.count({ where }),
     ])
@@ -56,10 +56,10 @@ export async function GET(request: NextRequest) {
     return Response.json({
       data: songs,
       pagination: {
-        page,
-        limit,
+        page: fetchAll ? 1 : page,
+        limit: fetchAll ? total : limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: fetchAll ? 1 : Math.ceil(total / limit),
       },
     })
   } catch (error) {

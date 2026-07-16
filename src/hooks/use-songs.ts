@@ -69,6 +69,10 @@ function transformApiSong(apiSong: ApiSong): Song {
 async function fetchSongs(filters?: SongFilters): Promise<SongsResponse> {
   const params = new URLSearchParams()
 
+  // A Biblioteca de Músicas pagina no cliente — traz todas as músicas que
+  // casam com o filtro (sem limite silencioso do servidor).
+  params.set("all", "true")
+
   if (filters?.search) params.set("search", filters.search)
   if (filters?.tags && filters.tags.length > 0) params.set("tag", filters.tags[0])
   if (filters?.sortBy) {
@@ -241,9 +245,9 @@ export function useDeleteSong() {
   })
 }
 
-// Utility para obter todas as tags unicas
+// Utility para obter todas as tags unicas (carrega a biblioteca inteira)
 export function useAllTags() {
-  const { data } = useSongs()
+  const { data } = useSongs({})
   if (!data?.songs) return []
   const allTags = data.songs.flatMap((song) => song.tags || [])
   return [...new Set(allTags)].sort()

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Music, SlidersHorizontal, X, Download } from "lucide-react";
+import { Plus, Music, SlidersHorizontal, X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCanEdit } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,10 @@ export default function MusicasPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SongSortOption>("name");
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
+
+  const PER_PAGE = 24;
 
   const { data, isLoading, error } = useSongs({
     search,
@@ -38,6 +41,19 @@ export default function MusicasPage() {
   });
 
   const allTags = useAllTags();
+
+  const allSongs = useMemo(() => data?.songs ?? [], [data?.songs]);
+  const totalPages = Math.max(1, Math.ceil(allSongs.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageSongs = allSongs.slice(
+    (currentPage - 1) * PER_PAGE,
+    currentPage * PER_PAGE,
+  );
+
+  // Volta para a primeira página sempre que a busca/filtros/ordenação mudam.
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedTags, sortBy]);
 
   const handleSyncComplete = () => {
     // Recarrega a lista de músicas após sincronização
@@ -239,11 +255,52 @@ export default function MusicasPage() {
           </CardContent>
         </Card>
       ) : data?.songs ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.songs.map((song) => (
-            <SongCard key={song.id} song={song} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {pageSongs.map((song) => (
+              <SongCard key={song.id} song={song} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center justify-between gap-3 pt-2 sm:flex-row">
+              <p className="text-sm text-muted-foreground">
+                Mostrando{" "}
+                <span className="font-medium text-foreground">
+                  {(currentPage - 1) * PER_PAGE + 1}–
+                  {Math.min(currentPage * PER_PAGE, allSongs.length)}
+                </span>{" "}
+                de{" "}
+                <span className="font-medium text-foreground">{allSongs.length}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <span className="min-w-[7rem] text-center text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       ) : null}
     </div>
   );

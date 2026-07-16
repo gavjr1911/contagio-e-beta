@@ -31,6 +31,9 @@ export const songQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).optional().default("asc"),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  // all=true retorna todas as músicas que casam com o filtro (sem paginação
+  // do servidor). Usado pela Biblioteca de Músicas, que pagina no cliente.
+  all: z.enum(["true", "false"]).optional(),
 })
 
 export const songSearchSchema = z.object({
