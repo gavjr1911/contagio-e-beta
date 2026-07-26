@@ -5,7 +5,7 @@ import {
   apiError,
   apiSuccess,
   validateBody,
-  withRole,
+  withPermission,
 } from "@/lib/api-utils"
 import { updateChecklistTemplateSchema } from "@/lib/validations/checklist"
 
@@ -13,7 +13,7 @@ type RouteParams = { params: Promise<{ id: string }> }
 
 // GET /api/checklist-templates/[id] - Detalhes do template
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "view", async () => {
     const { id } = await params
 
     const template = await prisma.checklistTemplate.findUnique({
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/checklist-templates/[id] - Atualizar template
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id } = await params
 
     const template = await prisma.checklistTemplate.findUnique({
@@ -99,7 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/checklist-templates/[id] - Excluir template
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id } = await params
 
     const template = await prisma.checklistTemplate.findUnique({

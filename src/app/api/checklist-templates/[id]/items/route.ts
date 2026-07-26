@@ -5,7 +5,7 @@ import {
   apiError,
   apiSuccess,
   validateBody,
-  withRole,
+  withPermission,
 } from "@/lib/api-utils"
 import {
   createChecklistTemplateItemSchema,
@@ -16,7 +16,7 @@ type RouteParams = { params: Promise<{ id: string }> }
 
 // GET /api/checklist-templates/[id]/items - Listar itens do template
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "view", async () => {
     const { id: templateId } = await params
 
     const template = await prisma.checklistTemplate.findUnique({
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/checklist-templates/[id]/items - Adicionar item ao template
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id: templateId } = await params
 
     const template = await prisma.checklistTemplate.findUnique({
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/checklist-templates/[id]/items - Reordenar itens
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id: templateId } = await params
 
     const template = await prisma.checklistTemplate.findUnique({

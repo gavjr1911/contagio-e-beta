@@ -8,7 +8,7 @@ import {
   getPaginationParams,
   validateBody,
   validateQuery,
-  withRole,
+  withPermission,
 } from "@/lib/api-utils"
 import {
   checklistTemplateQuerySchema,
@@ -17,7 +17,7 @@ import {
 
 // GET /api/checklist-templates - Listar templates
 export async function GET(request: NextRequest) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "view", async () => {
     const searchParams = request.nextUrl.searchParams
     const queryResult = validateQuery(searchParams, checklistTemplateQuerySchema)
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/checklist-templates - Criar template
 export async function POST(request: NextRequest) {
-  return withRole(["ADMIN"], async (session) => {
+  return withPermission("checklists", "edit", async (session) => {
     const bodyResult = await validateBody(request, createChecklistTemplateSchema)
 
     if (!bodyResult.success) {

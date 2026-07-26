@@ -5,7 +5,7 @@ import {
   apiError,
   apiSuccess,
   validateBody,
-  withRole,
+  withPermission,
 } from "@/lib/api-utils"
 import { updateChecklistTemplateItemSchema } from "@/lib/validations/checklist"
 
@@ -13,7 +13,7 @@ type RouteParams = { params: Promise<{ id: string; itemId: string }> }
 
 // PATCH /api/checklist-templates/[id]/items/[itemId] - Atualizar item
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id: templateId, itemId } = await params
 
     const item = await prisma.checklistTemplateItem.findFirst({
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/checklist-templates/[id]/items/[itemId] - Remover item
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN"], async () => {
+  return withPermission("checklists", "edit", async () => {
     const { id: templateId, itemId } = await params
 
     const item = await prisma.checklistTemplateItem.findFirst({

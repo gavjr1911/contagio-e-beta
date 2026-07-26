@@ -2,17 +2,18 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import {
   ClipboardCheck,
   Plus,
   Loader2,
   AlertCircle,
+  ShieldAlert,
   Pencil,
   Trash2,
   MoreHorizontal,
   Calendar,
 } from "lucide-react"
+import { useCanView, useCanEdit, usePermissions } from "@/hooks/use-permissions"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,8 +44,10 @@ import {
 } from "@/hooks/use-checklist-templates"
 
 export default function ChecklistsPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const { status } = useSession()
+  const { isLoading: permsLoading } = usePermissions()
+  const canView = useCanView("checklists")
+  const canManage = useCanEdit("checklists")
 
   const { data, isLoading, error } = useChecklistTemplates()
   const deleteMutation = useDeleteChecklistTemplate()
@@ -54,16 +57,6 @@ export default function ChecklistsPage() {
   const [expandedTemplateId, setExpandedTemplateId] = React.useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [templateToDelete, setTemplateToDelete] = React.useState<ChecklistTemplate | null>(null)
-
-  const isAdmin = session?.user?.role === "ADMIN"
-  const canManage = isAdmin
-
-  // Redirecionar se não for admin
-  React.useEffect(() => {
-    if (status === "authenticated" && !canManage) {
-      router.push("/")
-    }
-  }, [status, canManage, router])
 
   const handleEdit = (template: ChecklistTemplate) => {
     setEditingTemplate(template)
@@ -93,7 +86,7 @@ export default function ChecklistsPage() {
     setExpandedTemplateId((prev) => (prev === templateId ? null : templateId))
   }
 
-  if (status === "loading" || isLoading) {
+  if (status === "loading" || permsLoading || isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -101,8 +94,21 @@ export default function ChecklistsPage() {
     )
   }
 
-  if (!canManage) {
-    return null
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="max-w-md text-center space-y-4">
+          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-amber-500/10">
+            <ShieldAlert className="h-8 w-8 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-foreground">Acesso negado</h2>
+          <p className="text-muted-foreground">
+            Você não tem permissão para acessar os templates de checklist.
+            Fale com um administrador se precisar de acesso.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
@@ -127,10 +133,12 @@ export default function ChecklistsPage() {
         title="Templates de Checklist"
         description="Gerencie os templates de checklist para eventos"
         actions={
-          <Button onClick={() => setFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Template
-          </Button>
+          canManage ? (
+            <Button onClick={() => setFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Template
+            </Button>
+          ) : undefined
         }
       />
 
@@ -144,12 +152,16 @@ export default function ChecklistsPage() {
                 Nenhum template criado
               </p>
               <p className="mb-4">
-                Crie templates de checklist para usar nos eventos.
+                {canManage
+                  ? "Crie templates de checklist para usar nos eventos."
+                  : "Nenhum template disponível no momento."}
               </p>
-              <Button onClick={() => setFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Template
-              </Button>
+              {canManage && (
+                <Button onClick={() => setFormOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro Template
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -158,8 +170,12 @@ export default function ChecklistsPage() {
           {templates.map((template) => (
             <Card
               key={template.id}
-              className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => toggleExpand(template.id)}
+              className={
+                canManage
+                  ? "cursor-pointer hover:border-primary/50 transition-colors"
+                  : "transition-colors"
+              }
+              onClick={canManage ? () => toggleExpand(template.id) : undefined}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -173,32 +189,34 @@ export default function ChecklistsPage() {
                       </p>
                     )}
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 flex-shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="Ações do template"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(template)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(template)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {canManage && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Ações do template"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(template)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(template)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
