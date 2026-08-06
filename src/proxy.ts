@@ -9,6 +9,7 @@ const publicRoutes = [
   "/login",
   "/register",
   "/set-password", // definir senha via token de convite (valida em /api/auth/verify-invite)
+  "/forgot-password", // recuperação de senha (público)
   "/offline", // fallback do service worker (PWA)
   "/sw.js", // service worker — NUNCA redirecionar (senão o SW recebe HTML e quebra)
   "/manifest.webmanifest", // manifest do PWA

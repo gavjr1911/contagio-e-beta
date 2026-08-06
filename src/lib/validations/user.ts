@@ -195,6 +195,13 @@ export const setPasswordSchema = z.object({
 
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 
+// Schema para recuperação de senha (self-service)
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Email inválido"),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
 // Schema para atualizar perfil com foto
 export const updateProfileWithPhotoSchema = z.object({
   name: z.string().min(2).max(100).optional(),

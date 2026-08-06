@@ -6,6 +6,7 @@ import { ScheduleConfirmedEmail, ScheduleConfirmedEmailProps } from "./templates
 import { ScheduleChangedEmail, ScheduleChangedEmailProps } from "./templates/schedule-changed"
 import { SetlistUpdateEmail, SetlistUpdateEmailProps } from "./templates/setlist-update"
 import { UserInviteEmail, UserInviteEmailProps } from "./templates/user-invite"
+import { PasswordResetEmail, PasswordResetEmailProps } from "./templates/password-reset"
 import { prisma } from "@/lib/prisma"
 import { createHmac } from "crypto"
 import { formatTimeToHHMM } from "@/lib/date-utils"
@@ -429,6 +430,34 @@ export async function sendUserInvite(
   return sendEmail({
     to: user.email,
     subject: `Convite: Junte-se ao ministério ${ministry.name}`,
+    html,
+  })
+}
+
+/**
+ * Envia o email de redefinição de senha (link para /set-password?token=...).
+ */
+export async function sendPasswordReset(params: {
+  name: string | null
+  email: string
+  token: string
+  expiresAt: Date
+  byAdmin?: boolean
+}): Promise<SendEmailResult> {
+  const resetUrl = `${APP_URL}/set-password?token=${params.token}`
+
+  const props: PasswordResetEmailProps = {
+    userName: params.name || "Voluntário",
+    resetUrl,
+    expiresAt: params.expiresAt,
+    byAdmin: params.byAdmin,
+  }
+
+  const html = await render(PasswordResetEmail(props))
+
+  return sendEmail({
+    to: params.email,
+    subject: "Redefinição de senha — Igreja Beta",
     html,
   })
 }

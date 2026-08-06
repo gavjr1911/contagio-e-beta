@@ -16,6 +16,10 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Send,
+  KeyRound,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +55,8 @@ import {
   useManagedUsers,
   useUpdateUser,
   useToggleUserActive,
+  useSendUserAccessLink,
+  useGenerateTempPassword,
   type ManagedUser,
 } from "@/hooks/use-user-management";
 import { useMinistries } from "@/hooks/use-ministries";
@@ -131,6 +137,16 @@ export default function UsuariosPage() {
   const { data: ministriesData } = useMinistries();
   const updateUser = useUpdateUser();
   const toggleActive = useToggleUserActive();
+  const sendAccessLink = useSendUserAccessLink();
+  const generateTempPassword = useGenerateTempPassword();
+
+  // Diálogo de resultado da senha temporária
+  const [tempPasswordResult, setTempPasswordResult] = useState<
+    { name: string; email: string; tempPassword: string } | null
+  >(null);
+  const [copied, setCopied] = useState(false);
+  // Guarda o id do usuário em ação para desabilitar o item durante a chamada
+  const [pendingActionUserId, setPendingActionUserId] = useState<string | null>(null);
 
   const ministries = ministriesData || [];
 
@@ -162,6 +178,57 @@ export default function UsuariosPage() {
         description: error instanceof Error ? error.message : "Erro ao salvar",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSendAccessLink = async (user: ManagedUser) => {
+    setPendingActionUserId(user.id);
+    try {
+      const res = await sendAccessLink.mutateAsync(user.id);
+      toast({
+        title: "Link de acesso enviado",
+        description: res.email,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao enviar link",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPendingActionUserId(null);
+    }
+  };
+
+  const handleGenerateTempPassword = async (user: ManagedUser) => {
+    setPendingActionUserId(user.id);
+    try {
+      const res = await generateTempPassword.mutateAsync(user.id);
+      setCopied(false);
+      setTempPasswordResult({
+        name: user.name || user.email,
+        email: res.email,
+        tempPassword: res.tempPassword,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao gerar senha",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPendingActionUserId(null);
+    }
+  };
+
+  const handleCopyTempPassword = async () => {
+    if (!tempPasswordResult) return;
+    try {
+      await navigator.clipboard.writeText(tempPasswordResult.tempPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard indisponível — o usuário pode copiar manualmente */
     }
   };
 
@@ -368,6 +435,20 @@ export default function UsuariosPage() {
                         <Pencil className="h-4 w-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleSendAccessLink(user)}
+                        disabled={pendingActionUserId === user.id}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Reenviar link de acesso
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleGenerateTempPassword(user)}
+                        disabled={pendingActionUserId === user.id}
+                      >
+                        <KeyRound className="h-4 w-4 mr-2" />
+                        Gerar senha temporária
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {user.id !== session?.user?.id && (
                         <DropdownMenuItem
@@ -518,6 +599,48 @@ export default function UsuariosPage() {
                 "Salvar"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Senha temporária gerada */}
+      <Dialog
+        open={!!tempPasswordResult}
+        onOpenChange={(open) => !open && setTempPasswordResult(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Senha temporária gerada</DialogTitle>
+            <DialogDescription>
+              Copie e envie esta senha para{" "}
+              <strong>{tempPasswordResult?.name}</strong> ({tempPasswordResult?.email}).
+              Ela <strong>não será exibida novamente</strong> — oriente a pessoa a
+              trocá-la após entrar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg border border-border bg-muted px-3 py-2.5 font-mono text-lg tracking-wider text-foreground select-all">
+              {tempPasswordResult?.tempPassword}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 shrink-0"
+              onClick={handleCopyTempPassword}
+              aria-label="Copiar senha"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setTempPasswordResult(null)}>Concluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

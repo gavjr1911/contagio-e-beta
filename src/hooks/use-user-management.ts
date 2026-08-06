@@ -126,3 +126,27 @@ export function useToggleUserActive() {
     },
   });
 }
+
+// Reenvia link de acesso/redefinição de senha para o usuário (ADMIN)
+export function useSendUserAccessLink() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/users/${id}/send-reset`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erro ao enviar link de acesso");
+      return json.data as { message: string; email: string };
+    },
+  });
+}
+
+// Gera uma senha temporária para o usuário (ADMIN). Retorna a senha uma vez.
+export function useGenerateTempPassword() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/users/${id}/temp-password`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erro ao gerar senha temporária");
+      return json.data as { message: string; email: string; tempPassword: string };
+    },
+  });
+}
