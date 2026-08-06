@@ -18,6 +18,8 @@ export interface Setting {
   key: SettingKey;
   value: string;
   encrypted: boolean;
+  /** true quando a chave está definida via variável de ambiente (Railway) */
+  envConfigured?: boolean;
   updatedAt: string | null;
 }
 
@@ -179,6 +181,17 @@ export function getSettingValue(settings: Setting[] | undefined, key: SettingKey
   if (!settings) return "";
   const setting = settings.find((s) => s.key === key);
   return setting?.value || "";
+}
+
+/**
+ * Indica se a configuração está definida via variável de ambiente (Railway).
+ */
+export function isSettingEnvConfigured(
+  settings: Setting[] | undefined,
+  key: SettingKey
+): boolean {
+  if (!settings) return false;
+  return settings.find((s) => s.key === key)?.envConfigured ?? false;
 }
 
 // ========================================

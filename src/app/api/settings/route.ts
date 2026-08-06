@@ -31,11 +31,18 @@ export async function GET() {
         const setting = settingsMap.get(key)
         const isEncrypted = ENCRYPTED_SETTINGS.includes(key)
 
+        // Indica se a chave está definida via variável de ambiente (ex.: Railway),
+        // que é a fonte usada de fato pelo envio de email. Não expõe o valor.
+        const envConfigured = Boolean(process.env[key])
+
         if (!setting) {
+          // Sem valor no banco: para chaves NÃO sensíveis, mostra o valor do
+          // ambiente (ex.: email de envio); sensíveis ficam vazias (só o flag).
           return {
             key,
-            value: isEncrypted ? "" : DEFAULT_SETTINGS[key],
+            value: isEncrypted ? "" : (process.env[key] || DEFAULT_SETTINGS[key]),
             encrypted: isEncrypted,
+            envConfigured,
             updatedAt: null,
           }
         }
@@ -50,6 +57,7 @@ export async function GET() {
           key: setting.key,
           value: displayValue,
           encrypted: setting.encrypted,
+          envConfigured,
           updatedAt: setting.updatedAt.toISOString(),
         }
       })

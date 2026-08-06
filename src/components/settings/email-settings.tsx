@@ -27,6 +27,7 @@ import {
   useUpdateSettings,
   useTestEmail,
   getSettingValue,
+  isSettingEnvConfigured,
 } from "@/hooks/use-settings";
 import { SettingKey } from "@/lib/validations/settings";
 
@@ -53,6 +54,8 @@ export function EmailSettings() {
   }, [settings]);
 
   const currentApiKey = getSettingValue(settings, "RESEND_API_KEY");
+  const apiKeyEnvConfigured = isSettingEnvConfigured(settings, "RESEND_API_KEY");
+  const fromEnvConfigured = isSettingEnvConfigured(settings, "RESEND_FROM_EMAIL");
 
   const handleSave = async () => {
     const settingsToUpdate: { key: SettingKey; value: string }[] = [];
@@ -134,12 +137,28 @@ export function EmailSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="resend-api-key">Chave da API do Resend</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="resend-api-key">Chave da API do Resend</Label>
+            {(currentApiKey || apiKeyEnvConfigured) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                <CheckCircle2 className="h-3 w-3" />
+                {apiKeyEnvConfigured && !currentApiKey
+                  ? "Configurada via ambiente"
+                  : "Configurada"}
+              </span>
+            )}
+          </div>
           <div className="relative">
             <Input
               id="resend-api-key"
               type={showApiKey ? "text" : "password"}
-              placeholder={currentApiKey ? "****" + currentApiKey.slice(-4) : "re_xxxxxxxx..."}
+              placeholder={
+                currentApiKey
+                  ? "****" + currentApiKey.slice(-4)
+                  : apiKeyEnvConfigured
+                    ? "•••••••• (definida no ambiente / Railway)"
+                    : "re_xxxxxxxx..."
+              }
               value={emailSettings.RESEND_API_KEY}
               onChange={(e) =>
                 setEmailSettings((prev) => ({
@@ -163,12 +182,22 @@ export function EmailSettings() {
           <p className="text-xs text-muted-foreground">
             {currentApiKey
               ? "Uma chave já está configurada. Preencha apenas se quiser alterar."
-              : "Obtenha sua chave em resend.com/api-keys"}
+              : apiKeyEnvConfigured
+                ? "A chave está definida via variável de ambiente (Railway) e é a que o sistema usa para enviar emails. Não é necessário preencher aqui."
+                : "Obtenha sua chave em resend.com/api-keys"}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="resend-from-email">Email de Envio</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="resend-from-email">Email de Envio</Label>
+            {fromEnvConfigured && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                <CheckCircle2 className="h-3 w-3" />
+                Configurado via ambiente
+              </span>
+            )}
+          </div>
           <Input
             id="resend-from-email"
             type="email"
