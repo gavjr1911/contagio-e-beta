@@ -1,10 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type {
-  PermissionFeature,
-  PermissionLevel,
-  PermissionMap,
-  MinistryPermissions,
-} from "./types";
+import type { PermissionMap, MinistryPermissions } from "./types";
 import { PERMISSION_FEATURES } from "./types";
 import { DEFAULT_MINISTRY_PERMISSIONS, FULL_PERMISSIONS, EMPTY_PERMISSIONS } from "./defaults";
 import { maxLevel } from "./check";

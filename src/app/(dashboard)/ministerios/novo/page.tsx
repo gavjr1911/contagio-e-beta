@@ -117,7 +117,7 @@ export default function NovoMinisterioPage() {
         const ministry = await createMinistry.mutateAsync({
           name: name.trim(),
           description: description.trim() || undefined,
-          permissions: permissions as unknown as Record<string, Record<string, string>>,
+          permissions: permissions,
         });
 
         // Depois convida o usuário e adiciona como membro
@@ -162,7 +162,7 @@ export default function NovoMinisterioPage() {
       name: name.trim(),
       description: description.trim() || undefined,
       leaderId: finalLeaderId,
-      permissions: permissions as unknown as Record<string, Record<string, string>>,
+      permissions: permissions,
     });
 
     router.push(`/ministerios/${ministry.id}`);

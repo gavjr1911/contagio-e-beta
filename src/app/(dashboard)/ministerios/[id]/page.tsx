@@ -358,7 +358,7 @@ export default function MinisterioDetailPage({ params }: PageProps) {
                         try {
                           await updateMinistry.mutateAsync({
                             id: ministry.id,
-                            permissions: permissionsState as unknown as Record<string, Record<string, string>>,
+                            permissions: permissionsState ?? undefined,
                           });
                           setPermissionsDirty(false);
                           toast({
