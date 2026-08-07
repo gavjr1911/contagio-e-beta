@@ -3,21 +3,16 @@
 import {
   PERMISSION_FEATURES,
   PERMISSION_FEATURE_LABELS,
-  PERMISSION_LEVEL_LABELS,
+  PERMISSION_ACTIONS,
+  PERMISSION_ACTION_LABELS,
   type MinistryPermissions,
   type PermissionFeature,
-  type PermissionLevel,
+  type PermissionAction,
+  type PermissionActions,
 } from "@/lib/permissions/types";
 import { DEFAULT_MINISTRY_PERMISSIONS } from "@/lib/permissions/defaults";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Shield, ShieldCheck, ShieldX } from "lucide-react";
+import { Eye, Plus, Pencil, Trash2 } from "lucide-react";
 
 interface PermissionMatrixEditorProps {
   value: MinistryPermissions;
@@ -25,51 +20,64 @@ interface PermissionMatrixEditorProps {
   disabled?: boolean;
 }
 
-const levelIcons: Record<PermissionLevel, typeof Shield> = {
-  none: ShieldX,
-  view: Shield,
-  edit: ShieldCheck,
+const actionIcons: Record<PermissionAction, typeof Eye> = {
+  view: Eye,
+  create: Plus,
+  edit: Pencil,
+  delete: Trash2,
 };
 
-const levelColors: Record<PermissionLevel, string> = {
-  none: "text-muted-foreground",
-  view: "text-blue-500",
-  edit: "text-emerald-500",
-};
+/** Aplica as regras: escrita implica ver; desligar ver zera tudo. */
+function applyAction(
+  current: PermissionActions,
+  action: PermissionAction,
+  next: boolean
+): PermissionActions {
+  const result = { ...current, [action]: next };
+  if (action === "view" && !next) {
+    return { view: false, create: false, edit: false, delete: false };
+  }
+  if (next && (action === "create" || action === "edit" || action === "delete")) {
+    result.view = true;
+  }
+  return result;
+}
 
-function PermissionSelect({
+function ActionToggles({
   value,
-  onChange,
+  onToggle,
   disabled,
 }: {
-  value: PermissionLevel;
-  onChange: (value: PermissionLevel) => void;
+  value: PermissionActions;
+  onToggle: (action: PermissionAction, next: boolean) => void;
   disabled?: boolean;
 }) {
-  const Icon = levelIcons[value];
-
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="w-[140px] h-9">
-        <div className="flex items-center gap-1.5">
-          <Icon className={cn("h-3.5 w-3.5", levelColors[value])} />
-          <SelectValue />
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        {(["none", "view", "edit"] as PermissionLevel[]).map((level) => {
-          const LevelIcon = levelIcons[level];
-          return (
-            <SelectItem key={level} value={level}>
-              <div className="flex items-center gap-1.5">
-                <LevelIcon className={cn("h-3.5 w-3.5", levelColors[level])} />
-                <span>{PERMISSION_LEVEL_LABELS[level]}</span>
-              </div>
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
+    <div className="flex flex-wrap justify-center gap-1.5">
+      {PERMISSION_ACTIONS.map((action) => {
+        const Icon = actionIcons[action];
+        const active = value[action];
+        return (
+          <button
+            key={action}
+            type="button"
+            disabled={disabled}
+            aria-pressed={active}
+            onClick={() => onToggle(action, !active)}
+            title={PERMISSION_ACTION_LABELS[action]}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+              active
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-transparent text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span>{PERMISSION_ACTION_LABELS[action]}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -78,16 +86,17 @@ export function PermissionMatrixEditor({
   onChange,
   disabled,
 }: PermissionMatrixEditorProps) {
-  const handleChange = (
+  const handleToggle = (
     role: "leader" | "member",
     feature: PermissionFeature,
-    level: PermissionLevel
+    action: PermissionAction,
+    next: boolean
   ) => {
     onChange({
       ...value,
       [role]: {
         ...value[role],
-        [feature]: level,
+        [feature]: applyAction(value[role][feature], action, next),
       },
     });
   };
@@ -95,7 +104,7 @@ export function PermissionMatrixEditor({
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[1fr_140px_140px] gap-2 px-4 py-3 bg-muted/50 border-b border-border">
+      <div className="grid grid-cols-[1fr_1.6fr_1.6fr] gap-2 px-4 py-3 bg-muted/50 border-b border-border">
         <div className="text-sm font-medium text-muted-foreground">
           Funcionalidade
         </div>
@@ -112,27 +121,23 @@ export function PermissionMatrixEditor({
         <div
           key={feature}
           className={cn(
-            "grid grid-cols-[1fr_140px_140px] gap-2 px-4 py-2.5 items-center",
+            "grid grid-cols-[1fr_1.6fr_1.6fr] gap-2 px-4 py-2.5 items-center",
             index < PERMISSION_FEATURES.length - 1 && "border-b border-border/50"
           )}
         >
           <div className="text-sm font-medium">
             {PERMISSION_FEATURE_LABELS[feature]}
           </div>
-          <div className="flex justify-center">
-            <PermissionSelect
-              value={value.leader[feature]}
-              onChange={(level) => handleChange("leader", feature, level)}
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex justify-center">
-            <PermissionSelect
-              value={value.member[feature]}
-              onChange={(level) => handleChange("member", feature, level)}
-              disabled={disabled}
-            />
-          </div>
+          <ActionToggles
+            value={value.leader[feature]}
+            onToggle={(action, next) => handleToggle("leader", feature, action, next)}
+            disabled={disabled}
+          />
+          <ActionToggles
+            value={value.member[feature]}
+            onToggle={(action, next) => handleToggle("member", feature, action, next)}
+            disabled={disabled}
+          />
         </div>
       ))}
     </div>

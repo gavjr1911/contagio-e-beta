@@ -13,17 +13,26 @@ export const PERMISSION_FEATURES = [
 
 export type PermissionFeature = (typeof PERMISSION_FEATURES)[number];
 
-// Níveis de acesso (ordem crescente de permissão)
-export type PermissionLevel = "none" | "view" | "edit";
+// ── Modelo por AÇÃO (novo) ──────────────────────────────────────────────
+// Cada feature tem 4 ações independentes. É a forma armazenada em
+// Ministry.permissions e editada na matriz.
+export const PERMISSION_ACTIONS = ["view", "create", "edit", "delete"] as const;
+export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
+export type PermissionActions = Record<PermissionAction, boolean>;
+export type PermissionActionMap = Record<PermissionFeature, PermissionActions>;
 
-// Mapa de permissões: feature → level
-export type PermissionMap = Record<PermissionFeature, PermissionLevel>;
-
-// Matriz completa de permissões de um ministério
+// Matriz completa de permissões de um ministério (forma nova: por ação)
 export interface MinistryPermissions {
-  leader: PermissionMap;
-  member: PermissionMap;
+  leader: PermissionActionMap;
+  member: PermissionActionMap;
 }
+
+// ── Modelo por NÍVEL (legado / compat) ──────────────────────────────────
+// Ainda é a forma das permissões EFETIVAS resolvidas (consumidas pelo
+// enforcement atual e pelo cliente). O resolver achata o modelo por ação
+// para este nível durante a transição (Fase 0a).
+export type PermissionLevel = "none" | "view" | "edit";
+export type PermissionMap = Record<PermissionFeature, PermissionLevel>;
 
 // Labels em pt-BR para exibição na UI
 export const PERMISSION_FEATURE_LABELS: Record<PermissionFeature, string> = {
@@ -42,6 +51,13 @@ export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
   none: "Sem acesso",
   view: "Visualizar",
   edit: "Editar",
+};
+
+export const PERMISSION_ACTION_LABELS: Record<PermissionAction, string> = {
+  view: "Ver",
+  create: "Criar",
+  edit: "Editar",
+  delete: "Excluir",
 };
 
 // Valor numérico para comparação (edit > view > none)

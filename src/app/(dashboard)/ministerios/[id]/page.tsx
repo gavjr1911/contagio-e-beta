@@ -35,6 +35,7 @@ import { AddMemberDialog } from "@/components/ministries/add-member-dialog";
 import { PositionsManager } from "@/components/ministries/positions-manager";
 import { PermissionMatrixEditor } from "@/components/permissions/permission-matrix-editor";
 import { DEFAULT_MINISTRY_PERMISSIONS } from "@/lib/permissions/defaults";
+import { normalizeMinistryPermissions } from "@/lib/permissions/normalize";
 import type { MinistryPermissions } from "@/lib/permissions/types";
 import { useUpdateMinistry } from "@/hooks/use-ministries";
 import { toast } from "@/hooks/use-toast";
@@ -341,8 +342,9 @@ export default function MinisterioDetailPage({ params }: PageProps) {
                 <PermissionMatrixEditor
                   value={
                     permissionsState ??
-                    (ministry.permissions as MinistryPermissions | null) ??
-                    DEFAULT_MINISTRY_PERMISSIONS
+                    (ministry.permissions
+                      ? normalizeMinistryPermissions(ministry.permissions)
+                      : DEFAULT_MINISTRY_PERMISSIONS)
                   }
                   onChange={(value) => {
                     setPermissionsState(value);

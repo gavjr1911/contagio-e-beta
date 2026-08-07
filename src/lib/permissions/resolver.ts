@@ -8,6 +8,7 @@ import type {
 import { PERMISSION_FEATURES } from "./types";
 import { DEFAULT_MINISTRY_PERMISSIONS, FULL_PERMISSIONS, EMPTY_PERMISSIONS } from "./defaults";
 import { maxLevel } from "./check";
+import { normalizeMinistryPermissions, flattenToLevelMap } from "./normalize";
 
 // Cache em memória com TTL
 const CACHE_TTL_MS = 60_000; // 60 segundos
@@ -39,37 +40,12 @@ export function invalidateAllPermissionCaches(): void {
 }
 
 /**
- * Faz o parse seguro do JSON de permissions de um ministério.
- * Retorna os defaults se o JSON for inválido ou null.
+ * Resolve a matriz de um ministério para a forma por ação, aceitando as duas
+ * formas (legada por nível / nova por ação). `null` cai nos defaults.
  */
-function parseMinistryPermissions(raw: unknown): MinistryPermissions {
-  if (!raw || typeof raw !== "object") return DEFAULT_MINISTRY_PERMISSIONS;
-
-  const obj = raw as Record<string, unknown>;
-  if (!obj.leader || !obj.member) return DEFAULT_MINISTRY_PERMISSIONS;
-
-  // Validar que cada feature existe e tem um nível válido
-  const validLevels = new Set(["none", "view", "edit"]);
-
-  const parseMap = (
-    map: unknown,
-    fallback: PermissionMap
-  ): PermissionMap => {
-    if (!map || typeof map !== "object") return fallback;
-    const result = { ...fallback };
-    const m = map as Record<string, unknown>;
-    for (const feature of PERMISSION_FEATURES) {
-      if (m[feature] && validLevels.has(m[feature] as string)) {
-        result[feature] = m[feature] as PermissionLevel;
-      }
-    }
-    return result;
-  };
-
-  return {
-    leader: parseMap(obj.leader, DEFAULT_MINISTRY_PERMISSIONS.leader),
-    member: parseMap(obj.member, DEFAULT_MINISTRY_PERMISSIONS.member),
-  };
+function ministryToActions(raw: unknown): MinistryPermissions {
+  if (raw == null) return DEFAULT_MINISTRY_PERMISSIONS;
+  return normalizeMinistryPermissions(raw);
 }
 
 /**
@@ -125,15 +101,16 @@ export async function resolveUserPermissions(
 
   // Processar memberships
   for (const membership of memberships) {
-    const perms = parseMinistryPermissions(membership.ministry.permissions);
+    const perms = ministryToActions(membership.ministry.permissions);
     const isLeaderOfThis =
       membership.ministry.leaderId === userId ||
       leaderMinistryIds.has(membership.ministry.id);
 
-    const rolePerms = isLeaderOfThis ? perms.leader : perms.member;
+    // Achata a matriz por ação para o nível efetivo (Fase 0a).
+    const roleLevels = flattenToLevelMap(isLeaderOfThis ? perms.leader : perms.member);
 
     for (const feature of PERMISSION_FEATURES) {
-      result[feature] = maxLevel(result[feature], rolePerms[feature]);
+      result[feature] = maxLevel(result[feature], roleLevels[feature]);
     }
   }
 
@@ -144,9 +121,10 @@ export async function resolveUserPermissions(
     );
     if (alreadyProcessed) continue;
 
-    const perms = parseMinistryPermissions(ministry.permissions);
+    const perms = ministryToActions(ministry.permissions);
+    const roleLevels = flattenToLevelMap(perms.leader);
     for (const feature of PERMISSION_FEATURES) {
-      result[feature] = maxLevel(result[feature], perms.leader[feature]);
+      result[feature] = maxLevel(result[feature], roleLevels[feature]);
     }
   }
 
