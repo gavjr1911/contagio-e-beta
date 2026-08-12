@@ -57,12 +57,18 @@ export async function POST(request: NextRequest) {
         data: { inviteToken: token, inviteExpires: expires },
       })
       try {
-        await sendPasswordReset({
+        // Resposta ao cliente é sempre genérica (não revela se a conta existe),
+        // mas a falha precisa ficar registrada: `sendPasswordReset` não lança,
+        // devolve `{ success: false }`.
+        const sendResult = await sendPasswordReset({
           name: user.name,
           email: user.email,
           token,
           expiresAt: expires,
         })
+        if (!sendResult.success) {
+          console.error("[ForgotPassword] Falha ao enviar email:", sendResult.error)
+        }
       } catch (emailError) {
         console.error("[ForgotPassword] Erro ao enviar email:", emailError)
         // Não vaza a falha ao cliente.

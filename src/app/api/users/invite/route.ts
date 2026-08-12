@@ -98,9 +98,17 @@ export async function POST(request: NextRequest) {
         positionNames = positions.map(p => p.name).join(", ")
       }
 
-      // Enviar email de convite
+      // Enviar email de convite.
+      //
+      // O usuario ja foi criado (transacao commitada), entao uma falha de envio
+      // nao invalida a operacao — mas TEM de chegar ao cliente. `sendUserInvite`
+      // nunca lanca: erros do Resend voltam como `{ success: false }`, por isso
+      // o try/catch sozinho nao basta e o resultado precisa ser inspecionado.
+      let emailSent = false
+      let emailError: string | undefined
+
       try {
-        await sendUserInvite(
+        const sendResult = await sendUserInvite(
           {
             id: result.user.id,
             name: result.user.name,
@@ -114,9 +122,17 @@ export async function POST(request: NextRequest) {
           },
           positionNames
         )
-      } catch (emailError) {
-        console.error("[Invite] Erro ao enviar email:", emailError)
-        // Nao falha a operacao se o email nao for enviado
+        emailSent = sendResult.success
+        emailError = sendResult.error
+        if (!emailSent) {
+          console.error(
+            `[Invite] Convite de ${result.user.email} nao foi enviado:`,
+            emailError
+          )
+        }
+      } catch (err) {
+        emailError = err instanceof Error ? err.message : "Erro desconhecido"
+        console.error("[Invite] Excecao ao enviar email:", err)
       }
 
       return apiSuccess(
@@ -130,6 +146,8 @@ export async function POST(request: NextRequest) {
             birthDate: result.user.birthDate,
           },
           member: result.member,
+          emailSent,
+          emailError,
         },
         201
       )

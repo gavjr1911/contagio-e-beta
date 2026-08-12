@@ -33,14 +33,21 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       data: { inviteToken: token, inviteExpires: expires },
     })
 
+    // `sendPasswordReset` nunca lança — erros do Resend voltam em
+    // `{ success: false }`. Sem checar isso, a rota respondia 200 "enviado"
+    // mesmo quando o envio falhava.
     try {
-      await sendPasswordReset({
+      const sendResult = await sendPasswordReset({
         name: user.name,
         email: user.email,
         token,
         expiresAt: expires,
         byAdmin: true,
       })
+      if (!sendResult.success) {
+        console.error("[SendReset] Falha ao enviar email:", sendResult.error)
+        return apiError("Não foi possível enviar o email. Tente novamente.", 502)
+      }
     } catch (emailError) {
       console.error("[SendReset] Erro ao enviar email:", emailError)
       return apiError("Não foi possível enviar o email. Tente novamente.", 502)

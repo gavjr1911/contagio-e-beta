@@ -58,7 +58,11 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // 'wasm-unsafe-eval' libera apenas compilação de WebAssembly (não eval() de JS).
+  // Necessário para o @react-pdf/renderer, cujo layout roda em yoga-layout, que
+  // só distribui binário WASM — sem isso, exportar o PDF da Ordem do Culto falha
+  // com CompileError no navegador.
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   // Google Fonts é importado em runtime via @import em globals.css (e cacheado no sw.ts).
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",

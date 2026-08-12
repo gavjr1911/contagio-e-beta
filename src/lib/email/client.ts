@@ -3,16 +3,14 @@ import { Resend } from "resend"
 // Inicializa o cliente Resend de forma lazy para evitar erros durante o build
 let _resend: Resend | null = null
 
-function getResend(): Resend {
+// Retorna null quando RESEND_API_KEY nao esta configurada. Antes era criado um
+// cliente com chave "re_placeholder", o que nao simulava nada: as chamadas iam
+// para a rede e voltavam 401, gastando latencia para falhar do mesmo jeito.
+function getResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
   if (!_resend) {
-    const apiKey = process.env.RESEND_API_KEY
-    if (!apiKey) {
-      console.warn("[Email] RESEND_API_KEY nao configurada - emails serao simulados")
-      // Cria um cliente dummy para evitar erro durante o build
-      _resend = new Resend("re_placeholder")
-    } else {
-      _resend = new Resend(apiKey)
-    }
+    _resend = new Resend(apiKey)
   }
   return _resend
 }
@@ -43,6 +41,12 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
 
   try {
     const resend = getResend()
+    if (!resend) {
+      const message = "RESEND_API_KEY nao configurada"
+      console.error("[Email] Envio abortado:", message)
+      return { success: false, error: message }
+    }
+
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: Array.isArray(to) ? to : [to],
@@ -59,7 +63,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       }
     }
 
-    console.log("[Email] Enviado com sucesso:", data?.id)
+    // Aceite do Resend (202) nao e entrega: bounce/spam chegam depois, de forma
+    // assincrona. Nao havendo webhook, o status real so pode ser conferido na
+    // API do Resend (campo last_event). Evita ler este log como "entregue".
+    console.log("[Email] Aceito pelo Resend (entrega nao confirmada):", data?.id)
     return {
       success: true,
       data: data ? { id: data.id } : undefined,

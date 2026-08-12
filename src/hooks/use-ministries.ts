@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 // Hook para gerenciar ministerios e posicoes
 
 // Types
@@ -96,6 +97,9 @@ export interface InviteMemberResponse {
     birthDate?: string;
   };
   member: MinistryMember;
+  /** false quando o convite foi criado mas o email nao saiu (ver emailError). */
+  emailSent: boolean;
+  emailError?: string;
 }
 
 export interface UpdateMemberInput {
@@ -445,6 +449,16 @@ export function useInviteMember() {
       queryClient.invalidateQueries({ queryKey: ["ministries"] });
       queryClient.invalidateQueries({ queryKey: ["ministry", data.member.ministryId] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+
+      // O usuario foi criado de qualquer forma; o que pode ter falhado e o
+      // convite por email. Avisar aqui cobre todos os chamadores da mutation.
+      if (data.emailSent) {
+        toast.success(`Convite enviado para ${data.user.email}`);
+      } else {
+        toast.warning(
+          `Usuário criado, mas o convite não foi enviado para ${data.user.email}. Reenvie o acesso pela tela de Usuários.`
+        );
+      }
     },
   });
 }
