@@ -3,40 +3,32 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 import { prisma } from "@/lib/prisma"
 import { decrypt } from "@/lib/crypto"
+import {
+  ALLOWED_FILE_TYPES,
+  getMaxSizeForMime,
+  isAllowedMimeType,
+  type AllowedMimeType,
+  type MediaTypeFromMime,
+} from "@/lib/media/constants"
 
-// Tipos de arquivo permitidos
-export const ALLOWED_FILE_TYPES = {
-  // Imagens
-  "image/png": { extension: "png", type: "IMAGE" as const },
-  "image/jpeg": { extension: "jpg", type: "IMAGE" as const },
-  "image/gif": { extension: "gif", type: "IMAGE" as const },
-  "image/webp": { extension: "webp", type: "IMAGE" as const },
-  // Videos
-  "video/mp4": { extension: "mp4", type: "VIDEO" as const },
-  "video/quicktime": { extension: "mov", type: "VIDEO" as const },
-  // Documentos
-  "application/pdf": { extension: "pdf", type: "PDF" as const },
-  // Apresentacoes
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
-    extension: "pptx",
-    type: "PRESENTATION" as const,
-  },
-  "application/vnd.ms-powerpoint": {
-    extension: "ppt",
-    type: "PRESENTATION" as const,
-  },
-} as const
-
-export type AllowedMimeType = keyof typeof ALLOWED_FILE_TYPES
-export type MediaTypeFromMime = (typeof ALLOWED_FILE_TYPES)[AllowedMimeType]["type"]
-
-// Limite de 50MB
-export const MAX_FILE_SIZE = 50 * 1024 * 1024
+// A allowlist e os limites vivem em @/lib/media/constants (sem dependência de
+// servidor, para o client poder importar). Reexportados aqui para não quebrar
+// quem já importava de @/lib/storage/r2.
+export {
+  ALLOWED_FILE_TYPES,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_BY_TYPE,
+  getMaxSizeForMime,
+  isAllowedMimeType,
+  formatFileSize,
+} from "@/lib/media/constants"
+export type { AllowedMimeType, MediaTypeFromMime } from "@/lib/media/constants"
 
 // Interface para configuracoes R2
 interface R2Config {
@@ -140,7 +132,7 @@ export function generateFileKey(eventId: string, filename: string): string {
 
 // Validar tipo de arquivo
 export function validateFileType(mimeType: string): mimeType is AllowedMimeType {
-  return mimeType in ALLOWED_FILE_TYPES
+  return isAllowedMimeType(mimeType)
 }
 
 // Obter tipo de media a partir do MIME type
@@ -158,11 +150,18 @@ export async function generateUploadPresignedUrl(
     throw new Error(`Tipo de arquivo nao permitido: ${contentType}`)
   }
 
-  if (contentLength > MAX_FILE_SIZE) {
-    throw new Error(`Arquivo muito grande. Limite: ${MAX_FILE_SIZE / (1024 * 1024)}MB`)
+  // Limite POR TIPO — vídeo tem teto maior que imagem/PDF/apresentação.
+  const maxSize = getMaxSizeForMime(contentType)
+  if (contentLength > maxSize) {
+    throw new Error(
+      `Arquivo muito grande. Limite para este tipo: ${Math.round(maxSize / (1024 * 1024))}MB`
+    )
   }
 
   const { client, bucketName } = await getR2Client()
+  // Vídeo grande em conexão lenta pode levar dezenas de minutos; a assinatura é
+  // validada no início da requisição, mas a janela precisa cobrir o intervalo
+  // entre escolher o arquivo e clicar em enviar.
   const expiresIn = 3600 // 1 hora
 
   const command = new PutObjectCommand({
@@ -177,18 +176,86 @@ export async function generateUploadPresignedUrl(
   return { uploadUrl, expiresIn }
 }
 
-// Verificar se arquivo existe no R2
-export async function fileExistsInR2(key: string): Promise<boolean> {
+/**
+ * URL assinada de LEITURA que força download com o nome original.
+ *
+ * O botão "Baixar" apontava direto para o domínio público do bucket com
+ * `<a download>`, mas esse atributo é ignorado pelo navegador em links
+ * cross-origin — o arquivo abria numa aba em vez de baixar. O R2 honra
+ * `response-content-disposition` na URL assinada, que resolve isso sem
+ * trazer o arquivo para dentro do servidor.
+ */
+export async function generateDownloadPresignedUrl(
+  key: string,
+  downloadName: string,
+  expiresIn = 300
+): Promise<string> {
+  const { client, bucketName } = await getR2Client()
+
+  // Aspas e barras invertidas quebrariam o cabeçalho; ASCII puro no filename e
+  // o nome completo em filename* (RFC 5987), que cobre acento e espaço.
+  const safeName = downloadName.replace(/["\\]/g, "")
+  const asciiName = safeName.replace(/[^\x20-\x7E]/g, "_")
+
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    ResponseContentDisposition: `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+  })
+
+  return getSignedUrl(client, command, { expiresIn })
+}
+
+export interface R2ObjectMetadata {
+  contentLength: number
+  contentType: string | null
+  etag: string | null
+}
+
+/**
+ * Metadados reais do objeto no bucket.
+ *
+ * O `confirm` gravava `fileSize` e `mimeType` exatamente como o cliente
+ * mandou, enquanto o HeadObject era feito só para dizer "existe" e o resultado
+ * jogado fora. Devolver os metadados permite gravar a fonte da verdade.
+ */
+export async function getObjectMetadata(key: string): Promise<R2ObjectMetadata | null> {
   const { client, bucketName } = await getR2Client()
 
   try {
-    await client.send(
+    const head = await client.send(
       new HeadObjectCommand({
         Bucket: bucketName,
         Key: key,
       })
     )
-    return true
+    // Sem ContentLength não dá para validar limite nem gravar tamanho — tratar
+    // como falha em vez de registrar `fileSize: 0`.
+    if (typeof head.ContentLength !== "number") {
+      throw new Error("HeadObject sem ContentLength")
+    }
+    return {
+      contentLength: head.ContentLength,
+      contentType: head.ContentType ?? null,
+      etag: head.ETag ?? null,
+    }
+  } catch (error) {
+    // Só "não existe" vira null. Engolir todo erro faria uma falha de
+    // credencial ou de rede virar a mensagem "o upload pode ter falhado",
+    // enganando o usuário depois de ele ter esperado o envio inteiro.
+    const name = (error as { name?: string })?.name
+    const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode
+    if (name === "NotFound" || name === "NoSuchKey" || status === 404) {
+      return null
+    }
+    throw error
+  }
+}
+
+// Verificar se arquivo existe no R2
+export async function fileExistsInR2(key: string): Promise<boolean> {
+  try {
+    return (await getObjectMetadata(key)) !== null
   } catch {
     return false
   }
@@ -231,17 +298,6 @@ export function getPublicUrlSync(key: string): string {
 
   const baseUrl = publicUrl.endsWith("/") ? publicUrl.slice(0, -1) : publicUrl
   return `${baseUrl}/${key}`
-}
-
-// Formatar tamanho de arquivo
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
 }
 
 // Verificar se a configuracao R2 esta completa (async)

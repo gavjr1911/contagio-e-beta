@@ -3,6 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
+import {
+  uploadToR2,
+  UploadError,
+  UPLOAD_ERROR_MESSAGES,
+  type UploadProgress,
+} from "@/lib/media/upload"
+import {
+  ACCEPT_ATTRIBUTE,
+  describeAllowedTypes,
+  describeLimits,
+  formatFileSize as formatBytes,
+  getMaxSizeForMime,
+  isAllowedMimeType,
+  resolveContentType,
+  type AllowedMimeType,
+} from "@/lib/media/constants"
 import type {
   EventMediaResponse,
   MediaResponse,
@@ -38,12 +54,20 @@ export function useEventMedia(eventId: string | undefined) {
 }
 
 // Tipo para upload de arquivo
+export type UploadProgressInfo = UploadProgress
+
+/** Fase do envio, para a tela não ficar parada em "100%" durante o registro. */
+export type UploadPhase = "uploading" | "finalizing"
+
 interface UploadFileParams {
   file: File
   eventId: string
   eventItemId?: string
   category?: "ANNOUNCEMENTS" | "PREACHING" | "OTHER"
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number, info?: UploadProgressInfo) => void
+  onPhase?: (phase: UploadPhase) => void
+  /** Permite cancelar o envio em andamento (arquivo grande pode levar minutos). */
+  signal?: AbortSignal
 }
 
 // Upload completo de arquivo (presigned URL + upload + confirm)
@@ -57,11 +81,20 @@ export function useUploadMedia() {
       eventItemId,
       category = "OTHER",
       onProgress,
+      onPhase,
+      signal,
     }: UploadFileParams): Promise<MediaResponse> => {
+      // O navegador nem sempre preenche file.type (.mov/.pptx no Windows e em
+      // alguns Androids); nesses casos o tipo vem da extensão.
+      const contentType = resolveContentType(file)
+      if (!contentType) {
+        throw new Error(`Tipo de arquivo não permitido. Formatos aceitos: ${describeAllowedTypes()}.`)
+      }
+
       // Passo 1: Solicitar URL presigned
       const uploadUrlRequest: UploadUrlRequest = {
         filename: file.name,
-        contentType: file.type as UploadUrlRequest["contentType"],
+        contentType,
         fileSize: file.size,
         eventId,
         eventItemId,
@@ -71,8 +104,10 @@ export function useUploadMedia() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(uploadUrlRequest),
+        signal,
       })
 
+      const presignedAt = Date.now()
       const urlJson = await urlResponse.json()
 
       if (!urlResponse.ok) {
@@ -80,63 +115,85 @@ export function useUploadMedia() {
       }
 
       const { uploadUrl, key } = urlJson.data
-      console.log("[useUploadMedia] Upload URL received, starting upload to R2...")
 
-      // Passo 2: Fazer upload para R2
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
-
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable && onProgress) {
-            const progress = Math.round((e.loaded / e.total) * 100)
-            onProgress(progress)
-          }
-        })
-
-        xhr.addEventListener("load", () => {
-          console.log("[useUploadMedia] XHR load event, status:", xhr.status, xhr.statusText)
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve()
-          } else {
-            console.error("[useUploadMedia] Upload failed:", xhr.status, xhr.statusText, xhr.responseText)
-            reject(new Error(`Upload falhou: ${xhr.status} ${xhr.statusText}`))
-          }
-        })
-
-        xhr.addEventListener("error", (e) => {
-          console.error("[useUploadMedia] XHR error event:", e)
-          reject(new Error("Erro de rede durante upload. Verifique se o R2 esta configurado corretamente."))
-        })
-
-        xhr.open("PUT", uploadUrl)
-        xhr.setRequestHeader("Content-Type", file.type)
-        xhr.send(file)
+      // Passo 2: PUT direto do navegador ao bucket. A mecânica (progresso,
+      // watchdog de estagnação e dedução da causa da falha) vive em
+      // @/lib/media/upload, fora do React, para poder ser testada.
+      await uploadToR2({
+        url: uploadUrl,
+        file,
+        contentType,
+        signal,
+        presignedAt,
+        onProgress: (info) => onProgress?.(info.progress, info),
       })
 
-      // Passo 3: Confirmar upload
+      // Passo 3: Confirmar upload.
+      onPhase?.("finalizing")
+
+      if (signal?.aborted) {
+        throw new UploadError("canceled", UPLOAD_ERROR_MESSAGES.canceled)
+      }
+
       const confirmRequest: ConfirmUploadRequest = {
         key,
         eventId,
         eventItemId,
         originalName: file.name,
         fileSize: file.size,
-        mimeType: file.type as ConfirmUploadRequest["mimeType"],
+        mimeType: contentType,
         category,
       }
 
-      const confirmResponse = await fetch("/api/media/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(confirmRequest),
-      })
+      // O arquivo já está no bucket neste ponto. Deixar o confirm cair por uma
+      // falha transitória jogaria fora o envio inteiro (que pode ter levado 10
+      // minutos) e ainda deixaria o objeto órfão no R2 — por isso as tentativas.
+      let confirmJson: { data?: MediaResponse; error?: string } | null = null
 
-      const confirmJson = await confirmResponse.json()
+      for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        if (signal?.aborted) {
+          throw new UploadError("canceled", UPLOAD_ERROR_MESSAGES.canceled)
+        }
 
-      if (!confirmResponse.ok) {
-        throw new Error(confirmJson.error || "Erro ao confirmar upload")
+        try {
+          const confirmResponse = await fetch("/api/media/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(confirmRequest),
+            signal,
+          })
+
+          confirmJson = await confirmResponse.json()
+
+          if (confirmResponse.ok) {
+            return confirmJson!.data as MediaResponse
+          }
+
+          // 4xx é decisão do servidor e não muda em nova tentativa.
+          if (confirmResponse.status < 500) {
+            throw new Error(confirmJson?.error || "Erro ao confirmar upload")
+          }
+        } catch (err) {
+          // Cancelamento e erro de regra sobem direto.
+          if (signal?.aborted) {
+            throw new UploadError("canceled", UPLOAD_ERROR_MESSAGES.canceled)
+          }
+          if (tentativa === 3) {
+            throw err instanceof Error
+              ? err
+              : new Error("Erro ao confirmar o envio do arquivo.")
+          }
+        }
+
+        if (tentativa < 3) {
+          await new Promise((r) => setTimeout(r, tentativa * 1000))
+        }
       }
 
-      return confirmJson.data
+      throw new Error(
+        confirmJson?.error ||
+          "O arquivo foi enviado, mas não foi possível registrá-lo. Tente enviar novamente."
+      )
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -145,6 +202,11 @@ export function useUploadMedia() {
       toast.success("Arquivo enviado com sucesso")
     },
     onError: (error) => {
+      // Cancelamento é ação do próprio usuário, não falha.
+      if (error instanceof UploadError && error.reason === "canceled") {
+        toast.info(error.message)
+        return
+      }
       toast.error(error instanceof Error ? error.message : "Erro ao enviar arquivo")
     },
   })
@@ -185,15 +247,8 @@ export function useDeleteMedia() {
 
 // Helpers
 
-// Formatar tamanho de arquivo
 export function formatFileSize(bytes: number | null | undefined): string {
-  if (!bytes || bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+  return formatBytes(bytes ?? 0)
 }
 
 // Icone por tipo de mídia
@@ -212,38 +267,38 @@ export function getMediaIcon(type: string): string {
   }
 }
 
-// Verificar se tipo de arquivo e permitido
-const ALLOWED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "video/mp4",
-  "video/quicktime",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.ms-powerpoint",
-]
-
 export function isAllowedFileType(mimeType: string): boolean {
-  return ALLOWED_TYPES.includes(mimeType)
+  return isAllowedMimeType(mimeType)
 }
 
-// Limite de 50MB
-export const MAX_FILE_SIZE = 50 * 1024 * 1024
+/**
+ * Valida o arquivo escolhido pelo usuário e devolve uma mensagem pronta para a
+ * tela. Resolve o content-type pela extensão quando o navegador não informa
+ * `file.type` (comum com .mov e .pptx no Windows/Android) — antes esses
+ * arquivos eram recusados como "tipo não permitido" mesmo sendo válidos.
+ */
+export function validateMediaFile(file: File): { ok: true; contentType: AllowedMimeType } | { ok: false; error: string } {
+  const contentType = resolveContentType(file)
+  if (!contentType) {
+    return { ok: false, error: `Tipo de arquivo não permitido. Formatos aceitos: ${describeAllowedTypes()}.` }
+  }
 
-export function isFileSizeValid(size: number): boolean {
-  return size <= MAX_FILE_SIZE
+  const maxSize = getMaxSizeForMime(contentType)
+  if (file.size > maxSize) {
+    return {
+      ok: false,
+      error: `Arquivo muito grande (${formatBytes(file.size)}). Limite: ${describeLimits()}.`,
+    }
+  }
+
+  return { ok: true, contentType }
 }
 
-// Extensoes permitidas por tipo
+export { getMaxSizeForMime, describeLimits, getFileExtension } from "@/lib/media/constants"
+
+/** Extensões para o atributo `accept` do input, derivadas da allowlist. */
 export function getAllowedExtensions(): string {
-  return ".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.pdf,.pptx,.ppt"
-}
-
-// Obter extensao do arquivo
-export function getFileExtension(filename: string): string {
-  return filename.split(".").pop()?.toLowerCase() || ""
+  return ACCEPT_ATTRIBUTE
 }
 
 // Verificar se e imagem

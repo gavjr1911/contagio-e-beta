@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { canViewEventMedia } from "@/lib/media/access"
 import { resolveEventId } from "@/lib/events"
 import type { EventMediaResponse, MediaResponse, EventItemMediaStatus } from "@/lib/validations/media"
 
@@ -21,6 +22,17 @@ export async function GET(
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+    }
+
+    // Sem isto, proteger as rotas de item e de download seria decorativo: a
+    // listagem já devolve todas as URLs públicas do evento.
+    const podeVer = await canViewEventMedia(
+      session.user.id!,
+      session.user.role as string,
+      eventId
+    )
+    if (!podeVer) {
+      return Response.json({ error: "Permissao negada" }, { status: 403 })
     }
 
     // Buscar itens do evento com midia

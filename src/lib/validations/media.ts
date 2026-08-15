@@ -1,19 +1,41 @@
 import { z } from "zod"
-import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, type AllowedMimeType } from "@/lib/storage/r2"
+// Importa das constantes compartilhadas (sem dependência de servidor), não de
+// @/lib/storage/r2 — que arrasta Prisma e não pode ir para o bundle do client.
+import {
+  ALLOWED_FILE_TYPES,
+  MAX_FILE_SIZE,
+  getMaxSizeForMime,
+  type AllowedMimeType,
+} from "@/lib/media/constants"
 
 const allowedMimeTypes = Object.keys(ALLOWED_FILE_TYPES) as [string, ...string[]]
 
 // Schema para solicitar URL de upload
-export const uploadUrlRequestSchema = z.object({
-  filename: z.string().min(1, "Nome do arquivo obrigatório"),
-  contentType: z.enum(allowedMimeTypes, "Tipo de arquivo não permitido") as z.ZodType<AllowedMimeType>,
-  fileSize: z
-    .number()
-    .positive("Tamanho deve ser positivo")
-    .max(MAX_FILE_SIZE, `Arquivo muito grande. Limite: ${MAX_FILE_SIZE / (1024 * 1024)}MB`),
-  eventId: z.string().min(1, "ID do evento obrigatório"),
-  eventItemId: z.string().min(1, "ID do item inválido").optional(),
-})
+export const uploadUrlRequestSchema = z
+  .object({
+    filename: z.string().min(1, "Nome do arquivo obrigatório"),
+    contentType: z.enum(allowedMimeTypes, "Tipo de arquivo não permitido") as z.ZodType<AllowedMimeType>,
+    fileSize: z
+      .number()
+      .positive("Tamanho deve ser positivo")
+      // Teto absoluto; o limite real depende do tipo e é aplicado abaixo.
+      .max(MAX_FILE_SIZE, "Arquivo muito grande"),
+    eventId: z.string().min(1, "ID do evento obrigatório"),
+    eventItemId: z.string().min(1, "ID do item inválido").optional(),
+  })
+  // O limite efetivo depende do contentType, então precisa ser checado com o
+  // objeto inteiro em mãos — um `.max()` fixo no campo daria o teto de vídeo
+  // (500MB) também para imagem.
+  .superRefine((data, ctx) => {
+    const maxSize = getMaxSizeForMime(data.contentType)
+    if (data.fileSize > maxSize) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fileSize"],
+        message: `Arquivo muito grande. Limite para este tipo: ${Math.round(maxSize / (1024 * 1024))}MB`,
+      })
+    }
+  })
 
 export type UploadUrlRequest = z.infer<typeof uploadUrlRequestSchema>
 

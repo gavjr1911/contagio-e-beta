@@ -143,7 +143,10 @@ export function MediaList({
                       </a>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <a href={item.url} download={item.originalName || undefined}>
+                      {/* Rota própria: o atributo `download` é ignorado em link
+                          cross-origin, então o servidor assina uma URL com
+                          Content-Disposition para forçar o download. */}
+                      <a href={`/api/media/${item.id}/download`}>
                         <Download className="mr-2 h-4 w-4" />
                         Baixar
                       </a>

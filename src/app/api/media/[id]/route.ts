@@ -3,6 +3,9 @@ import { type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { deleteFromR2 } from "@/lib/storage/r2"
+import { resolveUserPermissions } from "@/lib/permissions/resolver"
+import { hasPermission } from "@/lib/permissions/check"
+import { canViewEventMedia } from "@/lib/media/access"
 
 // DELETE /api/media/[id] - Deletar midia
 export async function DELETE(
@@ -40,10 +43,17 @@ export async function DELETE(
       )
     }
 
-    // Verificar permissao (quem fez upload ou admin)
-    const userRole = session.user.role
+    // Quem subiu pode remover o próprio arquivo; além disso, vale a permissão
+    // de mídia do ministério — antes só ADMIN passava, o que deixava o líder
+    // (justamente quem limpa mídia errada) de fora.
+    const userRole = session.user.role as string
     const isOwner = media.uploadedById === session.user.id
-    const canDelete = isOwner || userRole === "ADMIN"
+    let canDelete = isOwner || userRole === "ADMIN"
+
+    if (!canDelete) {
+      const permissions = await resolveUserPermissions(session.user.id!, userRole)
+      canDelete = hasPermission(permissions, "media", "edit")
+    }
 
     if (!canDelete) {
       return Response.json(
@@ -52,13 +62,18 @@ export async function DELETE(
       )
     }
 
-    // Deletar do R2 se tiver filename (key)
+    // Ordem importa: se o objeto não sair do R2, manter a linha no banco
+    // preserva o ponteiro. Apagar a linha assim mesmo (comportamento anterior)
+    // transformava a falha num arquivo órfão permanente, pago e invisível.
     if (media.filename) {
       try {
         await deleteFromR2(media.filename)
       } catch (error) {
         console.error("Error deleting from R2:", error)
-        // Continua para deletar do banco mesmo se falhar no R2
+        return Response.json(
+          { error: "Nao foi possivel remover o arquivo do storage. Tente novamente." },
+          { status: 502 }
+        )
       }
     }
 
@@ -103,6 +118,16 @@ export async function GET(
 
     if (!media) {
       return Response.json({ error: "Midia nao encontrada" }, { status: 404 })
+    }
+
+    // Mesma regra da listagem e da tela: permissão de mídia ou estar escalado.
+    const podeVer = await canViewEventMedia(
+      session.user.id!,
+      session.user.role as string,
+      media.eventId
+    )
+    if (!podeVer) {
+      return Response.json({ error: "Permissao negada" }, { status: 403 })
     }
 
     return Response.json({ data: media })

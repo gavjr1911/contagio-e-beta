@@ -44,6 +44,8 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [uploadDialogItem, setUploadDialogItem] = useState<EventItemMediaStatus | null>(null)
   const [showLooseUpload, setShowLooseUpload] = useState(false)
+  /** Envio ativo: trava o fechamento do diálogo para o progresso não sumir. */
+  const [enviando, setEnviando] = useState(false)
 
   const toggleItem = (id: string) => {
     setExpandedItems((prev) => {
@@ -219,9 +221,19 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
       {/* Dialog de upload para item especifico */}
       <Dialog
         open={!!uploadDialogItem}
-        onOpenChange={(open) => !open && setUploadDialogItem(null)}
+        onOpenChange={(open) => {
+          // Fechar desmonta o MediaUpload: some a barra de progresso, some o
+          // botão Cancelar e o aviso de "não feche a aba" deixa de valer — tudo
+          // isso enquanto o envio continua rodando invisível.
+          if (!open && enviando) return
+          if (!open) setUploadDialogItem(null)
+        }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent
+          className="sm:max-w-lg"
+          onInteractOutside={(e) => enviando && e.preventDefault()}
+          onEscapeKeyDown={(e) => enviando && e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>
               Adicionar mídia: {uploadDialogItem?.title}
@@ -233,6 +245,7 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
           <MediaUpload
             eventId={eventId}
             eventItemId={uploadDialogItem?.id}
+            onUploadingChange={setEnviando}
             onUploadComplete={() => {
               refetch()
               setUploadDialogItem(null)
@@ -242,8 +255,18 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
       </Dialog>
 
       {/* Dialog de upload para arquivo avulso */}
-      <Dialog open={showLooseUpload} onOpenChange={setShowLooseUpload}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog
+        open={showLooseUpload}
+        onOpenChange={(open) => {
+          if (!open && enviando) return
+          setShowLooseUpload(open)
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-lg"
+          onInteractOutside={(e) => enviando && e.preventDefault()}
+          onEscapeKeyDown={(e) => enviando && e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Adicionar arquivo avulso</DialogTitle>
             <DialogDescription>
@@ -252,6 +275,7 @@ export function EventMediaTab({ eventId, readOnly = false }: EventMediaTabProps)
           </DialogHeader>
           <MediaUpload
             eventId={eventId}
+            onUploadingChange={setEnviando}
             onUploadComplete={() => {
               refetch()
               setShowLooseUpload(false)

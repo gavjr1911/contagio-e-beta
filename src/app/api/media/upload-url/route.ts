@@ -1,7 +1,7 @@
-import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { withPermission } from "@/lib/api-utils"
 import { uploadUrlRequestSchema } from "@/lib/validations/media"
 import {
   generateUploadPresignedUrl,
@@ -11,18 +11,16 @@ import {
 import { resolveEventId } from "@/lib/events"
 
 // POST /api/media/upload-url - Solicitar URL presigned para upload
+// Exige permissao de midia: antes bastava estar logado, o que permitia gerar
+// presign para qualquer evento.
 export async function POST(request: NextRequest) {
+  return withPermission("media", "edit", async () => {
   try {
-    const session = await auth()
-
-    if (!session?.user) {
-      return Response.json({ error: "Nao autorizado" }, { status: 401 })
-    }
 
     // Verificar se R2 esta configurado
     const r2Ready = await isR2Configured()
     if (!r2Ready) {
-      return Response.json(
+      return NextResponse.json(
         { error: "Storage nao configurado. Configure o Cloudflare R2 nas Configuracoes do sistema." },
         { status: 503 }
       )
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
     const parseResult = uploadUrlRequestSchema.safeParse(body)
 
     if (!parseResult.success) {
-      return Response.json(
+      return NextResponse.json(
         { error: "Dados invalidos", details: parseResult.error.flatten() },
         { status: 400 }
       )
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Resolver eventId (aceita cuid ou slug)
     const eventId = await resolveEventId(eventIdOrSlug)
     if (!eventId) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
     // Verificar status do evento
@@ -54,12 +52,12 @@ export async function POST(request: NextRequest) {
     })
 
     if (!event) {
-      return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
     // Verificar se evento nao esta concluido
     if (event.status === "COMPLETED") {
-      return Response.json(
+      return NextResponse.json(
         { error: "Nao e possivel adicionar midia a evento concluido" },
         { status: 400 }
       )
@@ -73,11 +71,11 @@ export async function POST(request: NextRequest) {
       })
 
       if (!item) {
-        return Response.json({ error: "Item do evento nao encontrado" }, { status: 404 })
+        return NextResponse.json({ error: "Item do evento nao encontrado" }, { status: 404 })
       }
 
       if (item.eventId !== eventId) {
-        return Response.json(
+        return NextResponse.json(
           { error: "Item nao pertence ao evento especificado" },
           { status: 400 }
         )
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
       fileSize
     )
 
-    return Response.json({
+    return NextResponse.json({
       data: {
         uploadUrl,
         key,
@@ -101,9 +99,10 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error generating upload URL:", error)
-    return Response.json(
+    return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
     )
   }
+  })
 }
