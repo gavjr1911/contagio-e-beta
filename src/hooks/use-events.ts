@@ -48,10 +48,27 @@ export interface Event {
     childEvents?: number;
   };
   // Related data (when fetching single event)
+  /**
+   * Decisões de permissão JÁ CALCULADAS PELO SERVIDOR para o usuário logado
+   * (somente em `GET /api/events/[id]`). Fonte única: a UI consome, não
+   * recalcula — era a divergência UI × servidor que gerava 403 no botão.
+   */
+  access?: EventAccess;
   items?: EventItem[];
   schedules?: EventSchedule[];
   setlists?: EventSetlist[];
   childEvents?: Event[];
+}
+
+export interface EventAccess {
+  /** Pode concluir o evento AGORA (já considera status e o dia do evento). */
+  canComplete: boolean;
+  /** Pode registrar/editar a presença (vale também após concluído). */
+  canRegisterAttendance: boolean;
+  /** Pode confirmar a escala de outra pessoa neste evento. */
+  canConfirmForOthers: boolean;
+  /** O dia do evento já chegou (para quem não é ADMIN). */
+  completionDateReached: boolean;
 }
 
 export interface EventItem {

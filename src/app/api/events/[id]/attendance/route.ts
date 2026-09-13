@@ -4,6 +4,11 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { resolveEventId } from "@/lib/events"
+import {
+  canRegisterAttendanceWith,
+  ATTENDANCE_DENIED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 
 const updateAttendanceSchema = z.object({
   attendees: z.number().int().min(0).max(100000).optional(),
@@ -69,17 +74,23 @@ export async function PUT(
     }
 
     const userRole = session.user.role
-    if (userRole !== "ADMIN" && userRole !== "LEADER") {
-      return Response.json(
-        { error: "Acesso negado" },
-        { status: 403 }
-      )
-    }
 
     const { id: idOrSlug } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return Response.json({ error: "Evento não encontrado" }, { status: 404 })
+    }
+
+    // Além de ADMIN/LEADER, quem está escalado no evento por um ministério
+    // com permissão de eventos pode registrar a presença.
+    if (userRole !== "ADMIN" && userRole !== "LEADER") {
+      const assignments = await loadEventAssignments(eventId, session.user.id)
+      if (!canRegisterAttendanceWith(userRole, assignments)) {
+        return Response.json(
+          { error: ATTENDANCE_DENIED_MESSAGE },
+          { status: 403 }
+        )
+      }
     }
 
     const body = await request.json()

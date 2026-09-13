@@ -7,6 +7,8 @@ import {
   UserMinus,
   Sparkles,
   ChevronDown,
+  Check,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,12 @@ interface ScheduleInfo {
   id: string;
   user: User;
   status: ScheduleStatus;
+  /**
+   * Quem confirmou EM NOME do voluntário (null = ele mesmo confirmou).
+   * Precisa aparecer na tela: sem isso a pessoa parece ter confirmado
+   * sozinha, que é exatamente o que a autoria quer evitar.
+   */
+  confirmedBy?: { id: string; name: string | null } | null;
 }
 
 interface VacancySlotProps {
@@ -46,6 +54,11 @@ interface VacancySlotProps {
   isRemoving: boolean;
   canEdit: boolean;
   showSuggestions?: boolean;
+  /** Pode confirmar a escala DESTE voluntário no lugar dele. */
+  canConfirmForOther?: boolean;
+  onConfirmForOther?: (scheduleId: string) => void;
+  onUndoConfirmForOther?: (scheduleId: string) => void;
+  isConfirmingForOther?: boolean;
 }
 
 function getStatusColor(status: ScheduleStatus): string {
@@ -93,6 +106,10 @@ export function VacancySlot({
   isRemoving,
   canEdit,
   showSuggestions = true,
+  canConfirmForOther = false,
+  onConfirmForOther,
+  onUndoConfirmForOther,
+  isConfirmingForOther = false,
 }: VacancySlotProps) {
   const [suggestionsOpen, setSuggestionsOpen] = React.useState(false);
 
@@ -118,12 +135,63 @@ export function VacancySlot({
             {schedule.user.name || schedule.user.email}
           </p>
           <p className="text-xs text-muted-foreground">{positionName}</p>
+          {/*
+            Só faz sentido falar em "confirmado por" quando a escala ESTÁ
+            confirmada. O servidor já limpa `confirmedById` ao recusar, mas a
+            checagem de status evita que qualquer registro antigo ou caminho
+            futuro produza a combinação sem sentido "Recusada · Confirmado por
+            Fulano" na tela de quem escala.
+          */}
+          {schedule.status === "CONFIRMED" && schedule.confirmedBy && (
+            <p className="text-xs text-muted-foreground/80 truncate">
+              Confirmado por {schedule.confirmedBy.name || "outro responsável"}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={cn("text-xs", getStatusColor(schedule.status))}>
             {getStatusLabel(schedule.status)}
           </Badge>
+
+          {canConfirmForOther &&
+            schedule.status === ScheduleStatus.PENDING &&
+            onConfirmForOther && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => onConfirmForOther(schedule.id)}
+                disabled={isConfirmingForOther}
+              >
+                {isConfirmingForOther ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                Confirmar
+              </Button>
+            )}
+
+          {canConfirmForOther &&
+            schedule.status === ScheduleStatus.CONFIRMED &&
+            schedule.confirmedBy &&
+            onUndoConfirmForOther && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                title="Desfazer confirmação (volta para pendente)"
+                onClick={() => onUndoConfirmForOther(schedule.id)}
+                disabled={isConfirmingForOther}
+              >
+                {isConfirmingForOther ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Undo2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
 
           {canEdit && (
             <Button

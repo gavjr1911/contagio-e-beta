@@ -98,7 +98,8 @@ model User {
   // Relacionamentos do Sistema
   ministryMemberships       MinistryMember[]
   leaderOfMinistries        Ministry[]             @relation("MinistryLeader")
-  schedules                 Schedule[]
+  schedules                 Schedule[]             @relation("ScheduleAssignee")
+  confirmedSchedules        Schedule[]             @relation("ScheduleConfirmedBy")
   bandMemberships           BandMember[]
   uploadedMedia             Media[]
   notifications             Notification[]
@@ -388,14 +389,22 @@ model Schedule {
   position       String? // Funcao especifica na escala (legado)
   status         ScheduleStatus @default(PENDING)
   confirmedAt    DateTime?
+  /// Quem confirmou ESTA escala EM NOME DE OUTRA PESSOA (ADMIN ou alguem
+  /// escalado no evento por um ministerio com `events.edit`).
+  /// NULO = a propria pessoa confirmou (pela tela ou pelo link do e-mail).
+  /// Ver src/lib/permissions/event-access.ts.
+  confirmedById  String?
   declinedReason String?        @db.Text
   createdAt      DateTime       @default(now())
 
   // Relacionamentos
-  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ministry Ministry      @relation(fields: [ministryId], references: [id], onDelete: Cascade)
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vacancy  EventVacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ministry    Ministry      @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+  user        User          @relation("ScheduleAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  confirmedBy User?         @relation("ScheduleConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  vacancy     EventVacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+
+  reminderLogs ScheduleReminderLog[]
 
   @@unique([eventId, ministryId, userId])
   @@index([eventId])
@@ -403,7 +412,28 @@ model Schedule {
   @@index([userId])
   @@index([vacancyId])
   @@index([status])
+  @@index([confirmedById])
   @@map("schedules")
+}
+
+// Registro de lembrete de escala ja enviado — garante idempotencia do cron
+// (/api/cron/reminders). A linha e criada ANTES do envio (claim) e removida se
+// o envio falhar, para que a proxima execucao tente de novo.
+//
+// eventDate faz parte da chave de propósito: se o evento for remarcado, os
+// marcos D-7/D-3/D-1 valem de novo para a nova data.
+model ScheduleReminderLog {
+  id         String   @id @default(cuid())
+  scheduleId String
+  daysBefore Int // 7, 3 ou 1
+  eventDate  DateTime @db.Date // data do evento no momento do envio
+  sentAt     DateTime @default(now())
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, daysBefore, eventDate])
+  @@index([eventDate])
+  @@map("schedule_reminder_logs")
 }
 
 // ============================================

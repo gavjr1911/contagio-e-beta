@@ -28,6 +28,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { EventVacancy } from "@/hooks/use-vacancies";
 import type { EventScheduleItem } from "@/hooks/use-schedules";
+import {
+  useConfirmScheduleForOther,
+  useUndoConfirmScheduleForOther,
+} from "@/hooks/use-schedules";
+import { useSession } from "next-auth/react";
+import { toast } from "@/hooks/use-toast";
 import { ScheduleStatus } from "@/generated/prisma/enums";
 
 export interface VacancyGroup {
@@ -39,6 +45,11 @@ interface EventSchedulesTabProps {
   event: { id: string; slug?: string | null; status: string };
   eventId: string;
   canEditSchedules: boolean;
+  /**
+   * Decidido pelo SERVIDOR (`GET /api/events/[id]` → `access`): ADMIN ou quem
+   * tem escala neste evento por um ministério com `events.edit`.
+   */
+  canConfirmForOthers: boolean;
   isAdmin: boolean;
   vacancyGroups: VacancyGroup[];
   allSchedules: EventScheduleItem[];
@@ -61,6 +72,7 @@ export function EventSchedulesTab({
   event,
   eventId,
   canEditSchedules,
+  canConfirmForOthers,
   isAdmin,
   vacancyGroups,
   allSchedules,
@@ -73,7 +85,56 @@ export function EventSchedulesTab({
 }: EventSchedulesTabProps) {
   const isCompleted = event.status === "COMPLETED";
 
+  const { data: session } = useSession();
   const [confirmRemoveId, setConfirmRemoveId] = React.useState<string | null>(null);
+
+  const confirmForOther = useConfirmScheduleForOther();
+  const undoConfirmForOther = useUndoConfirmScheduleForOther();
+  const [pendingScheduleId, setPendingScheduleId] = React.useState<string | null>(
+    null
+  );
+
+  const handleConfirmForOther = async (scheduleId: string) => {
+    setPendingScheduleId(scheduleId);
+    try {
+      await confirmForOther.mutateAsync(scheduleId);
+      onRefresh();
+      toast({
+        title: "Escala confirmada",
+        description: "A confirmação ficou registrada no seu nome.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao confirmar",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPendingScheduleId(null);
+    }
+  };
+
+  const handleUndoConfirmForOther = async (scheduleId: string) => {
+    setPendingScheduleId(scheduleId);
+    try {
+      await undoConfirmForOther.mutateAsync(scheduleId);
+      onRefresh();
+      toast({
+        title: "Confirmação desfeita",
+        description: "A escala voltou para pendente.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao desfazer",
+        description:
+          error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setPendingScheduleId(null);
+    }
+  };
 
   const stats = React.useMemo(() => {
     const total = vacancyGroups.reduce((acc, g) => acc + g.vacancies.length, 0);
@@ -199,6 +260,7 @@ export function EventSchedulesTab({
                               id: schedule.id,
                               user: schedule.user,
                               status: schedule.status,
+                              confirmedBy: schedule.confirmedBy,
                             }
                           : null
                       }
@@ -206,6 +268,18 @@ export function EventSchedulesTab({
                       onRemove={(id) => setConfirmRemoveId(id)}
                       isRemoving={removingScheduleId === schedule?.id}
                       canEdit={canEditSchedules}
+                      // A propria escala nao entra: para si mesmo a pessoa usa
+                      // a confirmacao normal (Minhas Escalas / link do e-mail),
+                      // que e o que mantem `confirmedById` nulo.
+                      canConfirmForOther={
+                        canConfirmForOthers &&
+                        !isCompleted &&
+                        !!schedule &&
+                        schedule.user.id !== session?.user?.id
+                      }
+                      onConfirmForOther={handleConfirmForOther}
+                      onUndoConfirmForOther={handleUndoConfirmForOther}
+                      isConfirmingForOther={pendingScheduleId === schedule?.id}
                     />
                   );
                 })}

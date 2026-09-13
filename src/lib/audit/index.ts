@@ -16,6 +16,9 @@ export type AuditAction =
   | "updated"
   | "deleted"
   | "confirmed"
+  // Confirmacao feita POR OUTRA PESSOA (ver confirm-for-other).
+  | "confirmed_for_other"
+  | "confirmation_for_other_undone"
   | "declined"
   | "assigned"
   | "unassigned"
@@ -320,6 +323,8 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   updated: "Atualizado",
   deleted: "Removido",
   confirmed: "Confirmado",
+  confirmed_for_other: "Confirmado por outro responsável",
+  confirmation_for_other_undone: "Confirmação desfeita",
   declined: "Recusado",
   assigned: "Escalado",
   unassigned: "Removido da escala",

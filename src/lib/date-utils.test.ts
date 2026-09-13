@@ -20,6 +20,8 @@ import {
   toLocalDate,
   formatEventDateLongPtBR,
   transformEventForResponse,
+  addDays,
+  getCurrentHourLocal,
 } from "./date-utils"
 
 test("parseLocalTime ancora em UTC (não depende de DST/fuso)", () => {
@@ -102,4 +104,20 @@ test("isSameDay / isTodayOrFuture por dia-calendário (UTC)", () => {
 
 test("toLocalDate: string YYYY-MM-DD vira meio-dia UTC", () => {
   assert.equal(toLocalDate("2026-08-16").toISOString(), "2026-08-16T12:00:00.000Z")
+})
+
+test("addDays soma em UTC e não escorrega o dia-calendário", () => {
+  assert.equal(formatDateToISO(addDays(parseLocalDate("2026-09-13"), 30)), "2026-10-13")
+  assert.equal(formatDateToISO(addDays(parseLocalDate("2026-10-17"), 1)), "2026-10-18")
+  assert.equal(formatDateToISO(addDays(parseLocalDate("2026-01-01"), -1)), "2025-12-31")
+  // preserva a âncora de hora do Date original
+  assert.equal(addDays(parseLocalDate("2026-09-13"), 1).toISOString(), "2026-09-14T12:00:00.000Z")
+})
+
+test("getCurrentHourLocal usa a hora de São Paulo, não o TZ do processo", () => {
+  // 14/09/2026 02:30 UTC = 13/09/2026 23:30 em São Paulo
+  assert.equal(getCurrentHourLocal(new Date("2026-09-14T02:30:00.000Z")), 23)
+  // meia-noite em São Paulo deve ser 0 (e não 24)
+  assert.equal(getCurrentHourLocal(new Date("2026-09-14T03:00:00.000Z")), 0)
+  assert.equal(getCurrentHourLocal(new Date("2026-09-13T18:00:00.000Z")), 15)
 })

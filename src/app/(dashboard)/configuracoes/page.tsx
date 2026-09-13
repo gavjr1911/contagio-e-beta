@@ -10,6 +10,7 @@ import { EmailSettings } from "@/components/settings/email-settings";
 import { GeneralSettings } from "@/components/settings/general-settings";
 import { StorageSettings } from "@/components/settings/storage-settings";
 import { ProPresenterSettings } from "@/components/settings/propresenter-settings";
+import { ReminderCronStatus } from "@/components/settings/reminder-cron-status";
 
 export default function ConfiguracoesPage() {
   const { data: session, status } = useSession();
@@ -70,6 +71,7 @@ export default function ConfiguracoesPage() {
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <EmailSettings />
+        <ReminderCronStatus />
         <GeneralSettings />
         <StorageSettings />
         <ProPresenterSettings />

@@ -168,7 +168,18 @@ export default function EventoDetailPage() {
     return allSchedules.some((s) => s.user.id === session.user.id);
   }, [allSchedules, session?.user?.id]);
 
-  const canEditEvent = (isAdmin || meetsLevel(permissions.events, "edit")) && !isCompleted;
+  // PERMISSOES DO EVENTO VEM PRONTAS DO SERVIDOR (`GET /api/events/[id]`).
+  //
+  // Antes a tela recalculava com `permissions.events`, que e o MAXIMO GLOBAL
+  // entre todos os ministerios do usuario, enquanto o servidor exigia a matriz
+  // DO MINISTERIO DA ESCALA naquele evento: quem tinha events.edit pelo
+  // ministerio A mas estava escalado pelo B via o botao e levava 403.
+  // Agora existe uma unica conta, feita no servidor (event-access.ts), que ja
+  // inclui a regra "so conclui a partir do dia do evento" para quem nao e ADMIN.
+  const access = event?.access;
+  const canCompleteEvent = access?.canComplete ?? false;
+  const canRegisterAttendance = access?.canRegisterAttendance ?? false;
+  const canConfirmForOthers = access?.canConfirmForOthers ?? false;
   const canEditOrder = (isAdmin || meetsLevel(permissions.orderOfService, "edit")) && !isCompleted;
   const canViewOrder = isAdmin || meetsLevel(permissions.orderOfService, "view") || isScheduledForEvent;
   const canEditSchedules = (isAdmin || meetsLevel(permissions.schedules, "edit")) && !isCompleted;
@@ -310,7 +321,7 @@ export default function EventoDetailPage() {
     { id: "midia", label: "Mídia", icon: Monitor, visible: canViewMedia },
     { id: "setlist", label: "Setlist", icon: Music, visible: canViewSongs },
     { id: "checklist", label: "Checklist", icon: ClipboardCheck, visible: canViewChecklist },
-    { id: "presenca", label: "Presença", icon: ClipboardList, visible: canEditEvent || isAdmin },
+    { id: "presenca", label: "Presença", icon: ClipboardList, visible: canRegisterAttendance },
   ];
   const tabs = allTabs.filter((t) => t.visible);
 
@@ -354,7 +365,7 @@ export default function EventoDetailPage() {
               </Button>
             )}
 
-            {canEditEvent && event.status === "PUBLISHED" && (
+            {canCompleteEvent && event.status === "PUBLISHED" && (
               <Button
                 variant="outline"
                 size="sm"
@@ -366,7 +377,7 @@ export default function EventoDetailPage() {
               </Button>
             )}
 
-            {canEditEvent && (
+            {isAdmin && !isCompleted && (
               <Button
                 size="sm"
                 onClick={() => setEditDialogOpen(true)}
@@ -454,6 +465,7 @@ export default function EventoDetailPage() {
             event={event}
             eventId={eventId}
             canEditSchedules={canEditSchedules}
+            canConfirmForOthers={canConfirmForOthers}
             isAdmin={isAdmin}
             vacancyGroups={vacancyGroups}
             allSchedules={allSchedules}
@@ -479,7 +491,7 @@ export default function EventoDetailPage() {
         )}
 
         {activeTab === "presenca" && (
-          <EventAttendanceTab eventId={eventId} canEdit={canEditEvent || isAdmin} />
+          <EventAttendanceTab eventId={eventId} canEdit={canRegisterAttendance} />
         )}
       </div>
 

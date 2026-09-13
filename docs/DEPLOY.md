@@ -3,7 +3,7 @@
 Plataforma de produção: **Railway** (Postgres gerenciado + Web Service).
 Storage de mídia: **Cloudflare R2** (independente).
 Email transacional: **Resend** (independente).
-Domínio: definir em `NEXTAUTH_URL` e `R2_PUBLIC_URL`.
+Domínio de produção: **`https://contagie.igrejabeta.com.br`** (`NEXTAUTH_URL`). Mídia servida por `R2_PUBLIC_URL`.
 
 > **REGRA OBRIGATÓRIA — antes de qualquer deploy em produção:**
 > 1. Rodar `pre-push-test-engineer` (testes + typecheck) — se "hotfix" for explicitado pelo usuário, pular.
@@ -40,7 +40,7 @@ No painel Railway:
 1. **New Project** → Deploy from GitHub repo `gavjr1911/contagio-e-beta`.
 2. **Add Service → Database → PostgreSQL**. Railway injeta `DATABASE_URL` automaticamente.
 3. **Settings → Networking → Generate Domain** (ou Custom Domain se já houver).
-4. **Settings → Cron** (ver seção 5).
+4. **Add Service** para o cron de lembretes (serviço separado com imagem `curlimages/curl:latest` — ver seção 5).
 
 ### 2.2 Variáveis de ambiente
 
@@ -51,12 +51,16 @@ Configure no Railway via `railway variables` ou painel. **Todas obrigatórias:**
 #   DATABASE_URL — não precisa setar manualmente.
 
 # NextAuth
-NEXTAUTH_URL=https://contagie.beta.church          # domínio público
+NEXTAUTH_URL=https://contagie.igrejabeta.com.br    # domínio público de produção
 NEXTAUTH_SECRET=$(openssl rand -base64 32)         # 32+ chars random
+
+# URL pública usada em links de e-mail (cai para NEXTAUTH_URL se ausente)
+NEXT_PUBLIC_APP_URL=https://contagie.igrejabeta.com.br
 
 # Email (Resend)
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 EMAIL_FROM=noreply@beta.church
+RESEND_FROM_EMAIL="Beta Church <noreply@beta.church>"  # remetente exibido; também editável em Configurações
 
 # Tokens internos (gerar valores únicos por ambiente)
 SETTINGS_ENCRYPTION_KEY=$(openssl rand -base64 32) # OBRIGATÓRIO — sem fallback
@@ -73,11 +77,16 @@ R2_PUBLIC_URL=https://pub-xxxxxxxxxxxxxxxx.r2.dev
 # Timezone do servidor (importante para datas em SP/Brasil)
 TZ=America/Sao_Paulo
 NODE_ENV=production
+
+# Permissões por ação — rollout faseado ("off" = padrão, comportamento por nível)
+PERMISSIONS_ACTION_ENFORCEMENT=off
 ```
+
+> O serviço de **cron** tem variáveis próprias (`CRON_SECRET` e `TARGET_URL`) e **não** herda as do web — ver seção 5.
 
 Aplicação prática via CLI (executar no diretório do projeto, com `railway link` feito):
 ```bash
-railway variables --set NEXTAUTH_URL="https://contagie.beta.church" \
+railway variables --set NEXTAUTH_URL="https://contagie.igrejabeta.com.br" \
   --set NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
   --set SETTINGS_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
   --set EMAIL_TOKEN_SECRET="$(openssl rand -base64 32)" \
@@ -108,11 +117,13 @@ npx prisma migrate deploy && npx prisma generate
 
 ### 2.4 Domínio customizado
 
-Se for usar `contagie.beta.church`:
+O domínio de produção em uso é **`contagie.igrejabeta.com.br`**.
+
 1. Painel Railway → Settings → Networking → Custom Domain → adicionar.
 2. Criar registro `CNAME` apontando para o domínio Railway.
 3. Aguardar emissão automática do certificado TLS (Let's Encrypt).
-4. Atualizar `NEXTAUTH_URL` para o domínio final.
+4. Atualizar `NEXTAUTH_URL` (e `NEXT_PUBLIC_APP_URL`) para o domínio final.
+5. Atualizar `TARGET_URL` do serviço de cron **e redeployá-lo** (seção 5).
 
 ---
 
@@ -175,39 +186,50 @@ Se a migration falhar em produção:
 
 ## 5. Cron Jobs
 
-Duas rotas de cron precisam ser disparadas:
+Existe **uma única rota de cron** em produção:
 
 | Endpoint | Frequência | Descrição |
 |---|---|---|
-| `GET /api/cron/reminders` | Toda hora | Lembretes 1h antes de eventos |
-| `GET /api/cron/reminders-24h` | Diário 09:00 BRT | Lembretes 24h antes |
+| `GET /api/cron/reminders` | `0 12 * * *` (diário, 09:00 BRT) | Lembretes de escala em D-7, D-3 e D-1 |
 
-Ambos exigem header `x-cron-secret: $CRON_SECRET`.
+A rota exige header `x-cron-secret: $CRON_SECRET` (ou `Authorization: Bearer $CRON_SECRET`). A lista de dias vem de `REMINDER_DAYS_BEFORE = [7, 3, 1]` em `src/lib/email/send.ts` — **não existe lembrete "1h antes"**.
 
-### Setup no Railway
+> ⚠️ **Este cron é diário, e só diário.** Cada execução envia e-mails reais para todos os voluntários escalados em D-7/D-3/D-1. Rodá-lo de hora em hora enviaria **24 e-mails por voluntário por dia**.
 
-Painel → **Cron** (ou via railway.json):
+> A rota `GET /api/cron/reminders-24h` **não existe mais** (foi removida do código: era redundante com o caso D-1 da rota principal, e provisionar um cron para ela duplicaria todo lembrete de véspera). Não recrie.
 
-```json
-{
-  "$schema": "https://schema.up.railway.app/railway.schema.json",
-  "deploy": {
-    "startCommand": "npm run start"
-  },
-  "crons": [
-    {
-      "name": "reminders-hourly",
-      "schedule": "0 * * * *",
-      "command": "curl -fsS -H \"x-cron-secret: $CRON_SECRET\" https://contagie.beta.church/api/cron/reminders"
-    },
-    {
-      "name": "reminders-daily",
-      "schedule": "0 12 * * *",
-      "command": "curl -fsS -H \"x-cron-secret: $CRON_SECRET\" https://contagie.beta.church/api/cron/reminders-24h"
-    }
-  ]
-}
-```
+### Como o cron está provisionado no Railway
+
+O cron **não** é configurado por uma chave `crons` no `railway.json` (o `railway.json` deste repo não tem essa chave e descreve apenas o serviço **web**). A realidade é um **serviço separado** dentro do projeto `contagie-beta`:
+
+| Item | Valor |
+|---|---|
+| Nome do serviço | `cron-reminders-hourly` (nome legado e enganoso — ver aviso abaixo) |
+| Imagem | `curlimages/curl:latest` |
+| Start command | `sh -c 'curl -fsS -H "x-cron-secret: $CRON_SECRET" "$TARGET_URL"'` — deve ganhar `--max-time` (ver "Regras do start command") |
+| Variáveis do serviço | `CRON_SECRET`, `TARGET_URL` (= `https://contagie.igrejabeta.com.br/api/cron/reminders`) |
+| Schedule | `0 12 * * *`, configurado no painel do próprio serviço (Settings → Cron Schedule) |
+| Restart policy | **sem restart** (não `ON_FAILURE`) |
+
+> ⚠️ **O nome do serviço não é fonte de verdade sobre a frequência.** `cron-reminders-hourly` é herança de quando se acreditava num cron horário; o job é **diário**. O nome será corrigido — até lá, confie no schedule do painel, não no nome.
+
+### ⚠️ Alterar variáveis do serviço de cron exige redeploy
+
+**O Railway congela o snapshot de variáveis no momento do deploy.** Definir ou alterar `TARGET_URL` / `CRON_SECRET` no painel **não tem efeito** nas execuções seguintes até que o serviço de cron seja **redeployado**.
+
+Foi exatamente isso que quebrou o cron por mais de 30 dias: `TARGET_URL` chegava **vazia** ao container, o `curl` falhava com erro de sintaxe e **nenhum lembrete foi enviado** — sem alarme visível.
+
+Procedimento correto ao mexer em variável do serviço de cron:
+1. Alterar a variável no painel do serviço `cron-reminders-*`.
+2. **Redeploy do serviço de cron** (Deployments → Redeploy).
+3. Conferir nos logs da execução seguinte que a URL chamada está correta e o `curl` saiu com código 0.
+
+### Regras do start command
+
+- **Sempre `--max-time`.** Sem timeout, uma requisição pendurada prende o container até o Railway matá-lo. A rota tem `maxDuration = 60`, então algo como `--max-time 55` é coerente.
+- **Nunca `--retry`.** Retry cego numa rota de envio de e-mail duplica mensagens para os voluntários.
+- **Restart policy do serviço de cron = sem restart.** Com restart em falha, um erro *depois* de um envio parcial reinicia o container e **reenvia tudo**.
+  > O `"restartPolicyType": "ON_FAILURE"` presente no `railway.json` vale para o serviço **web** (onde reiniciar é desejável) — **não** para o serviço de cron. Essa distinção já causou confusão; não copie a política do web para o cron.
 
 > Cron Railway roda em UTC. `0 12 * * *` = 09:00 horário de Brasília (BRT, UTC-3).
 
@@ -217,8 +239,10 @@ Painel → **Cron** (ou via railway.json):
 
 Executar após cada deploy em produção:
 
+> 🚨 **NUNCA chame `/api/cron/reminders` com o `CRON_SECRET` válido durante um smoke test.** Essa chamada **dispara e-mails reais** para os voluntários escalados em D-7/D-3/D-1. Os testes abaixo verificam apenas que a rota **rejeita** quem não tem o segredo.
+
 ```bash
-DOMAIN="https://contagie.beta.church"
+DOMAIN="https://contagie.igrejabeta.com.br"
 
 # 1. Healthcheck
 curl -fsS -o /dev/null -w "session: %{http_code}\n" $DOMAIN/api/auth/session
@@ -230,10 +254,21 @@ curl -fsS -o /dev/null -w "login: %{http_code}\n" $DOMAIN/login
 curl -sI $DOMAIN/login | grep -iE "x-frame|x-content|strict-transport|referrer-policy|permissions-policy"
 
 # 4. Cron secret está exigindo (deve dar 401 sem header)
-curl -fsS -o /dev/null -w "cron sem secret: %{http_code}\n" $DOMAIN/api/cron/reminders
+curl -s -o /dev/null -w "cron sem secret: %{http_code}\n" $DOMAIN/api/cron/reminders
 # Esperado: 401
 
-# 5. Logs sem erro nos últimos 5min
+# 5. Header de provedor forjável NÃO autoriza (regressão de segurança já explorada)
+curl -s -o /dev/null -H "x-vercel-cron: true" \
+  -w "cron com x-vercel-cron: %{http_code}\n" $DOMAIN/api/cron/reminders
+# Esperado: 401 — o projeto não roda na Vercel e qualquer cliente pode forjar
+# esse header; se voltar 200, o disparo em massa de e-mails está público.
+
+# 6. Segredo errado também é rejeitado
+curl -s -o /dev/null -H "x-cron-secret: valor-invalido" \
+  -w "cron com secret errado: %{http_code}\n" $DOMAIN/api/cron/reminders
+# Esperado: 401
+
+# 7. Logs sem erro nos últimos 5min
 railway logs | tail -50
 ```
 
@@ -293,7 +328,9 @@ Acima de 50GB de mídia ou >100k requests/dia, revisar plano.
 - [ ] Domínio custom propagado e TLS válido
 - [ ] `npx prisma migrate deploy` rodou sem erro
 - [ ] Smoke test (seção 6) todos verdes
-- [ ] Crons configurados e disparando (verificar logs após primeira execução)
+- [ ] Serviço de cron configurado: `TARGET_URL` com o domínio de produção, `CRON_SECRET` igual ao do web, schedule `0 12 * * *`, restart policy **sem restart**, `--max-time` no comando e **sem `--retry`**
+- [ ] Serviço de cron **redeployado após a última alteração de variável** (o snapshot só atualiza no deploy)
+- [ ] Cron disparando de fato (conferir logs da primeira execução: URL chamada correta e saída do `curl` com código 0)
 - [ ] R2 bucket público configurado e acessível em `R2_PUBLIC_URL`
 - [ ] Resend domínio verificado (`From` autorizado)
 - [ ] Backup manual do banco antes do go-live
@@ -347,4 +384,14 @@ railway environment
 
 **`x-cron-secret` rejeitado**:
 - Confirmar que `CRON_SECRET` está setado **e** que a chamada do cron envia o mesmo valor.
+- O `CRON_SECRET` é variável **de dois serviços** (web e cron) — alterar num e esquecer o outro quebra o disparo.
 - Conferir que não há fallback `undefined` (regra de segurança aplicada — sem `CRON_SECRET` o servidor lança no startup).
+
+**Lembretes pararam de ser enviados (sem erro visível)**:
+- Causa já observada em produção: `TARGET_URL` chegando **vazia** ao container do cron, porque a variável foi definida no painel mas o serviço **não foi redeployado** — o `curl` falha com erro de sintaxe de URL e nada é enviado. Redeploy do serviço de cron resolve.
+- Conferir nos logs do serviço de cron a URL efetivamente chamada e o código de saída do `curl`.
+- Conferir em **Configurações** o resultado da última execução (`last_reminder_run`) — a tela alerta quando houve falhas parciais.
+
+**Voluntários receberam lembretes duplicados**:
+- Verificar se há `--retry` no comando do cron (remover) ou restart policy diferente de "sem restart" no serviço de cron (corrigir).
+- Verificar se não foi recriado um segundo cron/rota redundante (ex.: a extinta `reminders-24h`).

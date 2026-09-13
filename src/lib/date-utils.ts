@@ -197,3 +197,100 @@ export function transformEventForResponse<T extends {
     recurrenceEndDate: event.recurrenceEndDate ? formatDateToISO(event.recurrenceEndDate) : null,
   };
 }
+
+/**
+ * Soma (ou subtrai, com valor negativo) dias a um Date preservando a âncora UTC.
+ * Nunca use `setDate()` local para isso — em dias de virada de horário de verão
+ * o setter local pode devolver outro dia-calendário.
+ */
+export function addDays(date: Date, days: number): Date {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() + days,
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds(),
+    ),
+  );
+}
+
+/**
+ * Número de dias do mês (monthIndex 0–11) — calculado em UTC.
+ * `Date.UTC(y, m + 1, 0)` é o último dia do mês `m`.
+ */
+export function getDaysInMonth(year: number, monthIndex: number): number {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+/**
+ * Soma (ou subtrai, com valor negativo) meses a um Date preservando a âncora
+ * UTC (dia + hora/minuto/segundo/ms são lidos e reescritos com `Date.UTC`).
+ *
+ * BORDA — política adotada: **clamp** (nunca overflow).
+ *   addMonths(2026-01-31, 1) === 2026-02-28   (não 2026-03-03)
+ *   addMonths(2026-03-31, 1) === 2026-04-30   (não 2026-05-01)
+ *   addMonths(2024-01-31, 1) === 2024-02-29   (ano bissexto)
+ * Quando o dia-do-mês de origem não existe no mês de destino, o resultado é o
+ * ÚLTIMO dia do mês de destino. Isso difere do `setMonth()` nativo, que
+ * transborda para o mês seguinte — e é o comportamento esperado para
+ * recorrência mensal de culto (um culto do "dia 31" não deve pular um mês).
+ *
+ * Nunca use `setMonth()/getMonth()` locais para isso: sobre valores @db.Date
+ * (meia-noite UTC), em São Paulo (UTC-3) o dia local é o ANTERIOR, e a
+ * aritmética devolve o mês/dia errados.
+ */
+export function addMonths(date: Date, months: number): Date {
+  // Normaliza ano/mês de destino (cuida de virada de ano e de months < 0).
+  const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+  const year = target.getUTCFullYear();
+  const monthIndex = target.getUTCMonth();
+  const day = Math.min(date.getUTCDate(), getDaysInMonth(year, monthIndex));
+
+  return new Date(
+    Date.UTC(
+      year,
+      monthIndex,
+      day,
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds(),
+    ),
+  );
+}
+
+/**
+ * Compara dois Date apenas pelo dia-calendário (em UTC), ignorando a âncora de
+ * hora. Necessário porque valores @db.Date vindos do Prisma chegam à meia-noite
+ * UTC enquanto `parseLocalDate()` ancora ao meio-dia UTC — comparar com `>`
+ * direto mistura as duas âncoras.
+ *
+ * @returns negativo se `a` é um dia anterior a `b`, 0 se mesmo dia, positivo se posterior.
+ */
+export function compareCalendarDays(a: Date, b: Date): number {
+  return startOfDay(a).getTime() - startOfDay(b).getTime();
+}
+
+/**
+ * `true` se `a` é o mesmo dia-calendário que `b` ou anterior (comparação UTC).
+ */
+export function isOnOrBeforeDay(a: Date, b: Date): boolean {
+  return compareCalendarDays(a, b) <= 0;
+}
+
+/**
+ * Hora-do-relógio (0–23) AGORA no fuso de exibição do sistema (São Paulo).
+ * Use para decisões sobre o instante atual (ex.: saudação). Nunca use
+ * `new Date().getHours()`, que depende do TZ do processo/navegador.
+ */
+export function getCurrentHourLocal(now: Date = new Date()): number {
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone: DEFAULT_TIMEZONE,
+    hour: "2-digit",
+    hour12: false,
+  }).format(now);
+  return Number(hour) % 24;
+}

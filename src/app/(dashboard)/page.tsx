@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getCurrentHourLocal } from "@/lib/date-utils";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
@@ -6,8 +7,8 @@ export default async function DashboardPage() {
   const userName = session?.user?.name?.split(" ")[0] || "Usuario";
   const userId = session?.user?.id;
 
-  // Get current hour for greeting
-  const hour = new Date().getHours();
+  // Hora de São Paulo — não depende do TZ do processo (ver date-utils.ts)
+  const hour = getCurrentHourLocal();
   let greeting = "Boa noite";
   if (hour >= 5 && hour < 12) {
     greeting = "Bom dia";

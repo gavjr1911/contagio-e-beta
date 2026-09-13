@@ -4,10 +4,24 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import { updateEventSchema } from "@/lib/validations/event"
-import { transformEventForResponse } from "@/lib/date-utils"
+import {
+  formatDateToISO,
+  getTodayLocal,
+  startOfDay,
+  transformEventForResponse,
+} from "@/lib/date-utils"
 import { EventStatus } from "@/generated/prisma/enums"
 import { resolveEventId } from "@/lib/events"
 import { buildEventSlug } from "@/lib/slug"
+import {
+  canCompleteEventWith,
+  canCompleteEventNow,
+  canConfirmSchedulesForOthersWith,
+  canRegisterAttendanceWith,
+  isCompletionDateReached,
+  COMPLETE_EVENT_DENIED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 
 async function generateUniqueSlug(
   base: string,
@@ -73,7 +87,42 @@ export async function GET(
       return Response.json({ error: "Evento nao encontrado" }, { status: 404 })
     }
 
-    return Response.json({ data: transformEventForResponse(event) })
+    // FONTE UNICA DE VERDADE DAS PERMISSOES DO EVENTO.
+    //
+    // Antes, a tela recalculava isso com as permissoes GLOBAIS do usuario (o
+    // maximo entre todos os ministerios) enquanto o servidor exigia a matriz
+    // DO MINISTERIO DA ESCALA naquele evento. Quem tinha `events.edit` pelo
+    // ministerio A mas estava escalado pelo B via o botao e levava 403.
+    // Agora quem decide e o servidor, e a UI so consome `access`.
+    const assignments = await loadEventAssignments(eventId, session.user.id)
+    const userRole = session.user.role
+    const eventDayISO = formatDateToISO(startOfDay(event.date))
+    const todayISO = formatDateToISO(getTodayLocal())
+
+    const access = {
+      canComplete: canCompleteEventNow({
+        userRole,
+        assignments,
+        eventStatus: event.status,
+        eventDayISO,
+        todayISO,
+      }),
+      // Presenca pode ser registrada tambem depois do evento concluido.
+      canRegisterAttendance: canRegisterAttendanceWith(userRole, assignments),
+      canConfirmForOthers:
+        event.status !== "COMPLETED" &&
+        canConfirmSchedulesForOthersWith(userRole, assignments),
+      // Util para a UI explicar POR QUE o botao Concluir nao aparece ainda.
+      completionDateReached: isCompletionDateReached(
+        userRole,
+        eventDayISO,
+        todayISO
+      ),
+    }
+
+    return Response.json({
+      data: { ...transformEventForResponse(event), access },
+    })
   } catch (error) {
     console.error("Error fetching event:", error)
     return Response.json(
@@ -83,7 +132,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/events/[id] - Update event (ADMIN only)
+// PATCH /api/events/[id] - Update event (ADMIN) / concluir evento (ADMIN ou escalado)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -96,12 +145,6 @@ export async function PATCH(
     }
 
     const userRole = session.user.role
-    if (userRole !== "ADMIN") {
-      return Response.json(
-        { error: "Acesso negado. Apenas ADMIN pode editar eventos." },
-        { status: 403 }
-      )
-    }
 
     const { id: idOrSlug } = await params
     const eventId = await resolveEventId(idOrSlug)
@@ -125,6 +168,56 @@ export async function PATCH(
     }
 
     const updateData = parseResult.data
+
+    // "Concluir evento" nao e "editar evento": e uma acao propria, permitida a
+    // quem esta escalado no evento por um ministerio com permissao de eventos.
+    // Qualquer outra alteracao (inclusive reabrir o evento) segue ADMIN.
+    const changedFields = Object.keys(updateData)
+    const isCompleteOnlyRequest =
+      changedFields.length === 1 &&
+      changedFields[0] === "status" &&
+      updateData.status === EventStatus.COMPLETED
+
+    if (userRole !== "ADMIN") {
+      if (!isCompleteOnlyRequest) {
+        return Response.json(
+          { error: "Acesso negado. Apenas ADMIN pode editar eventos." },
+          { status: 403 }
+        )
+      }
+
+      const assignments = await loadEventAssignments(eventId, session.user.id)
+      if (!canCompleteEventWith(userRole, assignments)) {
+        return Response.json(
+          { error: COMPLETE_EVENT_DENIED_MESSAGE },
+          { status: 403 }
+        )
+      }
+
+      // Evento so pode ser concluido a partir do dia em que acontece.
+      //
+      // Concluir e uma acao de MAO UNICA para quem nao e ADMIN: reabrir
+      // (`status: PUBLISHED`) cai no ramo ADMIN acima. E COMPLETED trava meio
+      // sistema — checklist, upload de midia, edicao de setlist e, sobretudo,
+      // confirmar/recusar a propria escala (`/api/schedules/[id]/confirm`).
+      // Sem esta checagem, um clique errado num evento de daqui a tres semanas
+      // deixaria a equipe inteira sem conseguir confirmar presenca, e so um
+      // administrador poderia desfazer.
+      //
+      // Comparacao por dia-calendario (modelo wall-clock do projeto): o evento
+      // de hoje ja pode ser concluido, o de amanha nao.
+      const eventDay = formatDateToISO(startOfDay(existingEvent.date))
+      const today = formatDateToISO(getTodayLocal())
+      if (eventDay > today) {
+        return Response.json(
+          {
+            error:
+              "Este evento ainda nao aconteceu. Voce podera conclui-lo a partir do dia do evento.",
+          },
+          { status: 403 }
+        )
+      }
+    }
 
     // Validate templateId if provided
     if (updateData.templateId) {

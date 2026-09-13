@@ -15,6 +15,7 @@ import type { RecurrencePattern } from "@/generated/prisma/client"
 import { resolveUserPermissions } from "@/lib/permissions/resolver"
 import { hasPermission } from "@/lib/permissions/check"
 import { buildEventSlug } from "@/lib/slug"
+import { buildEventDateFilter } from "@/lib/events/date-filter"
 
 async function generateUniqueSlug(base: string): Promise<string> {
   let candidate = base
@@ -78,10 +79,14 @@ export async function GET(request: NextRequest) {
       ? { schedules: { some: { userId: session.user.id! } } }
       : {}
 
+    // Um único objeto para `date`: espalhar `gte` e `lte` em chaves `date`
+    // separadas faz a segunda sobrescrever a primeira (bug do "Próximos Eventos"
+    // da home, que passou a listar eventos já passados).
+    const dateFilter = buildEventDateFilter(startDate, endDate)
+
     const where = {
       ...scheduleFilter,
-      ...(startDate && { date: { gte: startDate } }),
-      ...(endDate && { date: { lte: endDate } }),
+      ...(dateFilter && { date: dateFilter }),
       ...(status && { status }),
       ...(type && { type }),
     }

@@ -65,6 +65,13 @@ export async function POST(
       data: {
         status: "CONFIRMED",
         confirmedAt: new Date(),
+        // `confirmedById` NULO significa "a propria pessoa confirmou".
+        //
+        // Esta rota tambem aceita ADMIN confirmando por outra pessoa; nesse
+        // caso a autoria PRECISA ser gravada, senao a tela exibe como
+        // auto-confirmacao algo que o voluntario nunca fez — a mesma mentira
+        // que /confirm-for-other existe para evitar.
+        confirmedById: isOwner ? null : session.user.id,
         declinedReason: null,
       },
       include: {

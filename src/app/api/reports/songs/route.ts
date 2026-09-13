@@ -25,8 +25,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { type, limit, daysAgo } = queryResult.data
-    const dateThreshold = new Date()
-    dateThreshold.setDate(dateThreshold.getDate() - daysAgo)
+    // Instante, nao dia-calendario: `Song.lastPlayedAt` e `DateTime` (timestamp),
+    // e o corte do relatorio e "nos ultimos N dias a partir de agora". Por isso
+    // NAO se aplica aqui o modelo wall-clock de `date-utils` (que vale para
+    // `@db.Date`/`@db.Time`) — o que se corrige e a mutacao com getter local,
+    // que fazia o resultado depender do fuso do processo.
+    const dateThreshold = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000)
 
     let songs
     let reportTitle = ""

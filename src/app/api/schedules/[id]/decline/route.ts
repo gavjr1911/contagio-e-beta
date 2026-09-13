@@ -78,6 +78,8 @@ export async function POST(
       data: {
         status: "DECLINED",
         confirmedAt: null,
+        // Recusar apaga qualquer autoria de confirmacao anterior.
+        confirmedById: null,
         declinedReason: reason || null,
       },
       include: {

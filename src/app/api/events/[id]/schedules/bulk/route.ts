@@ -6,6 +6,10 @@ import { formatDateToISO } from "@/lib/date-utils"
 import { z } from "zod"
 import { sendScheduleInvite } from "@/lib/email/send"
 import { resolveEventId } from "@/lib/events"
+import {
+  forbiddenMinistriesForCreator,
+  forbiddenMinistriesMessage,
+} from "@/lib/permissions/schedule-create"
 
 // Schema for bulk schedule item
 const bulkScheduleItemSchema = z.object({
@@ -189,18 +193,23 @@ export async function POST(
 
     const { schedules: scheduleRequests, sendNotifications } = parseResult.data
 
-    // LEADER so pode escalar em ministerios que lidera
-    if (session.user.role === "LEADER") {
-      const ministryIds = [...new Set(scheduleRequests.map((s: BulkScheduleItem) => s.ministryId))]
-      const leaderMinistries = await prisma.ministry.findMany({
-        where: { id: { in: ministryIds }, leaderId: session.user.id },
-        select: { id: true },
-      })
-      const owned = new Set(leaderMinistries.map((m) => m.id))
-      const invalid = ministryIds.filter((id) => !owned.has(id))
-      if (invalid.length > 0) {
-        return Response.json({ error: "Você não lidera todos os ministérios indicados" }, { status: 403 })
-      }
+    // LEADER so pode escalar em ministerios que lidera.
+    // Mesma regra da rota individual, via helper compartilhado — as duas ja
+    // divergiram uma vez (ver `@/lib/permissions/schedule-create`).
+    const ledMinistries = await prisma.ministry.findMany({
+      where: { leaderId: session.user.id },
+      select: { id: true },
+    })
+    const forbiddenMinistries = forbiddenMinistriesForCreator(
+      session.user.role,
+      scheduleRequests.map((s: BulkScheduleItem) => s.ministryId),
+      ledMinistries.map((m) => m.id)
+    )
+    if (forbiddenMinistries.length > 0) {
+      return Response.json(
+        { error: forbiddenMinistriesMessage(forbiddenMinistries.length) },
+        { status: 403 }
+      )
     }
 
     const event = await prisma.event.findUnique({

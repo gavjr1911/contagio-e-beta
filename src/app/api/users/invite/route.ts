@@ -6,6 +6,9 @@ import { apiSuccess, apiError, validateBody, withRole } from "@/lib/api-utils"
 import { inviteUserSchema } from "@/lib/validations/user"
 import { sendUserInvite } from "@/lib/email/send"
 
+/** Validade do convite: 7 dias a partir do envio. */
+const INVITE_VALIDITY_MS = 7 * 24 * 60 * 60 * 1000
+
 export async function POST(request: NextRequest) {
   return withRole(["ADMIN", "LEADER"], async () => {
     // Validar body
@@ -43,8 +46,12 @@ export async function POST(request: NextRequest) {
 
       // Gerar token de convite
       const inviteToken = randomUUID()
-      const inviteExpires = new Date()
-      inviteExpires.setDate(inviteExpires.getDate() + 7) // 7 dias
+      // Instante, nao dia-calendario: `User.inviteExpires` e `DateTime` (timestamp),
+      // e a validade do convite e "7 dias a partir de agora", nao "ate o fim do
+      // 7o dia". Por isso NAO se aplica aqui o modelo wall-clock de `date-utils`
+      // (que vale para `@db.Date`/`@db.Time`) — o que se corrige e a mutacao com
+      // getter local, que fazia o resultado depender do fuso do processo.
+      const inviteExpires = new Date(Date.now() + INVITE_VALIDITY_MS)
 
       // Criar usuario e membro em transacao
       const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

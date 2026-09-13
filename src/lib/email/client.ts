@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import { redactPII } from "@/lib/log-redact"
 
 // Inicializa o cliente Resend de forma lazy para evitar erros durante o build
 let _resend: Resend | null = null
@@ -56,7 +57,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     })
 
     if (error) {
-      console.error("[Email] Erro ao enviar:", error)
+      // Erro cru do provedor costuma ecoar o campo `to`; os logs do Railway sao
+      // retidos e visiveis a quem tem acesso ao projeto.
+      console.error("[Email] Erro ao enviar:", redactPII(error))
       return {
         success: false,
         error: error.message,
@@ -73,7 +76,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido"
-    console.error("[Email] Excecao ao enviar:", message)
+    console.error("[Email] Excecao ao enviar:", redactPII(message))
     return {
       success: false,
       error: message,

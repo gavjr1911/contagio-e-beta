@@ -1,4 +1,94 @@
 import { prisma } from "@/lib/prisma"
+import { addDays, endOfDay, getTodayLocal, startOfDay } from "@/lib/date-utils"
+
+// ============================================
+// JANELAS DE DATA (modelo wall-clock ancorado em UTC)
+// ============================================
+//
+// Todas as janelas deste arquivo sao comparadas com `Event.date`, que e
+// `@db.Date` — um DIA-CALENDARIO ancorado a meia-noite UTC, nao um instante.
+// Por isso a aritmetica usa addDays/startOfDay/endOfDay (componentes UTC) e
+// nunca setDate()/setHours() locais, que dependem do TZ do processo.
+
+/**
+ * Janela de escalas recentes ANTERIORES ao evento: [diaDoEvento - days, diaDoEvento).
+ * O proprio dia do evento fica de fora (fim exclusivo), como antes.
+ */
+export function getRecentSchedulesWindow(
+  eventDate: Date,
+  days: number = 30
+): { start: Date; end: Date } {
+  const eventDay = startOfDay(eventDate)
+  return { start: addDays(eventDay, -days), end: eventDay }
+}
+
+/**
+ * Janela [00:00, 23:59:59.999] UTC do dia-calendario do evento.
+ * Usada para achar escalas do MESMO dia.
+ */
+export function getEventDayRange(
+  eventDate: Date
+): { dateStart: Date; dateEnd: Date } {
+  return { dateStart: startOfDay(eventDate), dateEnd: endOfDay(eventDate) }
+}
+
+/**
+ * INICIO da janela de distribuicao: hoje - (days - 1).
+ * A subtracao de `days - 1` e deliberada — reproduz o conjunto que a versao
+ * antiga (`new Date()` menos `days`, mantendo a hora do dia) ja devolvia, pois
+ * `Event.date` e meia-noite UTC e o dia mais antigo ficava de fora.
+ */
+export function getRecentDaysWindowStart(
+  days: number,
+  today: Date = getTodayLocal()
+): Date {
+  return addDays(today, -(days - 1))
+}
+
+/**
+ * FIM da janela de distribuicao: hoje + `aheadDays`, incluindo o proprio dia.
+ * Usa `endOfDay` para que um evento marcado exatamente no ultimo dia do
+ * horizonte continue dentro da janela.
+ */
+export function getRecentDaysWindowEnd(
+  aheadDays: number,
+  today: Date = getTodayLocal()
+): Date {
+  return endOfDay(addDays(today, aheadDays))
+}
+
+export interface DistributionDateFilter {
+  gte: Date
+  lte: Date
+}
+
+/**
+ * Filtro de data das estatisticas de distribuicao — janela SIMETRICA:
+ * dos ultimos `days` dias ate os proximos `aheadDays` dias (default: o mesmo
+ * horizonte dos dois lados, 30/30).
+ *
+ * Decisao de produto: a distribuicao mostra retrospectiva E o que ja esta
+ * marcado a frente, com horizonte FECHADO dos dois lados para o numero ser
+ * estavel e comparavel entre pessoas. Antes o filtro so tinha `gte`, entao
+ * "ultimos N dias" era na pratica "ultimos N dias MAIS todo o futuro ja
+ * escalado" — quem tinha tres cultos marcados para novembro aparecia como
+ * sobrecarregado hoje.
+ *
+ * ⚠️ Devolve UM unico objeto com `gte` e `lte`. Nunca espalhe
+ * `...(a && { date: { gte } })` e `...(b && { date: { lte } })` no mesmo
+ * objeto literal: a segunda chave `date` sobrescreve a primeira e o `gte` some
+ * silenciosamente (ver `src/lib/events/date-filter.ts`).
+ */
+export function getDistributionDateFilter(
+  days: number,
+  aheadDays: number = days,
+  today: Date = getTodayLocal()
+): DistributionDateFilter {
+  return {
+    gte: getRecentDaysWindowStart(days, today),
+    lte: getRecentDaysWindowEnd(aheadDays, today),
+  }
+}
 
 // ============================================
 // TYPES & INTERFACES
@@ -291,8 +381,7 @@ async function calculateFrequencyFactor(
   ministryId: string,
   eventDate: Date
 ): Promise<number> {
-  const thirtyDaysAgo = new Date(eventDate)
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const { start, end } = getRecentSchedulesWindow(eventDate, 30)
 
   const recentSchedulesCount = await prisma.schedule.count({
     where: {
@@ -300,8 +389,8 @@ async function calculateFrequencyFactor(
       ministryId,
       event: {
         date: {
-          gte: thirtyDaysAgo,
-          lt: eventDate,
+          gte: start,
+          lt: end,
         },
       },
     },
@@ -357,10 +446,7 @@ async function calculateTimeConflictFactor(
   eventStartTime: Date,
   eventEndTime: Date | null
 ): Promise<number> {
-  const dateStart = new Date(eventDate)
-  dateStart.setHours(0, 0, 0, 0)
-  const dateEnd = new Date(eventDate)
-  dateEnd.setHours(23, 59, 59, 999)
+  const { dateStart, dateEnd } = getEventDayRange(eventDate)
 
   // Buscar escalas do usuario no mesmo dia
   const sameDaySchedules = await prisma.schedule.findMany({
@@ -584,10 +670,10 @@ export interface DistributionStats {
  */
 export async function getDistributionStats(
   ministryId: string,
-  days: number = 30
+  days: number = 30,
+  aheadDays: number = days
 ): Promise<DistributionStats> {
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
+  const dateFilter = getDistributionDateFilter(days, aheadDays)
 
   // Buscar ministerio
   const ministry = await prisma.ministry.findUnique({
@@ -613,7 +699,7 @@ export async function getDistributionStats(
     where: {
       userId: { in: memberIds },
       ministryId,
-      event: { date: { gte: startDate } },
+      event: { date: dateFilter },
     },
     select: { userId: true, status: true, createdAt: true },
     orderBy: { createdAt: "desc" },
@@ -700,10 +786,10 @@ export interface GlobalDistributionStats {
  * Obtem estatisticas globais de distribuicao
  */
 export async function getGlobalDistributionStats(
-  days: number = 30
+  days: number = 30,
+  aheadDays: number = days
 ): Promise<GlobalDistributionStats> {
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
+  const dateFilter = getDistributionDateFilter(days, aheadDays)
 
   // Buscar todos os ministerios
   const ministries = await prisma.ministry.findMany({
@@ -720,7 +806,7 @@ export async function getGlobalDistributionStats(
       const scheduleCount = await prisma.schedule.count({
         where: {
           ministryId: ministry.id,
-          event: { date: { gte: startDate } },
+          event: { date: dateFilter },
         },
       })
 
@@ -740,7 +826,7 @@ export async function getGlobalDistributionStats(
   // Top voluntarios
   const topVolunteersRaw = await prisma.schedule.groupBy({
     by: ["userId"],
-    where: { event: { date: { gte: startDate } } },
+    where: { event: { date: dateFilter } },
     _count: { id: true },
     orderBy: { _count: { id: "desc" } },
     take: 10,
@@ -758,7 +844,7 @@ export async function getGlobalDistributionStats(
         by: ["ministryId"],
         where: {
           userId: v.userId,
-          event: { date: { gte: startDate } },
+          event: { date: dateFilter },
         },
         _count: { id: true },
       })
@@ -789,7 +875,7 @@ export async function getGlobalDistributionStats(
   // Totais
   const totalMembers = await prisma.ministryMember.count({ where: { active: true } })
   const totalSchedules = await prisma.schedule.count({
-    where: { event: { date: { gte: startDate } } },
+    where: { event: { date: dateFilter } },
   })
 
   return {

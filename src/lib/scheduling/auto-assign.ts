@@ -1,4 +1,77 @@
 import { prisma } from "@/lib/prisma"
+import { addDays, endOfDay, getTodayLocal, startOfDay } from "@/lib/date-utils"
+
+// ============================================
+// JANELAS DE DATA (modelo wall-clock ancorado em UTC)
+// ============================================
+//
+// As janelas deste arquivo sao comparadas com `Event.date`, que e `@db.Date` —
+// um DIA-CALENDARIO ancorado a meia-noite UTC, nao um instante. A aritmetica
+// usa addDays/startOfDay (componentes UTC), nunca setDate() local.
+
+/**
+ * Janela de escalas recentes ANTERIORES ao evento: [diaDoEvento - days, diaDoEvento).
+ * O proprio dia do evento fica de fora (fim exclusivo), como antes.
+ */
+export function getRotationWindow(
+  eventDate: Date,
+  days: number = 30
+): { start: Date; end: Date } {
+  const eventDay = startOfDay(eventDate)
+  return { start: addDays(eventDay, -days), end: eventDay }
+}
+
+/**
+ * INICIO da janela de estatisticas do membro: hoje - (days - 1).
+ * A subtracao de `days - 1` e deliberada — reproduz o conjunto que a versao
+ * antiga (`new Date()` menos `days`, mantendo a hora do dia) ja devolvia, pois
+ * `Event.date` e meia-noite UTC e o dia mais antigo ficava de fora.
+ */
+export function getRecentDaysWindowStart(
+  days: number,
+  today: Date = getTodayLocal()
+): Date {
+  return addDays(today, -(days - 1))
+}
+
+/**
+ * FIM da janela: hoje + `aheadDays`, incluindo o proprio dia (`endOfDay`).
+ */
+export function getRecentDaysWindowEnd(
+  aheadDays: number,
+  today: Date = getTodayLocal()
+): Date {
+  return endOfDay(addDays(today, aheadDays))
+}
+
+export interface DistributionDateFilter {
+  gte: Date
+  lte: Date
+}
+
+/**
+ * Filtro de data das estatisticas do membro — janela SIMETRICA: dos ultimos
+ * `days` dias ate os proximos `aheadDays` dias (default: mesmo horizonte dos
+ * dois lados, 30/30). Mesma semantica de `getDistributionDateFilter` em
+ * `suggestions.ts` — as duas tem que andar juntas.
+ *
+ * Antes o filtro so tinha `gte`, entao "ultimos N dias" era na pratica
+ * "ultimos N dias MAIS todo o futuro ja escalado".
+ *
+ * ⚠️ Devolve UM unico objeto com `gte` e `lte`. Nunca espalhe duas chaves
+ * `date` no mesmo objeto literal: a segunda sobrescreve a primeira e o `gte`
+ * some silenciosamente (ver `src/lib/events/date-filter.ts`).
+ */
+export function getDistributionDateFilter(
+  days: number,
+  aheadDays: number = days,
+  today: Date = getTodayLocal()
+): DistributionDateFilter {
+  return {
+    gte: getRecentDaysWindowStart(days, today),
+    lte: getRecentDaysWindowEnd(aheadDays, today),
+  }
+}
 
 // ============================================
 // TYPES & INTERFACES
@@ -133,8 +206,7 @@ async function calculateRotation(
   ministryId: string,
   eventDate: Date
 ): Promise<number> {
-  const thirtyDaysAgo = new Date(eventDate)
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const { start, end } = getRotationWindow(eventDate, 30)
 
   const recentSchedulesCount = await prisma.schedule.count({
     where: {
@@ -142,8 +214,8 @@ async function calculateRotation(
       ministryId,
       event: {
         date: {
-          gte: thirtyDaysAgo,
-          lt: eventDate,
+          gte: start,
+          lt: end,
         },
       },
     },
@@ -545,22 +617,22 @@ export async function clearAutoAssignments(
 export async function getMemberScheduleStats(
   userId: string,
   ministryId: string,
-  days: number = 30
+  days: number = 30,
+  aheadDays: number = days
 ): Promise<{
   totalSchedules: number
   confirmedSchedules: number
   declinedSchedules: number
   pendingSchedules: number
 }> {
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - days)
+  const dateFilter = getDistributionDateFilter(days, aheadDays)
 
   const schedules = await prisma.schedule.findMany({
     where: {
       userId,
       ministryId,
       event: {
-        date: { gte: startDate },
+        date: dateFilter,
       },
     },
     select: { status: true },

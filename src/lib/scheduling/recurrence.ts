@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { RecurrencePattern } from "@/generated/prisma/client"
 import { buildEventSlug } from "@/lib/slug"
+import { addDays, addMonths, isOnOrBeforeDay } from "@/lib/date-utils"
 
 async function generateUniqueEventSlug(base: string): Promise<string> {
   let candidate = base
@@ -47,10 +48,14 @@ const MAX_OCCURRENCES = 52
  *
  * - WEEKLY: Add 7 days each iteration
  * - BIWEEKLY: Add 14 days each iteration
- * - MONTHLY: Add 1 month each iteration (handles month boundary correctly)
+ * - MONTHLY: Add 1 month each iteration (clamp no fim do mês — ver getNextDate)
  *
  * The startDate is NOT included in the output (it represents the parent event).
  * Stops when the generated date exceeds endDate or after MAX_OCCURRENCES.
+ * `endDate` é INCLUSIVO: uma ocorrência que cai exatamente no dia de término
+ * é gerada. A comparação é por dia-calendário (UTC) porque `startDate` chega
+ * do Prisma à meia-noite UTC e `endDate` vem de `parseLocalDate()` ao meio-dia
+ * UTC — âncoras diferentes, mesmo modelo.
  *
  * @param startDate - The date of the parent event
  * @param config - Recurrence configuration with pattern and end date
@@ -68,8 +73,8 @@ export function generateRecurringDates(
     // Advance to the next occurrence based on pattern
     currentDate = getNextDate(currentDate, config.pattern)
 
-    // Stop if we've exceeded the end date
-    if (currentDate > config.endDate) {
+    // Stop if we've exceeded the end date (comparação por dia-calendário)
+    if (!isOnOrBeforeDay(currentDate, config.endDate)) {
       break
     }
 
@@ -83,40 +88,38 @@ export function generateRecurringDates(
 /**
  * Calculate the next date based on the recurrence pattern.
  *
+ * Toda a aritmética usa os helpers de `@/lib/date-utils`, que operam sobre os
+ * componentes UTC (modelo "wall-clock ancorado em UTC"). É PROIBIDO usar
+ * `setDate()/getDate()/setMonth()/getMonth()` locais aqui: `Event.date` é
+ * @db.Date (meia-noite UTC) e, em São Paulo (UTC-3), o dia LOCAL desse valor é
+ * o dia anterior às 21:00 — o que fazia a recorrência mensal saltar um mês
+ * (31/01 → 01/03 em vez de 28/02).
+ *
+ * MONTHLY faz clamp no último dia do mês de destino (ver `addMonths`), e a
+ * próxima ocorrência é contada a partir da data já clampada — ou seja, a série
+ * "dia 31" degrada para o menor dia já visitado (31/01 → 28/02 → 28/03 → …).
+ * Esse é o comportamento histórico (o que o código já fazia sob TZ=UTC) e foi
+ * mantido de propósito.
+ *
  * @param currentDate - The current date
  * @param pattern - The recurrence pattern (WEEKLY, BIWEEKLY, MONTHLY)
  * @returns The next date according to the pattern
  */
 function getNextDate(currentDate: Date, pattern: RecurrencePattern): Date {
-  const nextDate = new Date(currentDate)
-
   switch (pattern) {
     case "WEEKLY":
-      nextDate.setDate(nextDate.getDate() + 7)
-      break
+      return addDays(currentDate, 7)
 
     case "BIWEEKLY":
-      nextDate.setDate(nextDate.getDate() + 14)
-      break
+      return addDays(currentDate, 14)
 
     case "MONTHLY":
-      // Handle month boundary correctly
-      // e.g., Jan 31 -> Feb 28/29 (last day of month)
-      const originalDay = currentDate.getDate()
-      nextDate.setMonth(nextDate.getMonth() + 1)
-
-      // If the day changed (e.g., 31 -> 28), it means we overflowed
-      // Set to the last day of the previous month
-      if (nextDate.getDate() !== originalDay) {
-        nextDate.setDate(0) // Sets to last day of previous month
-      }
-      break
+      // Jan 31 -> Feb 28/29 (clamp no último dia do mês de destino)
+      return addMonths(currentDate, 1)
 
     default:
       throw new Error(`Unknown recurrence pattern: ${pattern}`)
   }
-
-  return nextDate
 }
 
 // ============================================

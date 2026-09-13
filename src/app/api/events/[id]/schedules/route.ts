@@ -7,6 +7,10 @@ import { createScheduleSchema } from "@/lib/validations/schedule"
 import { sendScheduleInvite } from "@/lib/email"
 import { logAuditAsync, getAuditContext, getRequestMetadata } from "@/lib/audit"
 import { resolveEventId } from "@/lib/events"
+import {
+  forbiddenMinistriesForCreator,
+  forbiddenMinistriesMessage,
+} from "@/lib/permissions/schedule-create"
 
 // Helper function to check for time conflicts
 interface TimeConflict {
@@ -156,6 +160,10 @@ export async function GET(
         user: {
           select: { id: true, name: true, email: true, image: true },
         },
+        // Quem confirmou EM NOME do voluntario (nulo = ele mesmo confirmou).
+        confirmedBy: {
+          select: { id: true, name: true },
+        },
         ministry: {
           select: { id: true, name: true },
         },
@@ -188,6 +196,7 @@ export async function GET(
           vacancy: schedule.vacancy,
           status: schedule.status,
           confirmedAt: schedule.confirmedAt,
+          confirmedBy: schedule.confirmedBy,
           createdAt: schedule.createdAt,
         })
         return acc
@@ -249,6 +258,31 @@ export async function POST(
     }
 
     const { userId, ministryId, vacancyId, position } = parseResult.data
+
+    // LEADER so pode escalar em ministerios que lidera.
+    //
+    // A rota /bulk ja fazia esta checagem; esta aqui nao fazia, entao um LEADER
+    // podia criar escala para qualquer pessoa em qualquer ministerio de qualquer
+    // evento — inclusive para SI MESMO. Isso passou a importar mais do que
+    // parecia: com a regra nova de `event-access.ts`, estar escalado no evento
+    // habilita concluir o evento e confirmar a escala de terceiros. Sem esta
+    // checagem, um LEADER se auto-escalava em qualquer evento e adquiria essas
+    // duas permissoes sobre um evento que nao e dele.
+    const led = await prisma.ministry.findMany({
+      where: { leaderId: session.user.id },
+      select: { id: true },
+    })
+    const forbidden = forbiddenMinistriesForCreator(
+      userRole,
+      [ministryId],
+      led.map((m) => m.id)
+    )
+    if (forbidden.length > 0) {
+      return Response.json(
+        { error: forbiddenMinistriesMessage(forbidden.length) },
+        { status: 403 }
+      )
+    }
 
     // Validate user exists
     const user = await prisma.user.findUnique({ where: { id: userId } })

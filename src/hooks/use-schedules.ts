@@ -60,6 +60,11 @@ export interface EventScheduleItem {
   vacancy: VacancyInfo | null;
   status: ScheduleStatus;
   confirmedAt: Date | null;
+  /**
+   * Quem confirmou a escala EM NOME do voluntário.
+   * `null` = o próprio voluntário confirmou (tela ou link do e-mail).
+   */
+  confirmedBy: { id: string; name: string | null } | null;
   createdAt: Date;
 }
 
@@ -144,6 +149,35 @@ async function declineSchedule(data: {
   }
   const result = await response.json();
   return result.data || result;
+}
+
+// Confirmar / desfazer a escala DE OUTRA PESSOA (ADMIN ou quem tem escala no
+// evento por um ministério com events.edit — regra do servidor em
+// src/lib/permissions/event-access.ts).
+async function confirmScheduleForOther(scheduleId: string): Promise<Schedule> {
+  const response = await fetch(
+    `/api/schedules/${scheduleId}/confirm-for-other`,
+    { method: "POST" }
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || "Erro ao confirmar escala");
+  }
+  return result.data;
+}
+
+async function undoConfirmScheduleForOther(
+  scheduleId: string
+): Promise<Schedule> {
+  const response = await fetch(
+    `/api/schedules/${scheduleId}/confirm-for-other`,
+    { method: "DELETE" }
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || "Erro ao desfazer confirmação");
+  }
+  return result.data;
 }
 
 // Fetch blocked dates
@@ -275,6 +309,30 @@ export function useDeclineSchedule() {
 
   return useMutation({
     mutationFn: declineSchedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+    },
+  });
+}
+
+// Hook: useConfirmScheduleForOther
+export function useConfirmScheduleForOther() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: confirmScheduleForOther,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
+    },
+  });
+}
+
+// Hook: useUndoConfirmScheduleForOther
+export function useUndoConfirmScheduleForOther() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: undoConfirmScheduleForOther,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all });
     },

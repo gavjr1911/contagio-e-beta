@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { formatDateToISO } from "@/lib/date-utils";
+import { getUpcomingEventsRange } from "@/lib/events/date-filter";
 
 // Types
 export interface DashboardEvent {
@@ -83,14 +83,26 @@ export interface DashboardStats {
 }
 
 // Fetch upcoming events (next 30 days)
-async function fetchUpcomingEvents(): Promise<DashboardEvent[]> {
-  const now = new Date();
-  const thirtyDaysLater = new Date();
-  thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+interface UpcomingEventsResult {
+  events: DashboardEvent[];
+  /**
+   * Total de eventos na janela, vindo de `pagination.total` da API.
+   *
+   * NAO use `events.length` para o card "Proximos Eventos": `limit=10` faz o
+   * tamanho da lista ser o tamanho da PAGINA, nao a contagem. Era por isso que
+   * o card dizia sempre "10" — foi exatamente o numero que a usuaria estranhou.
+   */
+  total: number;
+}
+
+async function fetchUpcomingEvents(): Promise<UpcomingEventsResult> {
+  // Janela ancorada no dia-calendário de São Paulo (nunca em `new Date()` do
+  // navegador, que entre 21h e 00h BRT já está no dia UTC seguinte).
+  const { startDate, endDate } = getUpcomingEventsRange(30);
 
   const params = new URLSearchParams();
-  params.set("startDate", formatDateToISO(now));
-  params.set("endDate", formatDateToISO(thirtyDaysLater));
+  params.set("startDate", startDate);
+  params.set("endDate", endDate);
   params.set("limit", "10");
 
   const response = await fetch(`/api/events?${params.toString()}`);
@@ -98,7 +110,11 @@ async function fetchUpcomingEvents(): Promise<DashboardEvent[]> {
     throw new Error("Erro ao carregar eventos");
   }
   const result = await response.json();
-  return result.data || [];
+  const events: DashboardEvent[] = result.data || [];
+  return {
+    events,
+    total: result.pagination?.total ?? events.length,
+  };
 }
 
 // Fetch pending schedules
@@ -174,14 +190,14 @@ export function useDashboardStats(userId: string | undefined) {
     eventsQuery.isError || schedulesQuery.isError || ministriesQuery.isError;
 
   const stats: DashboardStats = {
-    upcomingEventsCount: eventsQuery.data?.length ?? 0,
+    upcomingEventsCount: eventsQuery.data?.total ?? 0,
     pendingSchedulesCount: schedulesQuery.data?.length ?? 0,
     myMinistriesCount: ministriesQuery.data?.length ?? 0,
   };
 
   return {
     stats,
-    events: eventsQuery.data ?? [],
+    events: eventsQuery.data?.events ?? [],
     pendingSchedules: schedulesQuery.data ?? [],
     ministries: ministriesQuery.data ?? [],
     isLoading,
