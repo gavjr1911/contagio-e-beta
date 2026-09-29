@@ -10,7 +10,7 @@
  * ação `events.edit` pode CONCLUIR o evento e REGISTRAR A PRESENÇA dele.
  * Não confere direito de editar o evento (nome/data/ordem) — isso segue ADMIN.
  */
-import type { MinistryPermissions } from "./types";
+import type { MinistryPermissions, PermissionFeature } from "./types";
 import { DEFAULT_MINISTRY_PERMISSIONS } from "./defaults";
 import { normalizeMinistryPermissions, hasAction } from "./normalize";
 
@@ -33,13 +33,22 @@ function ministryMatrix(raw: unknown): MinistryPermissions {
 }
 
 /**
- * O ministério da escala concede `events.edit` a esta pessoa?
+ * O ministério da escala concede `<feature>.<action>` a esta pessoa?
  * Usa a linha `leader` se ela lidera o ministério, senão a linha `member`.
  */
-function assignmentGrantsEventEdit(assignment: EventAssignment): boolean {
+function assignmentGrants(
+  assignment: EventAssignment,
+  feature: PermissionFeature,
+  action: "view" | "create" | "edit" | "delete"
+): boolean {
   const matrix = ministryMatrix(assignment.ministryPermissions);
   const row = assignment.isMinistryLeader ? matrix.leader : matrix.member;
-  return hasAction(row, "events", "edit");
+  return hasAction(row, feature, action);
+}
+
+/** O ministério da escala concede `events.edit` a esta pessoa? */
+function assignmentGrantsEventEdit(assignment: EventAssignment): boolean {
+  return assignmentGrants(assignment, "events", "edit");
 }
 
 /**
@@ -148,6 +157,57 @@ export function canCompleteEventNow(input: {
     input.todayISO
   );
 }
+
+/**
+ * Pode EDITAR O CHECKLIST deste evento (iniciar, marcar item, adicionar extra)?
+ *
+ * ADMIN sempre; caso contrário, precisa estar escalado (PENDING ou CONFIRMED)
+ * neste evento por um ministério cuja matriz conceda `checklists.edit`.
+ *
+ * Substitui a regra antiga, que exigia pertencer a um ministério chamado
+ * literalmente "Contagie - Cerimonial". Esse ministério nao existia no banco
+ * (o real se chama "Contagie"), entao a checagem devolvia `false` para TODA
+ * pessoa nao-ADMIN e o checklist nunca funcionou para voluntario nenhum —
+ * inclusive no culto de 27/09/2026, em que as duas pessoas do Contagie
+ * escaladas (uma por culto) ficaram sem conseguir marcar os itens. A matriz do
+ * ministerio ja concedia `checklists` aos membros; era o codigo que ignorava a
+ * configuracao e olhava o nome.
+ */
+export function canEditEventChecklistWith(
+  userRole: string | undefined,
+  assignments: EventAssignment[]
+): boolean {
+  if (userRole === "ADMIN") return true;
+  return assignments.some(
+    (a) => isActiveAssignment(a) && assignmentGrants(a, "checklists", "edit")
+  );
+}
+
+/**
+ * Decisão FINAL de "dá para mexer no checklist agora?" — é esta que o servidor
+ * manda para a UI, para não existir uma segunda conta do lado do cliente.
+ *
+ * Soma a permissão ao estado do evento: depois de CONCLUÍDO o checklist é
+ * registro fechado (decisão do dono do produto). Sem dobrar o status aqui, a
+ * tela mostraria "Iniciar Checklist" num evento concluído e o clique voltaria
+ * com erro — que é exatamente a divergência UI×servidor que esta refatoração
+ * existe para eliminar.
+ */
+export function canEditEventChecklistNow(input: {
+  userRole: string | undefined;
+  assignments: EventAssignment[];
+  eventStatus: string;
+}): boolean {
+  if (input.eventStatus === "COMPLETED") return false;
+  return canEditEventChecklistWith(input.userRole, input.assignments);
+}
+
+/** Motivo da recusa quando o evento já foi concluído (mensagem de operador). */
+export const CHECKLIST_EVENT_COMPLETED_MESSAGE =
+  "Este evento já foi concluído e o checklist não pode mais ser alterado. Peça a um administrador para reabrir o evento.";
+
+export const CHECKLIST_DENIED_MESSAGE =
+  "Acesso negado. Para mexer no checklist é preciso ser ADMIN ou estar escalado neste evento por um ministério com permissão de checklists.";
 
 export const CONFIRM_FOR_OTHERS_DENIED_MESSAGE =
   "Acesso negado. Para confirmar a escala de outra pessoa é preciso ser ADMIN ou estar escalado neste evento por um ministério com permissão de editar eventos.";

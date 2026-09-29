@@ -10,6 +10,8 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import {
+  canEditEventChecklistNow,
+  canEditEventChecklistWith,
   canCompleteEventWith,
   canCompleteEventNow,
   canConfirmSchedulesForOthersWith,
@@ -284,4 +286,139 @@ test("regra de data: ADMIN ignora o dia, os demais não", () => {
   assert.equal(isCompletionDateReached("ADMIN", "2026-12-25", HOJE), true)
   assert.equal(isCompletionDateReached("VOLUNTEER", "2026-12-25", HOJE), false)
   assert.equal(isCompletionDateReached("VOLUNTEER", "2026-09-06", HOJE), true)
+})
+
+// ---------------------------------------------------------------------------
+// CHECKLIST DO EVENTO
+//
+// Regressão real: em 27/09/2026 as pessoas do Contagie escaladas no culto não
+// conseguiram marcar os itens. A regra antiga exigia pertencer a um ministério
+// chamado literalmente "Contagie - Cerimonial", que não existe no banco (o real
+// é "Contagie"), então negava para todo não-ADMIN. Estes testes usam a matriz
+// REAL de produção do Contagie, que concede `checklists` aos membros.
+// ---------------------------------------------------------------------------
+
+// Matriz do Contagie como está gravada em produção (checklists liberado a membro).
+const contagieComChecklist = {
+  leader: {
+    events: { view: true, create: true, edit: true, delete: true },
+    checklists: { view: true, create: true, edit: true, delete: true },
+  },
+  member: {
+    events: { view: true, create: true, edit: true, delete: true },
+    checklists: { view: true, create: true, edit: true, delete: true },
+  },
+}
+
+// Ministério sem checklist para membro (ex.: "Comunique-se", que tem false explícito).
+const semChecklist = {
+  leader: { events: { edit: true }, checklists: { edit: false } },
+  member: { events: { edit: true }, checklists: { edit: false } },
+}
+
+test("checklist: ADMIN sempre pode, mesmo sem escala", () => {
+  assert.equal(canEditEventChecklistWith("ADMIN", []), true)
+})
+
+test("checklist: voluntária escalada pelo Contagie pode marcar itens (o caso de 27/09)", () => {
+  assert.equal(
+    canEditEventChecklistWith("VOLUNTEER", [
+      assignment({ ministryPermissions: contagieComChecklist }),
+    ]),
+    true
+  )
+})
+
+test("checklist: escala PENDING também vale (quase ninguém confirma)", () => {
+  assert.equal(
+    canEditEventChecklistWith("VOLUNTEER", [
+      assignment({ status: "PENDING", ministryPermissions: contagieComChecklist }),
+    ]),
+    true
+  )
+})
+
+test("checklist: quem RECUSOU a escala não mexe no checklist", () => {
+  assert.equal(
+    canEditEventChecklistWith("VOLUNTEER", [
+      assignment({ status: "DECLINED", ministryPermissions: contagieComChecklist }),
+    ]),
+    false
+  )
+})
+
+test("checklist: não basta events.edit — precisa de checklists.edit", () => {
+  // contagieLegacy concede events.edit mas não fala de checklists.
+  assert.equal(canEditEventChecklistWith("VOLUNTEER", [assignment()]), false)
+})
+
+test("checklist: ministério com checklists.edit=false é negado", () => {
+  assert.equal(
+    canEditEventChecklistWith("VOLUNTEER", [
+      assignment({ ministryPermissions: semChecklist }),
+    ]),
+    false
+  )
+})
+
+test("checklist: quem não está escalado no evento não mexe", () => {
+  assert.equal(canEditEventChecklistWith("VOLUNTEER", []), false)
+})
+
+test("checklist: LEADER global sem escala não ganha acesso", () => {
+  assert.equal(canEditEventChecklistWith("LEADER", []), false)
+})
+
+test("checklist: matriz nula cai no default, que é none", () => {
+  assert.equal(
+    canEditEventChecklistWith("VOLUNTEER", [
+      assignment({ ministryPermissions: null }),
+    ]),
+    false
+  )
+})
+
+test("checklist: matriz corrompida falha fechado", () => {
+  for (const lixo of ["lixo", 42, [], { member: "???" }]) {
+    assert.equal(
+      canEditEventChecklistWith("VOLUNTEER", [
+        assignment({ ministryPermissions: lixo }),
+      ]),
+      false
+    )
+  }
+})
+
+test("checklist: evento CONCLUIDO trava, mesmo para quem tem permissao", () => {
+  // Foi o que travou o checklist de 27/09 as 22:28, depois de concluirem o culto.
+  assert.equal(
+    canEditEventChecklistNow({
+      userRole: "VOLUNTEER",
+      assignments: [assignment({ ministryPermissions: contagieComChecklist })],
+      eventStatus: "COMPLETED",
+    }),
+    false
+  )
+})
+
+test("checklist: evento PUBLICADO libera quem tem permissao", () => {
+  assert.equal(
+    canEditEventChecklistNow({
+      userRole: "VOLUNTEER",
+      assignments: [assignment({ ministryPermissions: contagieComChecklist })],
+      eventStatus: "PUBLISHED",
+    }),
+    true
+  )
+})
+
+test("checklist: nem ADMIN mexe em evento concluido (a trava e do estado, nao do papel)", () => {
+  assert.equal(
+    canEditEventChecklistNow({
+      userRole: "ADMIN",
+      assignments: [],
+      eventStatus: "COMPLETED",
+    }),
+    false
+  )
 })

@@ -70,7 +70,7 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
 
   if (!data) return null
 
-  const { items, template, hasInstantiatedItems, hasTemplate, canEdit, stats } =
+  const { items, template, hasInstantiatedItems, hasTemplate, canEdit, isCompleted, stats } =
     data
 
   // Se nao tem template associado
@@ -138,7 +138,9 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground text-center">
-                Apenas membros do Cerimonial podem iniciar o checklist.
+                {isCompleted
+                  ? "Este evento já foi concluído e o checklist não pode mais ser iniciado. Peça a um administrador para reabrir o evento."
+                  : "Você não tem permissão para iniciar este checklist. É preciso estar escalado neste evento por um ministério com permissão de checklists."}
               </p>
             )}
           </CardContent>
@@ -317,7 +319,9 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
 
           {!canEdit && (
             <p className="text-sm text-muted-foreground text-center pt-4 border-t mt-4">
-              Apenas membros do Cerimonial podem marcar itens.
+              {isCompleted
+                ? "Este evento já foi concluído e o checklist não pode mais ser alterado. Peça a um administrador para reabrir o evento."
+                : "Você não tem permissão para marcar itens deste checklist. É preciso estar escalado neste evento por um ministério com permissão de checklists."}
             </p>
           )}
         </CardContent>

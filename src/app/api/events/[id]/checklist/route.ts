@@ -7,7 +7,13 @@ import {
   validateBody,
   withAuth,
 } from "@/lib/api-utils"
-import { withCerimonial, canEditChecklist } from "@/lib/permissions"
+import {
+  canEditEventChecklistNow,
+  canEditEventChecklistWith,
+  CHECKLIST_DENIED_MESSAGE,
+  CHECKLIST_EVENT_COMPLETED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 import { createEventChecklistItemSchema } from "@/lib/validations/checklist"
 import { resolveEventId } from "@/lib/events"
 
@@ -47,8 +53,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiError("Evento nao encontrado", 404)
     }
 
-    // Verificar se usuario pode editar
-    const canEdit = await canEditChecklist(session.user.id, session.user.role)
+    // Verificar se usuario pode editar.
+    // Regra por EVENTO (matriz do ministerio da escala), nao por nome de
+    // ministerio — ver `canEditEventChecklistWith`.
+    const canEdit = canEditEventChecklistNow({
+      userRole: session.user.role,
+      assignments: await loadEventAssignments(eventId, session.user.id),
+      eventStatus: event.status,
+    })
 
     // Se nao tem itens instanciados mas tem template, retornar preview
     const hasInstantiatedItems = event.checklistItems.length > 0
@@ -67,6 +79,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       hasInstantiatedItems,
       hasTemplate,
       canEdit,
+      // A UI precisa distinguir "voce nao tem permissao" de "o evento ja
+      // acabou" — sao mensagens diferentes e acoes diferentes (no segundo caso
+      // a saida e pedir a um admin para reabrir).
+      isCompleted: event.status === "COMPLETED",
       stats: {
         total,
         completed,
@@ -77,9 +93,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/events/[id]/checklist - Adicionar item extra (apenas Cerimonial)
+// POST /api/events/[id]/checklist - Adicionar item extra
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withCerimonial(async (session) => {
+  return withAuth(async (session) => {
     const { id: idOrSlug } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
@@ -94,9 +110,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiError("Evento nao encontrado", 404)
     }
 
-    // Verificar se evento esta concluido
+    // Estado do evento ANTES da permissao: as duas recusas sao diferentes para
+    // quem esta na tela. Se o evento acabou, dizer "voce nao tem permissao"
+    // manda a pessoa atras do administrador errado — a saida e reabrir o evento.
     if (event.status === "COMPLETED") {
-      return apiError("Nao e possivel adicionar itens em eventos concluidos", 400)
+      return apiError(CHECKLIST_EVENT_COMPLETED_MESSAGE, 400)
+    }
+
+    const canEdit = canEditEventChecklistWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!canEdit) {
+      return apiError(CHECKLIST_DENIED_MESSAGE, 403)
     }
 
     const bodyResult = await validateBody(request, createEventChecklistItemSchema)

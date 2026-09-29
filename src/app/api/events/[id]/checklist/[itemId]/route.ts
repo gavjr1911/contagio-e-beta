@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { apiError, apiSuccess, validateBody } from "@/lib/api-utils"
-import { withCerimonial } from "@/lib/permissions"
+import { apiError, apiSuccess, validateBody, withAuth } from "@/lib/api-utils"
+import {
+  canEditEventChecklistWith,
+  CHECKLIST_DENIED_MESSAGE,
+  CHECKLIST_EVENT_COMPLETED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 import { updateEventChecklistItemSchema } from "@/lib/validations/checklist"
 import { resolveEventId } from "@/lib/events"
 
@@ -10,7 +15,7 @@ type RouteParams = { params: Promise<{ id: string; itemId: string }> }
 
 // PATCH /api/events/[id]/checklist/[itemId] - Atualizar item (marcar/desmarcar)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withCerimonial(async (session) => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
@@ -23,6 +28,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!event) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    const canEdit = canEditEventChecklistWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!canEdit) {
+      return apiError(CHECKLIST_DENIED_MESSAGE, 403)
+    }
+
+    // Evento concluido = checklist fechado (decisao do dono do produto).
+    // Ate 28/09/2026 so o DELETE tinha esta trava; o PATCH (marcar/desmarcar,
+    // que e a acao principal) nao tinha — entao "travado apos concluir" era
+    // meia verdade e a UI seguia mostrando os checkboxes funcionando.
+    if (event.status === "COMPLETED") {
+      return apiError(CHECKLIST_EVENT_COMPLETED_MESSAGE, 400)
     }
 
     const item = await prisma.eventChecklistItem.findFirst({
@@ -83,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/events/[id]/checklist/[itemId] - Remover item extra
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withCerimonial(async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
@@ -98,9 +119,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return apiError("Evento nao encontrado", 404)
     }
 
-    // Verificar se evento esta concluido
+    const canEdit = canEditEventChecklistWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!canEdit) {
+      return apiError(CHECKLIST_DENIED_MESSAGE, 403)
+    }
+
+    // Evento concluido = checklist fechado (decisao do dono do produto).
+    // Ate 28/09/2026 so o DELETE tinha esta trava; o PATCH (marcar/desmarcar,
+    // que e a acao principal) nao tinha — entao "travado apos concluir" era
+    // meia verdade e a UI seguia mostrando os checkboxes funcionando.
     if (event.status === "COMPLETED") {
-      return apiError("Nao e possivel remover itens de eventos concluidos", 400)
+      return apiError(CHECKLIST_EVENT_COMPLETED_MESSAGE, 400)
     }
 
     const item = await prisma.eventChecklistItem.findFirst({

@@ -32,6 +32,8 @@ export interface EventChecklistData {
   hasInstantiatedItems: boolean
   hasTemplate: boolean
   canEdit: boolean
+  /** Evento concluido: checklist vira registro fechado. */
+  isCompleted?: boolean
   stats: {
     total: number
     completed: number

@@ -211,7 +211,10 @@ export default function EventoDetailPage() {
     router.push(`/eventos/${eventId}/editar`);
   };
 
+  const [completeDialogOpen, setCompleteDialogOpen] = React.useState(false);
+
   const handleComplete = async () => {
+    setCompleteDialogOpen(false);
     if (!event) return;
     try {
       await updateEvent.mutateAsync({
@@ -369,7 +372,7 @@ export default function EventoDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleComplete}
+                onClick={() => setCompleteDialogOpen(true)}
                 disabled={updateEvent.isPending}
               >
                 <CheckCircle className="h-4 w-4 mr-1.5" />
@@ -523,6 +526,30 @@ export default function EventoDetailPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleGoToEdit}>
               Continuar para edicao
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação de conclusão.
+          Concluir é de mão única para quem não é ADMIN (reabrir é ADMIN) e
+          trava checklist, mídia e setlist. Em 27/09/2026 o culto foi concluído
+          logo após o fim e o checklist travou junto, sem ninguém entender por
+          quê — daí o aviso explícito antes. */}
+      <AlertDialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Concluir este evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Depois de concluído, o checklist, o upload de mídia e o setlist
+              ficam travados, e só um administrador consegue reabrir o evento.
+              Se ainda faltar marcar itens do checklist, faça isso antes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleComplete}>
+              Sim, concluir evento
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
