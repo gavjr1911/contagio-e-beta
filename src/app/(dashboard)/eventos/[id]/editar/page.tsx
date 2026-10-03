@@ -152,7 +152,10 @@ export default function EditarEventoPage() {
         startTime: formData.startTime,
         endTime: formData.endTime || undefined,
         status: formData.status,
-        checklistTemplateId: checklistTemplateId || undefined,
+        // Sem `|| undefined`: `null` é a forma de desassociar o checklist
+        // ("Limpar"). Convertido para undefined, o hook descartava o campo e
+        // o botão não tinha efeito nenhum.
+        checklistTemplateId: checklistTemplateId,
       });
 
       // 2. Handle vacancies changes

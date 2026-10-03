@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { EventType, EventStatus, RecurrencePattern } from "@/generated/prisma/enums";
+import { eventKeys, eventChecklistKeys } from "./query-keys";
 
 // Re-export enums for convenience
 export { EventType, EventStatus, RecurrencePattern } from "@/generated/prisma/enums";
@@ -128,7 +129,8 @@ export interface CreateEventData {
   endTime?: string;
   status?: EventStatus;
   templateId?: string;
-  checklistTemplateId?: string;
+  /** `null` desassocia o checklist do evento (botão "Limpar"). */
+  checklistTemplateId?: string | null;
   // Recurrence fields
   isRecurring?: boolean;
   recurrencePattern?: RecurrencePattern;
@@ -148,16 +150,9 @@ export interface EventFilters {
   limit?: number;
 }
 
-// Query keys
-export const eventKeys = {
-  all: ["events"] as const,
-  lists: () => [...eventKeys.all, "list"] as const,
-  list: (filters?: EventFilters) => [...eventKeys.lists(), filters] as const,
-  details: () => [...eventKeys.all, "detail"] as const,
-  detail: (id: string) => [...eventKeys.details(), id] as const,
-  calendar: (month: number, year: number) =>
-    [...eventKeys.all, "calendar", month, year] as const,
-};
+// Query keys — definidas em ./query-keys para evitar ciclo de import com
+// use-event-checklist. Reexportadas aqui para quem já importava daqui.
+export { eventKeys };
 
 // Helper to format time from string or Date to HH:mm
 // If it's already a string in HH:mm format, return as-is
@@ -239,6 +234,9 @@ async function createEvent(data: CreateEventData): Promise<Event> {
     endTime: data.endTime || undefined, // HH:MM string
     status: data.status || "PUBLISHED",
     templateId: data.templateId,
+    // Sem isto o checklist escolhido na tela de criação era descartado aqui,
+    // silenciosamente: a API, o Zod e o Prisma sempre aceitaram o campo.
+    checklistTemplateId: data.checklistTemplateId ?? undefined,
   };
 
   // Add recurrence fields if present
@@ -276,7 +274,11 @@ async function updateEvent({ id, ...data }: UpdateEventData): Promise<Event> {
   if (data.endTime) body.endTime = data.endTime; // HH:MM string
   if (data.status) body.status = data.status;
   if (data.templateId) body.templateId = data.templateId;
-  if (data.checklistTemplateId) body.checklistTemplateId = data.checklistTemplateId;
+  // `!== undefined` e não truthy: `null` é um valor com significado aqui
+  // (desassociar o checklist). Com o guard truthy, "Limpar" não fazia nada.
+  if (data.checklistTemplateId !== undefined) {
+    body.checklistTemplateId = data.checklistTemplateId;
+  }
 
   const response = await fetch(`/api/events/${id}`, {
     method: "PATCH",
@@ -351,9 +353,16 @@ export function useUpdateEvent() {
 
   return useMutation({
     mutationFn: updateEvent,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: eventKeys.detail(data.id) });
+    onSuccess: () => {
+      // Prefixo, não `detail(data.id)`: a página do evento indexa o cache pelo
+      // SLUG da URL, enquanto a API devolve o cuid — chaves diferentes, então
+      // a invalidação antiga nunca alcançava a tela aberta. Pelo prefixo pega
+      // as duas formas (e o slug novo, quando nome/data/hora mudam).
+      queryClient.invalidateQueries({ queryKey: eventKeys.details() });
       queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      // A aba Checklist tem cache próprio. Sem isto ela continuava exibindo
+      // "Nenhum checklist" mesmo depois de o template ser associado e gravado.
+      queryClient.invalidateQueries({ queryKey: eventChecklistKeys.lists() });
     },
   });
 }

@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { eventKeys } from "./use-events"
+import { eventKeys, eventChecklistKeys } from "./query-keys"
 import type { ChecklistTemplate, ChecklistTemplateItem } from "./use-checklist-templates"
 
 // Types
@@ -52,12 +52,9 @@ export interface UpdateEventChecklistItemData {
   completed?: boolean
 }
 
-// Query keys
-export const eventChecklistKeys = {
-  all: ["eventChecklist"] as const,
-  lists: () => [...eventChecklistKeys.all, "list"] as const,
-  list: (eventId: string) => [...eventChecklistKeys.lists(), eventId] as const,
-}
+// Query keys — definidas em ./query-keys (compartilhadas com use-events, que
+// precisa invalidar esta aba ao salvar o evento). Reexportadas aqui.
+export { eventChecklistKeys }
 
 // API helpers
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
