@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle2,
   Circle,
@@ -36,11 +37,34 @@ import {
   useDeleteChecklistItem,
   type EventChecklistItem,
 } from "@/hooks/use-event-checklist"
+import { useEvent } from "@/hooks/use-events"
+import { eventKeys, eventChecklistKeys } from "@/hooks/query-keys"
+import {
+  shouldAutoStartChecklist,
+  isAlreadyStartedError,
+  toTimedEvent,
+} from "@/lib/events/checklist-auto-start"
 import { cn } from "@/lib/utils"
 
 interface EventChecklistTabProps {
   eventId: string
 }
+
+/**
+ * Eventos cujo disparo automático já foi tentado NESTA sessão de navegação.
+ *
+ * Mora fora do componente de propósito: um `useRef` morre quando a aba é
+ * desmontada (trocar de aba e voltar desmonta), e aí a cada volta sairia um
+ * POST novo. O servidor se protege com transação, mas martelar a rota no Wi-Fi
+ * da igreja não é opção. Garante também o disparo único sob StrictMode, que em
+ * dev monta e roda os efeitos duas vezes de propósito.
+ *
+ * Quem falhou continua tendo o botão manual como saída — por isso a entrada não
+ * é removida no erro.
+ */
+const autoStartAttempted = new Set<string>()
+
+type AutoStartStatus = "idle" | "pending" | "settled" | "error"
 
 export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
   const { data, isLoading, error } = useEventChecklist(eventId)
@@ -51,6 +75,118 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
   const addMutation = useAddChecklistItem()
   const deleteMutation = useDeleteChecklistItem()
 
+  // ---------------------------------------------------------------------
+  // Materialização automática durante a janela do evento
+  // ---------------------------------------------------------------------
+  //
+  // O evento vem do MESMO hook que a página do evento já usa, com a mesma
+  // chave de cache: nenhuma requisição extra, e nenhuma prop nova no
+  // componente. `date`/`startTime` chegam como "YYYY-MM-DD"/"HH:MM"
+  // (`transformEventForResponse`), que é o formato que `isEventHappening` pede.
+  const { data: event, isLoading: isEventLoading } = useEvent(eventId)
+  const queryClient = useQueryClient()
+
+  const [autoStatus, setAutoStatus] = React.useState<AutoStartStatus>("idle")
+
+  // Assim que a lista chega, o estado transitório cumpriu seu papel e volta a
+  // "idle". Sem isto, "settled" fica preso para sempre: se algum dia os itens
+  // sumirem (reset no banco, um futuro "refazer checklist"), a aba mostraria o
+  // spinner "Preparando checklist..." eterno — sem botão manual e sem erro,
+  // saindo só com reload.
+  React.useEffect(() => {
+    if (data?.hasInstantiatedItems && autoStatus === "settled") {
+      setAutoStatus("idle")
+    }
+  }, [data?.hasInstantiatedItems, autoStatus])
+  const [autoError, setAutoError] = React.useState<string | null>(null)
+
+  const canEdit = data?.canEdit ?? false
+  const hasTemplate = data?.hasTemplate ?? false
+  const hasInstantiatedItems = data?.hasInstantiatedItems ?? false
+  const isCompletedEvent = data?.isCompleted ?? false
+
+  const timedEvent = React.useMemo(() => toTimedEvent(event), [event])
+
+  const wantsAutoStart = shouldAutoStartChecklist({
+    event: timedEvent,
+    canEdit,
+    hasTemplate,
+    hasInstantiatedItems,
+    isCompleted: isCompletedEvent,
+  })
+
+  React.useEffect(() => {
+    if (!wantsAutoStart) return
+    if (autoStartAttempted.has(eventId)) return
+
+    autoStartAttempted.add(eventId)
+    setAutoStatus("pending")
+    setAutoError(null)
+
+    // Chamada direta em vez de `useInitEventChecklist`: o hook sempre dispara
+    // toast de sucesso e de erro, e aqui o disparo é invisível para quem está
+    // marcando o checklist — inclusive o 400 de corrida, que não é erro.
+    void (async () => {
+      try {
+        // Escalonamento + reconferência antes de escrever.
+        //
+        // A rota `init` reconfere a contagem dentro da transação, mas em
+        // READ COMMITTED duas transações concorrentes leem zero e as duas
+        // inserem — verificado aqui: duas abas abrindo juntas geraram 24 itens
+        // em vez de 12. Com o disparo automático, "duas pessoas abrindo a aba"
+        // deixa de ser clique simultâneo e vira o caso comum do domingo.
+        //
+        // O atraso aleatório desencontra as aberturas e o GET seguinte vê o
+        // checklist que a outra pessoa acabou de criar. NÃO é correção: a
+        // corrida exatamente simultânea continua possível e só se fecha no
+        // servidor (índice único ou advisory lock na rota `init`).
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 700))
+
+        const atual = await fetch(`/api/events/${eventId}/checklist`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+
+        if (atual?.data?.hasInstantiatedItems) {
+          await queryClient.invalidateQueries({
+            queryKey: eventChecklistKeys.list(eventId),
+          })
+          setAutoStatus("settled")
+          return
+        }
+
+        const res = await fetch(`/api/events/${eventId}/checklist/init`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+        const payload = await res.json().catch(() => null)
+
+        // Corrida real: duas pessoas abriram a aba ao mesmo tempo e o servidor
+        // deixou a segunda de fora. O checklist existe — é só recarregar.
+        const jaIniciado =
+          res.status === 400 && isAlreadyStartedError(payload?.error)
+
+        if (!res.ok && !jaIniciado) {
+          throw new Error(payload?.error || "Erro ao iniciar checklist")
+        }
+
+        await queryClient.invalidateQueries({
+          queryKey: eventChecklistKeys.list(eventId),
+        })
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) })
+
+        setAutoStatus("settled")
+      } catch (err) {
+        // Falha não vira laço: o estado "error" devolve o botão manual, e a
+        // entrada em `autoStartAttempted` impede nova tentativa automática.
+        setAutoStatus("error")
+        setAutoError(
+          err instanceof Error ? err.message : "Erro ao iniciar checklist"
+        )
+      }
+    })()
+  }, [wantsAutoStart, eventId, queryClient])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -59,7 +195,11 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
     )
   }
 
-  if (error) {
+  // `error && !data`, nao so `error`: `useToggleChecklistItem` invalida a query
+  // a CADA marcacao e, no Wi-Fi da igreja, um refetch pode esgotar os retries e
+  // setar `error` com a lista ainda em cache. Testar `error` sozinho apagava os
+  // 39 itens da tela no meio do preenchimento.
+  if (error && !data) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <AlertCircle className="h-12 w-12 text-destructive mb-4" />
@@ -70,8 +210,8 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
 
   if (!data) return null
 
-  const { items, template, hasInstantiatedItems, hasTemplate, canEdit, isCompleted, stats } =
-    data
+  const { items, template, stats } = data
+  const isCompleted = isCompletedEvent
 
   // Se nao tem template associado
   if (!hasTemplate && !hasInstantiatedItems) {
@@ -91,6 +231,26 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
 
   // Se tem template mas ainda nao iniciou
   if (hasTemplate && !hasInstantiatedItems) {
+    // Enquanto o evento não chegou ao cache ainda não dá para saber se estamos
+    // na janela. Mostrar o botão aqui faria ele piscar e sumir na cara de quem
+    // abriu a aba no meio do culto — então segura o estado de carregamento.
+    const aguardandoEvento = isEventLoading && !timedEvent && canEdit && !isCompleted
+
+    // "settled": o init já voltou, mas o refetch da lista ainda está vindo.
+    // A materialização copia dezenas de itens — sem isto a pessoa veria
+    // "Iniciar Checklist" piscando antes da lista aparecer.
+    const materializando =
+      aguardandoEvento || autoStatus === "pending" || autoStatus === "settled"
+
+    if (materializando) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Preparando checklist do evento...</p>
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-6">
         <Card>
@@ -122,6 +282,17 @@ export function EventChecklistTab({ eventId }: EventChecklistTabProps) {
                 ))}
               </ul>
             </div>
+
+            {autoStatus === "error" && canEdit && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  Não foi possível abrir o checklist automaticamente
+                  {autoError ? `: ${autoError.replace(/\.?$/, ".")}` : "."} Use
+                  o botão abaixo.
+                </span>
+              </div>
+            )}
 
             {canEdit ? (
               <Button

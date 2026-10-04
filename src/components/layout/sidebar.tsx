@@ -14,9 +14,16 @@ import {
   ClipboardCheck,
   UserCog,
   Menu,
+  Radio,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getEventWindow } from "@/lib/events/happening";
+import { getNowLocal } from "@/lib/date-utils";
+import {
+  useHappeningEvent,
+  getHappeningEventHref,
+} from "@/hooks/use-happening-event";
 import { UserNav } from "./user-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/ui/logo";
@@ -86,6 +93,73 @@ interface SidebarNavProps {
   onNavigate?: () => void;
 }
 
+/**
+ * Atalho para o culto em curso, no TOPO do menu.
+ *
+ * Existe para quem está na igreja, no celular, durante o culto: abre o evento
+ * direto, sem passar pelo cronograma. Aparece só dentro da janela (2h antes do
+ * início até 1h depois do fim) e some sozinho depois.
+ */
+function HappeningNavItem({ onNavigate }: SidebarNavProps) {
+  const pathname = usePathname();
+  const event = useHappeningEvent();
+
+  if (!event) return null;
+
+  const href = getHappeningEventHref(event);
+  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+
+  // A janela abre 2h ANTES do início — dizer "ACONTECENDO" às 17h50 para um
+  // culto das 19h50 é mentira, e pior: convida a abrir o checklist achando que
+  // o culto começou. Antes do horário, o rótulo mostra quando começa.
+  const window = getEventWindow(event);
+  const jaComecou =
+    window !== null && getNowLocal().getTime() >= window.startsAt.getTime();
+  const rotulo = jaComecou ? "Acontecendo" : `Começa ${event.startTime}`;
+
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      // O rótulo visual "ACONTECENDO" é destaque de cor/tamanho; para leitor de
+      // tela a informação vai inteira e em ordem natural no aria-label.
+      aria-label={
+        jaComecou
+          ? `Acontecendo agora: ${event.name}`
+          : `Começa às ${event.startTime}: ${event.name}`
+      }
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium",
+        "border transition-colors duration-150",
+        isActive
+          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+          : "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/20"
+      )}
+    >
+      <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+        <Radio className="h-5 w-5" aria-hidden="true" />
+      </span>
+      {/* min-w-0 é o que permite o truncate funcionar dentro do flex. */}
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-wider",
+            isActive ? "text-primary-foreground/90" : "text-primary"
+          )}
+          aria-hidden="true"
+        >
+          {rotulo}
+        </span>
+        {/* Nomes reais são longos ("Culto Manhã - Contribua - 2° Domingo"). */}
+        <span className="truncate" aria-hidden="true">
+          {event.name}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 /** Conteúdo de navegação compartilhado entre a sidebar desktop e o drawer mobile. */
 function SidebarNav({ onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
@@ -118,6 +192,8 @@ function SidebarNav({ onNavigate }: SidebarNavProps) {
         className="flex-1 px-3 py-4 space-y-1 overflow-y-auto"
         aria-label="Navegação principal"
       >
+        <HappeningNavItem onNavigate={onNavigate} />
+
         {filteredNavigation.map((item) => {
           const isActive =
             pathname === item.href ||

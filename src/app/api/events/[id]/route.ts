@@ -18,6 +18,7 @@ import {
   canCompleteEventNow,
   canConfirmSchedulesForOthersWith,
   canRegisterAttendanceWith,
+  canEditEventOrderWith,
   isCompletionDateReached,
   COMPLETE_EVENT_DENIED_MESSAGE,
 } from "@/lib/permissions/event-access"
@@ -109,6 +110,14 @@ export async function GET(
       }),
       // Presenca pode ser registrada tambem depois do evento concluido.
       canRegisterAttendance: canRegisterAttendanceWith(userRole, assignments),
+      // Mesma conta do servidor que as rotas de `items` aplicam, para a tela
+      // nao decidir por conta propria pela permissao GLOBAL do usuario. Sem
+      // isto, quem tem `orderOfService` por um ministerio ve os botoes em
+      // QUALQUER evento, inclusive onde nao esta escalado, e leva 403 ao clicar
+      // — que e exatamente a divergencia que derrubou a Sarah em 04/10.
+      canEditOrder:
+        canEditEventOrderWith(userRole, assignments) &&
+        event.status !== "COMPLETED",
       canConfirmForOthers:
         event.status !== "COMPLETED" &&
         canConfirmSchedulesForOthersWith(userRole, assignments),

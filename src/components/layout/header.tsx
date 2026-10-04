@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
@@ -92,9 +93,47 @@ export function Header({ className }: HeaderProps) {
   const pathname = usePathname();
   const breadcrumbs = getBreadcrumbs(pathname);
   const pageTitle = getPageTitle(pathname);
+  const headerRef = React.useRef<HTMLElement | null>(null);
+
+  /**
+   * O header tem altura variável (mobile x desktop, títulos longos que quebram).
+   * Em vez de cravar um `top-14` nas barras que precisam grudar logo abaixo dele,
+   * publicamos a altura real em `--app-header-h` no <html>, e quem precisa usa
+   * `sticky top-[var(--app-header-h)]`. O fallback vive no globals.css.
+   */
+  React.useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const root = document.documentElement;
+    let lastValue = "";
+
+    const publish = () => {
+      const height = el.getBoundingClientRect().height;
+      if (!height) return;
+      // Arredonda para evitar valores fracionados instáveis entre frames.
+      const next = `${Math.round(height)}px`;
+      if (next === lastValue) return;
+      lastValue = next;
+      root.style.setProperty("--app-header-h", next);
+    };
+
+    publish();
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--app-header-h");
+    };
+  }, []);
 
   return (
     <header
+      ref={headerRef}
       className={cn(
         "sticky top-0 z-30 bg-background/80 backdrop-blur-sm border-b border-border",
         "px-4 md:px-6 py-3 md:py-4",

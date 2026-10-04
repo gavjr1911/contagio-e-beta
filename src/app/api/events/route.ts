@@ -103,7 +103,10 @@ export async function GET(request: NextRequest) {
             select: { schedules: true, items: true },
           },
         },
-        orderBy: { date: "asc" },
+        // Desempata por horario: a ordem de dois eventos do MESMO dia seria
+      // indefinida so com `date`, e e isso que decide qual culto o menu
+      // "ACONTECENDO" escolhe quando os dois comecam no mesmo minuto.
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
         skip,
         take: limit,
       }),

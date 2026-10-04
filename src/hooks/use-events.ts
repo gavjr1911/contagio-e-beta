@@ -68,6 +68,8 @@ export interface EventAccess {
   canRegisterAttendance: boolean;
   /** Pode confirmar a escala de outra pessoa neste evento. */
   canConfirmForOthers: boolean;
+  /** Pode editar a ordem do culto (itens e músicas) deste evento. */
+  canEditOrder: boolean;
   /** O dia do evento já chegou (para quem não é ADMIN). */
   completionDateReached: boolean;
 }

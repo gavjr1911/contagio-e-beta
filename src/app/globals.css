@@ -113,6 +113,22 @@
   /* Fonts */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'DM Sans', system-ui, sans-serif;
+
+  /* ============================================
+     Layout - Altura do header fixo
+     O Header mede a si mesmo (ResizeObserver) e sobrescreve esta variável
+     no <html>. Os valores abaixo são o fallback do primeiro paint (e do caso
+     em que o observer não roda). Valores medidos no navegador:
+     mobile (py-3 + botão do menu + h1 text-lg + borda) = 69px;
+     desktop >= md (py-4 + breadcrumbs + h1 text-2xl + borda) = 87px.
+     ============================================ */
+  --app-header-h: 69px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-header-h: 87px;
+  }
 }
 
 .dark {

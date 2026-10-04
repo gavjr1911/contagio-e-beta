@@ -91,12 +91,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Criar copias dos itens do template para o evento.
     //
-    // A contagem e RECONFERIDA dentro da transacao: a checagem la em cima e um
-    // check-then-act fora de transacao, e nao ha unique no banco. Antes so um
-    // ADMIN alcancava esta rota; agora varias pessoas escaladas veem o botao no
-    // mesmo domingo, em celular com rede instavel — dois cliques concorrentes
-    // criariam 78 itens, sem jeito de limpar a nao ser a mao.
+    // SERIALIZADO POR EVENTO com advisory lock. Reconferir a contagem dentro da
+    // transacao NAO basta: no isolamento padrao do Postgres (READ COMMITTED) duas
+    // transacoes concorrentes leem zero e as duas inserem — medido, deu 24 itens
+    // onde deviam ser 12. Isso ja valia para o botao manual, mas desde que a aba
+    // passou a materializar sozinha ao abrir dentro da janela do culto, "duas
+    // pessoas abrindo ao mesmo tempo" deixou de ser raro e virou o caso comum do
+    // domingo.
+    //
+    // `pg_advisory_xact_lock` serializa apenas as execucoes DESTE evento e e
+    // liberado no fim da transacao (inclusive em rollback), sem mexer no schema.
+    // `hashtextextended` devolve bigint, que e o tipo que a versao de um
+    // argumento espera.
     const createdItems = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`checklist-init:${eventId}`}, 0))`
+
       const jaExistem = await tx.eventChecklistItem.count({ where: { eventId } })
       if (jaExistem > 0) return null
 

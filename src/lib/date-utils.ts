@@ -100,6 +100,40 @@ export function getTodayLocal(): Date {
 }
 
 /**
+ * Instante ATUAL expresso como wall-clock de São Paulo, ancorado em UTC.
+ *
+ * É o `getTodayLocal()` com hora: enquanto aquele responde "que dia é hoje
+ * aqui", este responde "que horas são aqui" — na mesma régua usada por
+ * `@db.Date` + `@db.Time`.
+ *
+ * Serve para comparar "agora" com um horário de evento montado por
+ * `parseLocalDateTime(date, startTime)`, que também é wall-clock ancorado em
+ * UTC. Comparar `new Date()` (instante real) com aquele valor daria 3h de
+ * diferença em produção — é a armadilha que o modelo deste projeto existe para
+ * evitar. Não use o resultado como instante real: ele não é.
+ */
+export function getNowLocal(now: Date = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DEFAULT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  // Algumas versões do ICU devolvem "24" à meia-noite.
+  const hour = get("hour") % 24;
+
+  return new Date(
+    Date.UTC(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"), 0),
+  );
+}
+
+/**
  * Compara se dois Date representam o mesmo dia-calendário (em UTC).
  */
 export function isSameDay(date1: Date, date2: Date): boolean {

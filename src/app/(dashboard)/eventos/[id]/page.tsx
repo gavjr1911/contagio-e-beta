@@ -147,6 +147,29 @@ export default function EventoDetailPage() {
   const deleteSchedule = useDeleteSchedule();
 
   const [activeTab, setActiveTab] = React.useState<TabType>("ordem");
+  const tabsBarRef = React.useRef<HTMLDivElement | null>(null);
+  const tabButtonRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+
+  /**
+   * Mantém a aba ativa visível dentro do scroller horizontal (celular).
+   * Usa scrollLeft manual em vez de scrollIntoView para não arrastar a página
+   * verticalmente quando a barra está grudada no topo.
+   */
+  React.useEffect(() => {
+    const scroller = tabsBarRef.current;
+    const button = tabButtonRefs.current[activeTab];
+    if (!scroller || !button) return;
+
+    const scrollerBox = scroller.getBoundingClientRect();
+    const buttonBox = button.getBoundingClientRect();
+    const margin = 16;
+
+    if (buttonBox.left < scrollerBox.left + margin) {
+      scroller.scrollBy({ left: buttonBox.left - scrollerBox.left - margin, behavior: "smooth" });
+    } else if (buttonBox.right > scrollerBox.right - margin) {
+      scroller.scrollBy({ left: buttonBox.right - scrollerBox.right + margin, behavior: "smooth" });
+    }
+  }, [activeTab]);
 
   // Dialog states
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -180,7 +203,11 @@ export default function EventoDetailPage() {
   const canCompleteEvent = access?.canComplete ?? false;
   const canRegisterAttendance = access?.canRegisterAttendance ?? false;
   const canConfirmForOthers = access?.canConfirmForOthers ?? false;
-  const canEditOrder = (isAdmin || meetsLevel(permissions.orderOfService, "edit")) && !isCompleted;
+  // Vem do SERVIDOR (`access.canEditOrder`), nao de `permissions` global: a
+  // conta global e o maximo entre todos os ministerios e nao sabe se a pessoa
+  // esta escalada NESTE evento. Era isso que mostrava o botao para a Sarah em
+  // eventos alheios e devolvia 403 no clique.
+  const canEditOrder = event?.access?.canEditOrder ?? false;
   const canViewOrder = isAdmin || meetsLevel(permissions.orderOfService, "view") || isScheduledForEvent;
   const canEditSchedules = (isAdmin || meetsLevel(permissions.schedules, "edit")) && !isCompleted;
   const canViewSchedules = isAdmin || meetsLevel(permissions.schedules, "view") || isScheduledForEvent;
@@ -425,12 +452,26 @@ export default function EventoDetailPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-border -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-scrollbar">
+      {/* Tabs — grudam logo abaixo do header ao rolar.
+          O próprio scroller horizontal é o elemento sticky: aninhar o sticky
+          dentro do `overflow-x-auto` quebraria o grude. */}
+      <div
+        ref={tabsBarRef}
+        className={cn(
+          "sticky z-20 top-[var(--app-header-h)]",
+          "bg-background/90 backdrop-blur-sm",
+          "border-b border-border",
+          "-mx-4 px-4 md:-mx-6 md:px-6",
+          "overflow-x-auto no-scrollbar overscroll-x-contain"
+        )}
+      >
         <nav className="flex gap-1 sm:gap-4 -mb-px min-w-max" aria-label="Seções do evento">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              ref={(node) => {
+                tabButtonRefs.current[tab.id] = node;
+              }}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0",

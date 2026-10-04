@@ -5,6 +5,7 @@ import { toast } from "sonner"
 
 import { eventKeys, eventChecklistKeys } from "./query-keys"
 import type { ChecklistTemplate, ChecklistTemplateItem } from "./use-checklist-templates"
+import { isAlreadyStartedError } from "@/lib/events/checklist-auto-start"
 
 // Types
 export interface EventChecklistItem {
@@ -98,7 +99,18 @@ export function useInitEventChecklist() {
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) })
       toast.success("Checklist iniciado com sucesso")
     },
-    onError: (error: Error) => {
+    onError: (error: Error, { eventId }) => {
+      // "Checklist ja foi iniciado" nao e erro para quem esta na tela: significa
+      // que alguem (ou o proprio auto-start, ainda em voo) ja materializou os
+      // itens. Caminho real: a pessoa abre a aba, o auto-start dispara, ela troca
+      // de aba antes da resposta, volta e ve o botao manual por 1-2s; se clicar,
+      // levava um toast vermelho com mensagem de desenvolvedor — justamente no
+      // caso que o auto-start existe para eliminar. Basta recarregar a lista.
+      if (isAlreadyStartedError(error.message)) {
+        queryClient.invalidateQueries({ queryKey: eventChecklistKeys.list(eventId) })
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) })
+        return
+      }
       toast.error(error.message || "Erro ao iniciar checklist")
     },
   })

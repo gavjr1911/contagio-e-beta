@@ -184,6 +184,33 @@ export function canEditEventChecklistWith(
 }
 
 /**
+ * Pode EDITAR A ORDEM DO CULTO deste evento (itens, reordenação, músicas)?
+ *
+ * Mantém o acesso legado por papel global (ADMIN/LEADER) e acrescenta a regra
+ * por evento: quem está escalado (PENDING ou CONFIRMED) por um ministério cuja
+ * matriz conceda `orderOfService.edit`.
+ *
+ * Em 04/10/2026 a Sarah (VOLUNTEER do Contagie, escalada e confirmada no culto
+ * daquele dia) tentou adicionar um item na ordem e levou 403: as rotas de
+ * `items` decidiam por papel global enquanto a tela decidia pela matriz do
+ * ministério — que concede `orderOfService` com as quatro ações aos membros do
+ * Contagie. Mesmo padrão que já havia quebrado o checklist e a presença: o
+ * painel diz que pode, o servidor recusa.
+ */
+export function canEditEventOrderWith(
+  userRole: string | undefined,
+  assignments: EventAssignment[]
+): boolean {
+  if (userRole === "ADMIN" || userRole === "LEADER") return true;
+  return assignments.some(
+    (a) => isActiveAssignment(a) && assignmentGrants(a, "orderOfService", "edit")
+  );
+}
+
+export const EVENT_ORDER_DENIED_MESSAGE =
+  "Acesso negado. Para editar a ordem do culto é preciso ser ADMIN, líder ou estar escalado neste evento por um ministério com permissão de ordem do culto.";
+
+/**
  * Decisão FINAL de "dá para mexer no checklist agora?" — é esta que o servidor
  * manda para a UI, para não existir uma segunda conta do lado do cliente.
  *

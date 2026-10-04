@@ -10,6 +10,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import {
+  canEditEventOrderWith,
   canEditEventChecklistNow,
   canEditEventChecklistWith,
   canCompleteEventWith,
@@ -419,6 +420,68 @@ test("checklist: nem ADMIN mexe em evento concluido (a trava e do estado, nao do
       assignments: [],
       eventStatus: "COMPLETED",
     }),
+    false
+  )
+})
+
+// ---------------------------------------------------------------------------
+// ORDEM DO CULTO
+//
+// Regressão real: em 04/10/2026 a Sarah (VOLUNTEER do Contagie, escalada e
+// CONFIRMED no culto do dia) tentou adicionar um item na ordem e levou 403 —
+// as rotas de `items` decidiam por papel global enquanto a matriz do Contagie
+// concede `orderOfService` com as quatro ações aos membros.
+// ---------------------------------------------------------------------------
+
+const contagieComOrdem = {
+  leader: { orderOfService: { view: true, create: true, edit: true, delete: true } },
+  member: { orderOfService: { view: true, create: true, edit: true, delete: true } },
+}
+
+test("ordem: o caso da Sarah — voluntária escalada pelo Contagie pode editar", () => {
+  assert.equal(
+    canEditEventOrderWith("VOLUNTEER", [
+      assignment({ ministryPermissions: contagieComOrdem }),
+    ]),
+    true
+  )
+})
+
+test("ordem: ADMIN e LEADER global continuam podendo sem escala (mudança é aditiva)", () => {
+  assert.equal(canEditEventOrderWith("ADMIN", []), true)
+  assert.equal(canEditEventOrderWith("LEADER", []), true)
+})
+
+test("ordem: quem RECUSOU a escala não edita", () => {
+  assert.equal(
+    canEditEventOrderWith("VOLUNTEER", [
+      assignment({ status: "DECLINED", ministryPermissions: contagieComOrdem }),
+    ]),
+    false
+  )
+})
+
+test("ordem: escala PENDING vale", () => {
+  assert.equal(
+    canEditEventOrderWith("VOLUNTEER", [
+      assignment({ status: "PENDING", ministryPermissions: contagieComOrdem }),
+    ]),
+    true
+  )
+})
+
+test("ordem: ministério sem orderOfService não edita (Louvor/Técnica)", () => {
+  // `contagieLegacy` concede events.edit mas nada de orderOfService.
+  assert.equal(canEditEventOrderWith("VOLUNTEER", [assignment()]), false)
+})
+
+test("ordem: sem escala no evento não edita", () => {
+  assert.equal(canEditEventOrderWith("VOLUNTEER", []), false)
+})
+
+test("ordem: matriz nula cai no default, que é none", () => {
+  assert.equal(
+    canEditEventOrderWith("VOLUNTEER", [assignment({ ministryPermissions: null })]),
     false
   )
 })

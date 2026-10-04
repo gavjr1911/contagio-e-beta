@@ -3,7 +3,6 @@ import { type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import {
   withAuth,
-  withRole,
   apiSuccess,
   apiError,
   validateBody,
@@ -11,6 +10,11 @@ import {
 import { eventItemIncludeFull } from "@/lib/prisma-includes"
 import { updateEventItemSchema } from "@/lib/validations/event"
 import { resolveEventId } from "@/lib/events"
+import {
+  canEditEventOrderWith,
+  EVENT_ORDER_DENIED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 
 type RouteParams = {
   params: Promise<{ id: string; itemId: string }>
@@ -40,11 +44,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/events/[id]/items/[itemId] - Update event item
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "LEADER"], async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    // Permissao POR EVENTO (matriz do ministerio da escala), nao por papel
+    // global — ver `canEditEventOrderWith`.
+    const podeEditarOrdem = canEditEventOrderWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!podeEditarOrdem) {
+      return apiError(EVENT_ORDER_DENIED_MESSAGE, 403)
     }
 
     const existingItem = await prisma.eventItem.findFirst({
@@ -140,11 +154,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/events/[id]/items/[itemId] - Delete event item
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "LEADER"], async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    // Permissao POR EVENTO (matriz do ministerio da escala), nao por papel
+    // global — ver `canEditEventOrderWith`.
+    const podeEditarOrdem = canEditEventOrderWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!podeEditarOrdem) {
+      return apiError(EVENT_ORDER_DENIED_MESSAGE, 403)
     }
 
     const existingItem = await prisma.eventItem.findFirst({

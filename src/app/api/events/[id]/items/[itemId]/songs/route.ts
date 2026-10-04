@@ -4,13 +4,17 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import {
   withAuth,
-  withRole,
   apiSuccess,
   apiError,
   validateBody,
 } from "@/lib/api-utils"
 import { songSelectWithChord } from "@/lib/prisma-includes"
 import { resolveEventId } from "@/lib/events"
+import {
+  canEditEventOrderWith,
+  EVENT_ORDER_DENIED_MESSAGE,
+} from "@/lib/permissions/event-access"
+import { loadEventAssignments } from "@/lib/permissions/event-access.server"
 
 type RouteParams = {
   params: Promise<{ id: string; itemId: string }>
@@ -58,11 +62,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST /api/events/[id]/items/[itemId]/songs - Add songs to this worship block
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "LEADER"], async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    // Permissao POR EVENTO (matriz do ministerio da escala), nao por papel
+    // global — ver `canEditEventOrderWith`.
+    const podeEditarOrdem = canEditEventOrderWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!podeEditarOrdem) {
+      return apiError(EVENT_ORDER_DENIED_MESSAGE, 403)
     }
 
     // Verify item exists
@@ -123,11 +137,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/events/[id]/items/[itemId]/songs - Reorder songs in this worship block
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "LEADER"], async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    // Permissao POR EVENTO (matriz do ministerio da escala), nao por papel
+    // global — ver `canEditEventOrderWith`.
+    const podeEditarOrdem = canEditEventOrderWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!podeEditarOrdem) {
+      return apiError(EVENT_ORDER_DENIED_MESSAGE, 403)
     }
 
     const validation = await validateBody(request, reorderSongsSchema)
@@ -190,11 +214,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/events/[id]/items/[itemId]/songs - Remove a song from this worship block
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withRole(["ADMIN", "LEADER"], async () => {
+  return withAuth(async (session) => {
     const { id: idOrSlug, itemId } = await params
     const eventId = await resolveEventId(idOrSlug)
     if (!eventId) {
       return apiError("Evento nao encontrado", 404)
+    }
+
+    // Permissao POR EVENTO (matriz do ministerio da escala), nao por papel
+    // global — ver `canEditEventOrderWith`.
+    const podeEditarOrdem = canEditEventOrderWith(
+      session.user.role,
+      await loadEventAssignments(eventId, session.user.id)
+    )
+    if (!podeEditarOrdem) {
+      return apiError(EVENT_ORDER_DENIED_MESSAGE, 403)
     }
     const { searchParams } = new URL(request.url)
     const songId = searchParams.get("songId")
